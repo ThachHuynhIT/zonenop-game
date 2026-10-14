@@ -547,11 +547,13 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
               self={viewPlayer === view.meId}
               token={tokenOf(viewPlayer)}
               isTurn={g?.turn === viewPlayer && playing}
-              reactions={[]}
+              reactions={reactionsFor(viewPlayer)}
               onOpen={(pos) => {
                 setViewPlayer(null);
                 setOpenSquare(pos);
               }}
+              onPick={viewPlayer === view.meId ? () => { setViewPlayer(null); setPicking(true); } : undefined}
+              onKick={me?.isHost && !seatOf(viewPlayer)!.connected && !seatOf(viewPlayer)!.kicked ? () => { setViewPlayer(null); void kick(seatOf(viewPlayer)!); } : undefined}
             />
           </ul>
         </GameDialog>
