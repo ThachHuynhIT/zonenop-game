@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 
 /**
  * Shared WebSocket client for the be_game backend (Tiến Lên, Mèo Nổ, …).
- * Handles acks, heartbeats, reconnect with backoff and the planned hand-over
- * the server asks for shortly before a Vercel function hits its time limit.
+ * Handles acks, heartbeats, reconnect with backoff, the planned hand-over
+ * the server asks for shortly before a Vercel function hits its time limit,
+ * and failover to a backup backend (NEXT_PUBLIC_TIENLEN_FALLBACK_URL).
  */
 
 const TOKEN_KEY = "tienlen:token";
@@ -19,10 +20,108 @@ const PING_INTERVAL_MS = 10_000;
 export type Ack = { ok: true; code?: string } | { ok: false; error: string };
 export type ConnectionStatus = "connecting" | "joined" | "reconnecting" | "error";
 
-/** Base URL of the be_game backend (NEXT_PUBLIC_TIENLEN_SERVER_URL, default: its local dev server). */
-export const serverBase = () => (process.env.NEXT_PUBLIC_TIENLEN_SERVER_URL || "http://localhost:4000").replace(/\/$/, "");
+const cleanBase = (url: string | undefined) => (url ?? "").trim().replace(/\/$/, "");
+/** Main be_game backend (NEXT_PUBLIC_TIENLEN_SERVER_URL, default: its local dev server). */
+const PRIMARY_BASE = cleanBase(process.env.NEXT_PUBLIC_TIENLEN_SERVER_URL) || "http://localhost:4000";
+/** Optional backup backend (NEXT_PUBLIC_TIENLEN_FALLBACK_URL), used while the main one does not answer. */
+const FALLBACK_BASE = cleanBase(process.env.NEXT_PUBLIC_TIENLEN_FALLBACK_URL);
+/** Backends in order of preference. Each keeps its own rooms and leaderboard (separate Redis). */
+export const SERVER_BASES: readonly string[] =
+  FALLBACK_BASE && FALLBACK_BASE !== PRIMARY_BASE ? [PRIMARY_BASE, FALLBACK_BASE] : [PRIMARY_BASE];
 
-const wsUrl = (path: string) => serverBase().replace(/^http/, "ws") + path;
+/** Error be_game sends when a room code does not exist on that backend. */
+const ROOM_NOT_FOUND = "Không tìm thấy phòng";
+const PROBE_TIMEOUT_MS = 3000;
+/** How long a backend choice is reused before the main backend is asked again. */
+const ACTIVE_TTL_MS = 60_000;
+const CONNECT_TIMEOUT_MS = 8000;
+
+const wsUrl = (base: string, path: string) => base.replace(/^http/, "ws") + path;
+
+/**
+ * True when the backend answers in time. Probes `/api/rooms`: it exists on every
+ * deployment (on Vercel bare `/api` is not a function and 404s) and touches Redis.
+ */
+async function reachable(base: string): Promise<boolean> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), PROBE_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${base}/api/rooms`, { cache: "no-store", signal: abort.signal });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+let active: { base: string; at: number } | null = null;
+let resolving: Promise<string> | null = null;
+
+/**
+ * Backend for new rooms and lobby lists: the first one in SERVER_BASES that answers
+ * (the main one when nothing answers, so its errors show). Cached for ACTIVE_TTL_MS,
+ * so traffic returns to the main backend about a minute after it comes back.
+ */
+export function activeServerBase(): Promise<string> {
+  if (SERVER_BASES.length === 1) return Promise.resolve(PRIMARY_BASE);
+  if (active && Date.now() - active.at < ACTIVE_TTL_MS) return Promise.resolve(active.base);
+  return (resolving ??= (async () => {
+    let base = PRIMARY_BASE;
+    for (const candidate of SERVER_BASES) {
+      if (await reachable(candidate)) {
+        base = candidate;
+        break;
+      }
+    }
+    active = { base, at: Date.now() };
+    return base;
+  })().finally(() => {
+    resolving = null;
+  }));
+}
+
+/** Forget the cached choice after `base` failed to connect, so the next call probes again. */
+function markUnreachable(base: string) {
+  if (active?.base === base) active = null;
+}
+
+/** Backends to try for a room whose server is not known yet: the active one first, then the rest. */
+async function candidateBases(): Promise<string[]> {
+  const first = await activeServerBase();
+  return [first, ...SERVER_BASES.filter((b) => b !== first)];
+}
+
+/** Which backend each room lives on (per tab), so reconnects never jump to a backend without the room. */
+const ROOM_SERVERS_KEY = "games:roomServers";
+let memoryRoomServers: Record<string, string> = {};
+const roomKey = (wsPath: string, code: string) => `${wsPath} ${code.toUpperCase()}`;
+
+function loadRoomServers(): Record<string, string> {
+  try {
+    return JSON.parse(sessionStorage.getItem(ROOM_SERVERS_KEY) ?? "{}") as Record<string, string>;
+  } catch {
+    return memoryRoomServers;
+  }
+}
+
+function knownRoomServer(wsPath: string, code: string): string | null {
+  const base = loadRoomServers()[roomKey(wsPath, code)];
+  return base && SERVER_BASES.includes(base) ? base : null;
+}
+
+function rememberRoomServer(wsPath: string, code: string, base: string) {
+  if (SERVER_BASES.length === 1) return;
+  const all = { ...loadRoomServers(), [roomKey(wsPath, code)]: base };
+  // Keep the most recent rooms only.
+  const trimmed = Object.fromEntries(Object.entries(all).slice(-30));
+  memoryRoomServers = trimmed;
+  try {
+    sessionStorage.setItem(ROOM_SERVERS_KEY, JSON.stringify(trimmed));
+  } catch {
+    /* storage unavailable — kept in memory for this tab */
+  }
+}
 
 /**
  * Identical GETs started within this window share one request: on a lobby page the game's lobby and
@@ -31,13 +130,20 @@ const wsUrl = (path: string) => serverBase().replace(/^http/, "ws") + path;
 const SHARED_GET_MS = 4_000;
 const sharedGets = new Map<string, { at: number; promise: Promise<unknown> }>();
 
-/** GET a JSON endpoint of the backend (rooms list, leaderboard). */
+/** GET a JSON endpoint (rooms list, leaderboard) of the active backend. */
 export function fetchApi<T>(path: string): Promise<T> {
   const now = Date.now();
   const hit = sharedGets.get(path);
   if (hit && now - hit.at < SHARED_GET_MS) return hit.promise as Promise<T>;
   const promise = (async () => {
-    const res = await fetch(serverBase() + path, { cache: "no-store" });
+    const base = await activeServerBase();
+    let res: Response;
+    try {
+      res = await fetch(base + path, { cache: "no-store" });
+    } catch (err) {
+      markUnreachable(base);
+      throw err;
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return (await res.json()) as T;
   })();
@@ -213,18 +319,28 @@ class Channel {
   }
 }
 
-/** Ask the server for a new room code using a short-lived connection. */
+/**
+ * Ask a backend for a new room code using a short-lived connection: the active
+ * backend first, the next one when it cannot be reached. Remembers where the room lives.
+ */
 export async function createGameRoom(wsPath: string): Promise<string> {
-  const ch = new Channel(wsUrl(wsPath));
-  try {
-    if (!(await ch.opened(8000))) throw new Error("Không kết nối được máy chủ game");
-    const res = await ch.request({ type: "create" });
-    if (!res.ok) throw new Error(res.error);
-    if (!res.code) throw new Error("Không tạo được phòng");
-    return res.code;
-  } finally {
-    ch.close();
+  for (const base of await candidateBases()) {
+    const ch = new Channel(wsUrl(base, wsPath));
+    try {
+      if (!(await ch.opened(CONNECT_TIMEOUT_MS))) {
+        markUnreachable(base);
+        continue;
+      }
+      const res = await ch.request({ type: "create" });
+      if (!res.ok) throw new Error(res.error);
+      if (!res.code) throw new Error("Không tạo được phòng");
+      rememberRoomServer(wsPath, res.code, base);
+      return res.code;
+    } finally {
+      ch.close();
+    }
   }
+  throw new Error("Không kết nối được máy chủ game");
 }
 
 export type Call = (msg: Record<string, unknown> & { type: string }) => Promise<Ack>;
@@ -253,15 +369,12 @@ export function useGameRoom<V>(
     let retry = 0;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     const token = getToken();
+    /** Backend this room lives on once known. Reconnects stay on it: the other backend has no such room. */
+    let roomBase = knownRoomServer(wsPath, code);
 
-    /**
-     * Open a channel and join. Used for the first connection, after drops, and
-     * for a planned hand-over (`reconnect` from the server before the platform
-     * cuts the connection): the new channel joins before the old one closes.
-     */
-    const open = async () => {
-      if (disposed) return;
-      const ch = new Channel(wsUrl(wsPath));
+    /** Connect to one backend and join (or watch) the room there. */
+    const tryJoin = async (base: string): Promise<Channel | "unreachable" | "not-found" | { error: string }> => {
+      const ch = new Channel(wsUrl(base, wsPath));
       ch.onMessage = (msg) => {
         if (msg.type === "state") {
           setRoomLooks((msg.view as { looks?: Record<string, PlayerProfile> }).looks);
@@ -276,28 +389,63 @@ export function useGameRoom<V>(
         scheduleRetry();
       };
 
-      if (!(await ch.opened())) {
+      if (!(await ch.opened(CONNECT_TIMEOUT_MS))) {
         ch.close();
+        return "unreachable";
+      }
+      const res = await ch.request({ type: mode === "watch" ? "watch" : "join", code, name, token, look: getSavedProfile() });
+      if (res.ok) return ch;
+      ch.close();
+      return res.error === ROOM_NOT_FOUND ? "not-found" : { error: res.error };
+    };
+
+    /**
+     * Open a channel and join. Used for the first connection, after drops, and
+     * for a planned hand-over (`reconnect` from the server before the platform
+     * cuts the connection): the new channel joins before the old one closes.
+     * While the room's backend is unknown (a shared link), each backend is tried in turn.
+     */
+    const open = async () => {
+      if (disposed) return;
+      const bases = roomBase ? [roomBase] : await candidateBases();
+      let unreachable = false;
+      for (const base of bases) {
+        const outcome = await tryJoin(base);
+        if (disposed) {
+          if (outcome instanceof Channel) outcome.close();
+          return;
+        }
+        if (outcome === "unreachable") {
+          unreachable = true;
+          if (!roomBase) markUnreachable(base);
+          continue;
+        }
+        if (outcome === "not-found") continue;
+        if (!(outcome instanceof Channel)) {
+          setStatus("error");
+          setError(outcome.error);
+          return;
+        }
+        roomBase = base;
+        rememberRoomServer(wsPath, code, base);
+        const previous = channelRef.current;
+        channelRef.current = outcome;
+        previous?.close();
+        retry = 0;
+        setStatus("joined");
+        setError(null);
+        return;
+      }
+      if (unreachable) {
+        // The room may live on the backend that is down: keep retrying.
         if (!channelRef.current) {
           setStatus((s) => (s === "joined" ? "reconnecting" : s));
           scheduleRetry();
         }
         return;
       }
-      const res = await ch.request({ type: mode === "watch" ? "watch" : "join", code, name, token, look: getSavedProfile() });
-      if (disposed) return ch.close();
-      if (!res.ok) {
-        ch.close();
-        setStatus("error");
-        setError(res.error);
-        return;
-      }
-      const previous = channelRef.current;
-      channelRef.current = ch;
-      previous?.close();
-      retry = 0;
-      setStatus("joined");
-      setError(null);
+      setStatus("error");
+      setError(ROOM_NOT_FOUND);
     };
 
     const scheduleRetry = () => {

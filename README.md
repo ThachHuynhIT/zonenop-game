@@ -145,6 +145,7 @@ Open <http://localhost:3000>, pick a name, create a table and open the invite li
 | Variable | Required | Description |
 |---|---|---|
 | `NEXT_PUBLIC_TIENLEN_SERVER_URL` | ✅ | be_game base URL, no trailing slash (default `http://localhost:4000`). Inlined at **build time**. |
+| `NEXT_PUBLIC_TIENLEN_FALLBACK_URL` | — | Backup be_game backend. While the main one does not answer (`GET /api/rooms`, 3 s), lobbies and new rooms use it; each room stays on the backend it was created on (separate Redis). Inlined at **build time**. |
 | `NEXT_PUBLIC_SITE_URL` | — | Public origin used for metadata (`metadataBase`). |
 | `WEB_DOMAIN` | self-host | Hostname Traefik routes to the container (`compose.selfhost.yml`). |
 
@@ -173,6 +174,7 @@ The app ships as a Next.js **standalone** image and runs behind the host's Traef
 # On the server, next to compose.selfhost.yml, create .env:
 #   WEB_DOMAIN=games.example.com
 #   NEXT_PUBLIC_TIENLEN_SERVER_URL=https://game.example.com
+#   NEXT_PUBLIC_TIENLEN_FALLBACK_URL=https://<backup>.vercel.app   (optional)
 docker compose -f compose.selfhost.yml up -d --build
 ```
 
@@ -188,7 +190,7 @@ docker compose up --build             # http://localhost:3000
 
 ### Vercel
 
-The repo also deploys to Vercel (`zonenop-game.vercel.app`) from `main`. Set `NEXT_PUBLIC_TIENLEN_SERVER_URL` in the project's environment variables. Standalone output is only enabled for Docker (`NEXT_STANDALONE=1`), because it breaks `next/font` on Vercel.
+The repo also deploys to Vercel (`zonenop-game.vercel.app`) from `main`. Set `NEXT_PUBLIC_TIENLEN_SERVER_URL` (and optionally `NEXT_PUBLIC_TIENLEN_FALLBACK_URL`) in the project's environment variables. Standalone output is only enabled for Docker (`NEXT_STANDALONE=1`), because it breaks `next/font` on Vercel.
 
 ## 🧩 Adding a new game
 
