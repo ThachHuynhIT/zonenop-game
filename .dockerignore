@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.github
+.env
+.env.*
+!.env.example
+.vercel
+.claude
+.windsurf
+.playwright-mcp
+coverage
+docs
+art
+*.log
+tsconfig.tsbuildinfo
