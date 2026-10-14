@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 export type ActionsPlacement = "center" | "bottom";
 export interface TyPhuPrefs {
@@ -19,6 +19,24 @@ export function parsePrefs(raw: string | null): TyPhuPrefs {
     // broken JSON: defaults
   }
   return DEFAULT_PREFS;
+}
+
+const PHONE_WIDTH_QUERY = "(max-width: 1023px)";
+const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-height: 500px)";
+
+function subscribeViewport(onChange: () => void) {
+  const lists = [window.matchMedia(PHONE_WIDTH_QUERY), window.matchMedia(SHORT_LANDSCAPE_QUERY)];
+  for (const l of lists) l.addEventListener("change", onChange);
+  return () => {
+    for (const l of lists) l.removeEventListener("change", onChange);
+  };
+}
+
+const phonePortraitNow = () => window.matchMedia(PHONE_WIDTH_QUERY).matches && !window.matchMedia(SHORT_LANDSCAPE_QUERY).matches;
+
+/** True on a phone held upright: narrower than `lg` and not the short landscape layout (the server render says false). */
+export function usePhonePortrait(): boolean {
+  return useSyncExternalStore(subscribeViewport, phonePortraitNow, () => false);
 }
 
 /** This viewer's display prefs, read after mount (the server render always uses the defaults). */

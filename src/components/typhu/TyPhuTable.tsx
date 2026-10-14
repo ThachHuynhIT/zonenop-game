@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { toast as showToast } from "sonner";
@@ -22,6 +22,7 @@ import { boardRef, groupPositions } from "./board-ref";
 import { NowProvider, NowClock } from "./now";
 import { TOKENS, money, pieceOfSeat, type Act } from "./shared";
 import { useWalkingTokens } from "./board/walk";
+import { usePhonePortrait } from "./prefs";
 import { cellLabel, isCompact, rentAmount, sideCellPx } from "./board/layout";
 import { type CellToken, NO_TOKENS, Cell } from "./board/Cell";
 import { Centre } from "./centre/Centre";
@@ -155,14 +156,17 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const [showRules, setShowRules] = useState(false);
   const [showAssets, setShowAssets] = useState(false);
   const [busy, setBusy] = useState(false);
-  // Squares narrower than 64 px (phones) switch to the compact look: measured on the board grid itself.
+  // Compact squares (no names): phones held upright only, and only while the squares are narrower than 64 px (measured on the board grid).
   const boardEl = useRef<HTMLDivElement>(null);
-  const [compact, setCompact] = useState(false);
+  const phonePortrait = usePhonePortrait();
+  const [narrow, setNarrow] = useState(false);
+  const compact = phonePortrait && narrow;
   const edge = boardRef.current.length / 4;
-  useEffect(() => {
+  // Layout effect: the first paint on a phone already has the compact squares.
+  useLayoutEffect(() => {
     const el = boardEl.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => setCompact(isCompact(sideCellPx(entry.contentRect.width, edge))));
+    const ro = new ResizeObserver(([entry]) => setNarrow(isCompact(sideCellPx(entry.contentRect.width, edge))));
     ro.observe(el);
     return () => ro.disconnect();
   }, [edge]);
