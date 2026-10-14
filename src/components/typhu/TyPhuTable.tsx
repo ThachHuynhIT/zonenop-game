@@ -1,7 +1,7 @@
 "use client";
 
 import { SeatAvatar } from "@/components/games/PlayerAvatar";
-import { createContext, memo, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import NumberFlow from "@number-flow/react";
@@ -18,13 +18,11 @@ import { SeatBubble, SpectatorReactions, useLiveReactions } from "@/components/t
 import { DeltaBadge, ScoreboardModal, signed } from "@/components/tienlen/Scoreboard";
 import {
   AIR_RENT,
-  BOARD as STD_BOARD,
   GROUP_COLORS,
   MAP_LABEL,
   MAP_SIZES,
   type MapSize,
   boardOf,
-  type Group,
   JAIL_FINE,
   MAX_HOUSES,
   type Ownable,
@@ -36,7 +34,6 @@ import {
   GO_SALARY_OPTIONS,
   LAND_SALE_OPTIONS,
   UNMORTGAGE_FEE_OPTIONS,
-  groupPositions as groupPositionsIn,
   houseCost,
   houseRefund,
   isOwnable,
@@ -52,46 +49,14 @@ import { cn } from "@/lib/utils";
 import { MyTurnBadge, TurnRing } from "@/components/games/TurnIndicator";
 import { ConfirmButton } from "@/components/games/ConfirmButton";
 import { WinCelebration } from "@/components/games/WinCelebration";
+import { boardRef, groupPositions } from "./board-ref";
+import { NowClock, NowProvider, useSecondsLeft } from "./now";
+import { ALL_GROUPS, ArtIcon, Building, CBtn, GROUP_NAMES, Modal, TOKENS, buildRuleText, buildableGroups, money, mortgageBlocker, pieceOfSeat, rentDue, squareImg, type Act } from "./shared";
+
+export { money, pieceOfSeat, TOKENS } from "./shared";
 
 const SCORE_NOTE =
   "Điểm theo thứ hạng: người còn trụ lại (hoặc giàu nhất khi hết giờ) Nhất, ai phá sản trước xếp sau. Chủ bàn chọn điểm Nhất / Nhì, các hạng cuối trừ tương ứng, tổng mỗi ván luôn bằng 0.";
-
-/** A seat's token. A server from before token picking sends no `piece`: fall back to the starting token of the seat. */
-export const pieceOfSeat = (seat: TPSeatView) => seat.piece ?? TOKENS[seat.color % TOKENS.length];
-
-export const TOKENS = [
-  { emoji: "🛵", color: "#ef4444" },
-  { emoji: "🐃", color: "#3b82f6" },
-  { emoji: "🚲", color: "#22c55e" },
-  { emoji: "🚤", color: "#eab308" },
-  { emoji: "🐉", color: "#a855f7" },
-  { emoji: "🎩", color: "#f97316" },
-];
-
-/** Illustrated icons (public/games/typhu/icons/<name>.webp) for the special squares; the emoji stay as a fallback. */
-const SQUARE_IMG: Partial<Record<Square["kind"], string>> = {
-  go: "go",
-  air: "air",
-  chance: "chance",
-  chest: "chest",
-  tax: "tax",
-  jail: "jail",
-  parking: "parking",
-  gotojail: "gotojail",
-};
-
-/** The picture for a square kind (utilities pick Điện / Nước by name), or null when it has none. */
-const squareImg = (sq: Square): string | null => (sq.kind === "util" ? (sq.name.includes("Điện") ? "electric" : "water") : SQUARE_IMG[sq.kind] ?? null);
-
-function ArtIcon({ name, className }: { name: string; className?: string }) {
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={`/games/typhu/icons/${name}.webp`} alt="" draggable={false} className={cn("inline-block shrink-0 object-contain", className)} />;
-}
-
-
-export const money = (n: number) => `${n.toLocaleString("vi-VN")}tr`;
-
-type Act = (msg: Record<string, unknown> & { type: string }) => Promise<boolean>;
 
 /** Shift server-clock deadlines onto the local clock. */
 function localize(view: TPRoomView): TPRoomView {
@@ -112,52 +77,13 @@ function localize(view: TPRoomView): TPRoomView {
 }
 
 /**
- * The clock lives in a context so that only the few components showing a countdown re-render every 500 ms —
- * not the whole table (board cells, player rows, panels). The provider renders its `children` prop, so React
- * skips them while only the context value changes.
- */
-const NowContext = createContext(0);
-
-function NowProvider({ active, children }: { active: boolean; children: React.ReactNode }) {
-  return <NowContext.Provider value={useNow(active)}>{children}</NowContext.Provider>;
-}
-
-/** Whole seconds until `t` (a server-clock deadline already shifted to the local clock), re-evaluated every tick. */
-function useSecondsLeft() {
-  const now = useContext(NowContext);
-  return (t: number | null | undefined) => (t ? Math.max(0, Math.ceil((t - now) / 1000)) : null);
-}
-
-function NowClock({ endsAt }: { endsAt: number }) {
-  const now = useContext(NowContext);
-  return <>{formatClock(endsAt - now)}</>;
-}
-
-function useNow(active: boolean, every = 500) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => setNow(Date.now()), every);
-    return () => clearInterval(id);
-  }, [active, every]);
-  return now;
-}
-
-/**
- * The squares of the table's map. The server picks the map per game (40 / 48 / 56 squares), so this is
- * switched by the table component before it renders its children; every helper below reads it.
- */
-let BOARD: Square[] = STD_BOARD;
-const groupPositions = (group: Group) => groupPositionsIn(group, BOARD);
-
-/**
  * The squares a token visits between two positions: forward one square at a time, or a few
  * squares back for "lùi 3 ô" cards. Entering jail walks to the Vào tù square first when the
  * dice put the player there, then jumps to the jail.
  */
 function walkPath(from: number, to: number, enteredJail: boolean, dice: [number, number] | null): number[] {
-  const BOARD_SIZE = BOARD.length;
-  const GO_TO_JAIL_POS = BOARD.findIndex((q) => q.kind === "gotojail");
+  const BOARD_SIZE = boardRef.current.length;
+  const GO_TO_JAIL_POS = boardRef.current.findIndex((q) => q.kind === "gotojail");
   const forward = (a: number, b: number) => {
     const steps: number[] = [];
     for (let p = a; p !== b; ) steps.push((p = (p + 1) % BOARD_SIZE));
@@ -285,7 +211,7 @@ function Table(props: { view: TPRoomView; reconnecting: boolean; act: Act }) {
 function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting: boolean; act: Act }) {
   const g = view.current;
   // A finished game keeps its own map (the room settings may already point at another one for the next game).
-  BOARD = boardOf(g ? g.map ?? "std" : view.settings.map);
+  boardRef.current = boardOf(g ? g.map ?? "std" : view.settings.map);
   const playing = g?.status === "playing";
   const spectator = view.role === "spectator";
   const me = view.seats.find((s) => s?.id === view.meId) ?? null;
@@ -423,7 +349,6 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
     }
   };
 
-
   return (
     <div className="relative isolate mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col gap-3 px-2 pb-[max(1rem,env(safe-area-inset-bottom))] xl:max-w-none pt-2 sm:px-4 sm:pt-3 short:gap-2 short:pt-1.5">
       {/* Whole-screen backdrop: the board-centre picture, blurred and cropped to cover the screen (its longest side fits). */}
@@ -495,16 +420,16 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
           <PinchZoom className="rounded-xl shadow-2xl">
           <div
             className="grid aspect-square w-full gap-[2px] rounded-xl border-4 border-[#1e3a2f] bg-[#1e3a2f] shadow-2xl"
-            style={{ gridTemplateColumns: `1.6fr repeat(${BOARD.length / 4 - 1}, 1fr) 1.6fr`, gridTemplateRows: `1.6fr repeat(${BOARD.length / 4 - 1}, 1fr) 1.6fr` }}
+            style={{ gridTemplateColumns: `1.6fr repeat(${boardRef.current.length / 4 - 1}, 1fr) 1.6fr`, gridTemplateRows: `1.6fr repeat(${boardRef.current.length / 4 - 1}, 1fr) 1.6fr` }}
           >
-            {BOARD.map((sq, i) => {
+            {boardRef.current.map((sq, i) => {
               const here = hereByPos.get(i);
               const deed = g?.deeds[i];
               return (
                 <Cell
                   key={i}
                   index={i}
-                  edge={BOARD.length / 4}
+                  edge={boardRef.current.length / 4}
                   sq={sq}
                   deed={deed}
                   pot={sq.kind === "parking" ? g?.pot ?? 0 : 0}
@@ -516,7 +441,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
               );
             })}
             {/* Centre */}
-            <div className="relative flex flex-col items-center justify-center-safe gap-2 overflow-y-auto overflow-x-hidden bg-[#0b1d3a] bg-cover bg-center p-[5%] text-emerald-950 short:gap-1 short:p-[3%]" style={{ gridColumn: `2 / ${BOARD.length / 4 + 1}`, gridRow: `2 / ${BOARD.length / 4 + 1}`, backgroundImage: "url(/games/typhu/center.webp)" }}>
+            <div className="relative flex flex-col items-center justify-center-safe gap-2 overflow-y-auto overflow-x-hidden bg-[#0b1d3a] bg-cover bg-center p-[5%] text-emerald-950 short:gap-1 short:p-[3%]" style={{ gridColumn: `2 / ${boardRef.current.length / 4 + 1}`, gridRow: `2 / ${boardRef.current.length / 4 + 1}`, backgroundImage: "url(/games/typhu/center.webp)" }}>
               <CardOverlay card={cardFx} nameOf={nameOf} onClose={() => setCardFx(null)} />
               <BuildOverlay fx={buildFx} />
               <BankruptOverlay fx={bankruptFx} />
@@ -646,17 +571,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   );
 }
 
-const formatClock = (ms: number) => {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-};
-
 // ─── Board cells ────────────────────────────────────────────────────
-
-/** A little house or hotel (illustrated icons, public/games/typhu/icons/{house,hotel}.webp). */
-function Building({ hotel, className }: { hotel?: boolean; className?: string }) {
-  return <ArtIcon name={hotel ? "hotel" : "house"} className={cn("drop-shadow-sm", className)} />;
-}
 
 /** Burst over a cell the moment a house / hotel is built there: flash, expanding ring and flying sparks (gold and bigger for a hotel). */
 function BuildBurst({ count }: { count: number }) {
@@ -909,7 +824,7 @@ function Centre({
 }) {
   const turnName = g.turn ? nameOf(g.turn) : "";
   const current = g.players.find((p) => p.id === g.turn);
-  const here = current ? BOARD[current.pos] : null;
+  const here = current ? boardRef.current[current.pos] : null;
   const secondsLeft = useSecondsLeft();
   const secs = secondsLeft(g.deadline);
   // Re-run the dice animation on every new roll (each roll writes a "🎲" log line).
@@ -1120,39 +1035,13 @@ function BuyHint({ g, sq, meId }: { g: TPGameView; sq: Ownable; meId: string }) 
       </>
     );
   } else if (sq.kind === "air") {
-    const have = Object.entries(g.deeds).filter(([pos, d]) => d.owner === meId && BOARD[Number(pos)].kind === "air").length;
+    const have = Object.entries(g.deeds).filter(([pos, d]) => d.owner === meId && boardRef.current[Number(pos)].kind === "air").length;
     text = <>Thuê {AIR_RENT.map((r) => money(r)).join(" → ")} theo số sân bay · bạn có {have}/4</>;
   } else {
     text = <>Thuê = xúc xắc × {UTIL_MULT[0]} (có cả hai: × {UTIL_MULT[1]})</>;
   }
   return <p className="w-full rounded-lg bg-white/60 px-2 py-1 text-[11px] text-emerald-950 sm:text-xs">{text}</p>;
 }
-
-const GROUP_NAMES: Record<Group, string> = {
-  brown: "Nâu",
-  lightblue: "Xanh nhạt",
-  pink: "Hồng",
-  orange: "Cam",
-  red: "Đỏ",
-  yellow: "Vàng",
-  green: "Xanh lá",
-  darkblue: "Xanh đậm",
-};
-const ALL_GROUPS = Object.keys(GROUP_NAMES) as Group[];
-
-/** Colour groups `id` can build in: every city owned, or (without the full-group rule) at least one. */
-function buildableGroups(g: TPGameView, id: string, needGroup: boolean): Group[] {
-  return ALL_GROUPS.filter((grp) => {
-    const cells = groupPositions(grp);
-    return needGroup ? cells.every((p) => g.deeds[p]?.owner === id) : cells.some((p) => g.deeds[p]?.owner === id);
-  });
-}
-
-/** One-line summary of the table's building rule. */
-const buildRuleText = (st: TPSettings) =>
-  (st.buildRule === "chain"
-    ? "Xây theo chuỗi: nhà 2 / nhà 3 cần 2 ô trong nhóm có nhà 1 / nhà 2, nhà 4 cần cả nhóm 3 nhà, khách sạn cần cả nhóm 4 nhà."
-    : "Xây đều từng ô trong nhóm; 4 nhà rồi lên khách sạn.") + (st.needGroup === false ? " Không cần đủ nhóm màu, nhưng chưa đủ nhóm thì tối đa 3 nhà (nhà 4 / khách sạn cần đủ nhóm)." : "");
 
 /** Build on every group you can build in, without hunting for the squares on the board. Selling / mortgaging lives in AssetPanel. */
 function BuildPanel({
@@ -1194,7 +1083,7 @@ function BuildPanel({
               </div>
               <ul className="divide-y divide-white/5">
                 {cells.map((pos) => {
-                  const sq = BOARD[pos] as Extract<Square, { kind: "prop" }>;
+                  const sq = boardRef.current[pos] as Extract<Square, { kind: "prop" }>;
                   const d = g.deeds[pos];
                   if (!d || d.owner !== mine.id) {
                     return (
@@ -1256,7 +1145,7 @@ function BuildPanel({
                 Nhóm {GROUP_NAMES[grp]}: còn thiếu{" "}
                 {groupPositions(grp)
                   .filter((p) => g.deeds[p]?.owner !== mine.id)
-                  .map((p) => BOARD[p].name)
+                  .map((p) => boardRef.current[p].name)
                   .join(", ")}
               </li>
             ))}
@@ -1273,48 +1162,6 @@ function BuildPanel({
         💰 Bán nhà / thế chấp / bán đất →
       </button>
     </Modal>
-  );
-}
-
-function CBtn({
-  children,
-  onClick,
-  disabled,
-  primary,
-  danger,
-  build,
-  title,
-  hotkey,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  /** Keyboard shortcut shown on the button (desktop only). */
-  hotkey?: string;
-  disabled?: boolean;
-  primary?: boolean;
-  danger?: boolean;
-  /** The house-building button: stands out next to the main action. */
-  build?: boolean;
-  title?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={cn(
-        "rounded-lg px-3 py-1.5 text-xs font-semibold shadow transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm",
-        primary && "bg-emerald-700 text-white enabled:hover:bg-emerald-600",
-        danger && "bg-rose-600 text-white enabled:hover:bg-rose-500",
-        build && "bg-gradient-to-b from-amber-300 to-orange-500 text-black shadow-[0_3px_0_#9a3412] enabled:hover:brightness-110 enabled:active:translate-y-0.5",
-        !primary && !danger && !build && "border border-emerald-800/30 bg-white/70 enabled:hover:bg-white",
-      )}
-    >
-      {children}
-      {hotkey && (
-        <kbd className="ml-1.5 hidden rounded border border-current/30 bg-black/10 px-1 align-middle font-mono text-[10px] font-normal opacity-70 lg:inline [@media(pointer:coarse)]:hidden">{hotkey}</kbd>
-      )}
-    </button>
   );
 }
 
@@ -1363,16 +1210,6 @@ function DebtControls({
   );
 }
 
-/** Why a lot can't be mortgaged: only my own houses in the group get in the way. */
-function mortgageBlocker(g: TPGameView, meId: string, pos: number): string | null {
-  const sq = BOARD[pos];
-  const d = g.deeds[pos];
-  if (!d || d.owner !== meId) return "Đây không phải đất của bạn";
-  if (d.mortgaged) return "Đã thế chấp rồi";
-  if (sq.kind === "prop" && groupPositions(sq.group).some((p) => g.deeds[p]?.owner === meId && g.deeds[p].houses > 0)) return "Bán hết nhà của bạn trong nhóm trước";
-  return null;
-}
-
 /**
  * Everything I own with the ways to raise cash (sell a house, mortgage, sell land) and to buy a mortgage back.
  * Lives in the side column, not over the board; while in debt it also shows what's still missing.
@@ -1405,10 +1242,10 @@ function AssetPanel({
   // Cities by colour group, then airports / companies.
   const sections: { key: string; title: string; color?: string; cells: number[] }[] = [];
   for (const grp of ALL_GROUPS) {
-    const cells = owned.filter((pos) => BOARD[pos].kind === "prop" && (BOARD[pos] as Extract<Square, { kind: "prop" }>).group === grp);
+    const cells = owned.filter((pos) => boardRef.current[pos].kind === "prop" && (boardRef.current[pos] as Extract<Square, { kind: "prop" }>).group === grp);
     if (cells.length) sections.push({ key: grp, title: `Nhóm ${GROUP_NAMES[grp]}`, color: GROUP_COLORS[grp], cells });
   }
-  const others = owned.filter((pos) => BOARD[pos].kind !== "prop");
+  const others = owned.filter((pos) => boardRef.current[pos].kind !== "prop");
   if (others.length) sections.push({ key: "other", title: "Sân bay & công ty", cells: others });
   const sellLandOn = !!settings.sellLand;
   const fee = settings.unmortgageFee ?? 10;
@@ -1470,7 +1307,7 @@ function AssetPanel({
             </p>
             <ul className="divide-y divide-white/5">
               {sec.cells.map((pos) => {
-                const sq = BOARD[pos] as Ownable;
+                const sq = boardRef.current[pos] as Ownable;
                 const d = g.deeds[pos];
                 const m = g.manage?.[pos];
                 const sellWhy = m?.sell ?? null;
@@ -1749,7 +1586,7 @@ function PlayerRow({
       {owned.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {owned.map((pos) => {
-            const sq = BOARD[pos];
+            const sq = boardRef.current[pos];
             const d = g!.deeds[pos];
             return (
               <button
@@ -1794,7 +1631,7 @@ function SquareModal({
   busy: boolean;
   onClose: () => void;
 }) {
-  const sq = BOARD[pos];
+  const sq = boardRef.current[pos];
   const deed = g?.deeds[pos];
   const mineHere = !!deed && deed.owner === meId && myTurn;
   const inDebt = g?.phase === "debt";
@@ -1886,22 +1723,6 @@ function SquareModal({
       </div>
     </Modal>
   );
-}
-
-/** What landing on an owned square costs right now: the amount (null = depends on the dice) and the row of the rent table it comes from. */
-function rentDue(g: TPGameView, pos: number): { text: string; row: number | null; free?: boolean } | null {
-  const d = g.deeds[pos];
-  const b = BOARD[pos];
-  if (!d || !isOwnable(b)) return null;
-  if (d.mortgaged) return { text: "0 — đang thế chấp", row: null, free: true };
-  if (b.kind === "prop") {
-    if (d.houses > 0) return { text: money(b.rent[d.houses]), row: d.houses };
-    const full = groupPositions(b.group).every((p) => g.deeds[p]?.owner === d.owner);
-    return { text: money(full ? b.rent[0] * 2 : b.rent[0]), row: 0 };
-  }
-  const count = Object.entries(g.deeds).filter(([p, x]) => x.owner === d.owner && BOARD[Number(p)].kind === b.kind).length;
-  if (b.kind === "air") return { text: money(AIR_RENT[Math.max(0, count - 1)]), row: count - 1 };
-  return { text: `tổng xúc xắc × ${UTIL_MULT[count >= 2 ? 1 : 0]}`, row: count >= 2 ? 1 : 0 };
 }
 
 function OwnableInfo({ sq, settings, activeRow }: { sq: Ownable; settings: TPSettings; activeRow?: number | null }) {
@@ -2098,7 +1919,7 @@ function TradeCard({
 }) {
   const seconds = useSecondsLeft()(deadline) ?? 0;
   const side = (s: TradeSide) =>
-    [...s.props.map((p) => BOARD[p].name), s.cash ? money(s.cash) : null].filter(Boolean).join(", ") || "không gì";
+    [...s.props.map((p) => boardRef.current[p].name), s.cash ? money(s.cash) : null].filter(Boolean).join(", ") || "không gì";
   return (
     <motion.div
       initial={{ scale: 0.9, opacity: 0 }}
@@ -2158,7 +1979,7 @@ function TradeModal({ g, meId, nameOf, run, onClose }: { g: TPGameView; meId: st
     return (
       <div className="flex flex-wrap gap-1">
         {props.map((pos) => {
-          const sq = BOARD[pos];
+          const sq = boardRef.current[pos];
           const on = list.includes(pos);
           return (
             <button
@@ -2633,55 +2454,6 @@ function RulesModal({ onClose }: { onClose: () => void }) {
       <h2 className="mb-3 text-lg font-bold text-amber-300">📖 Luật Cờ Tỷ Phú</h2>
       <TyPhuRules />
     </Modal>
-  );
-}
-
-/**
- * Dialog: a bottom sheet on phones (backdrop above it to tap away, a full-width "Đóng" bar at the bottom),
- * centred from `sm` up. The ✕ stays put while the content scrolls; Esc closes too.
- */
-function Modal({ children, onClose, dark }: { children: React.ReactNode; onClose: () => void; dark?: boolean }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  // Portalled to <body>: a dialog opened from inside the board centre must not be trapped by its overflow / filter containing block.
-  if (typeof document === "undefined") return null;
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal
-        className={cn(
-          "relative flex max-h-[82dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl text-left shadow-2xl sm:max-h-[88dvh] sm:rounded-2xl",
-          dark ? "border border-white/10 bg-[#0c2233] text-sky-50" : "bg-[#f4efe1]",
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className={cn(
-            "absolute right-2 top-2 z-10 grid size-9 place-items-center rounded-full text-lg leading-none shadow",
-            dark ? "bg-white/10 text-white hover:bg-white/20" : "bg-black/35 text-white hover:bg-black/50",
-          )}
-          aria-label="Đóng"
-        >
-          ✕
-        </button>
-        <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain", dark && "p-5 [&>h2:first-child]:pr-10")}>{children}</div>
-        <button
-          onClick={onClose}
-          className={cn(
-            "shrink-0 border-t py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sm font-semibold sm:hidden",
-            dark ? "border-white/10 bg-black/20 text-sky-100" : "border-emerald-900/15 bg-white/60 text-emerald-950",
-          )}
-        >
-          Đóng
-        </button>
-      </div>
-    </div>,
-    document.body,
   );
 }
 
