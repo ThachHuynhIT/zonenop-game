@@ -1,0 +1,151 @@
+name: Deploy
+
+# Deploys main to the self-hosted server once CI has passed on it: every push to main, which includes
+# every merged PR. Also runnable by hand (Actions → Deploy → Run workflow, on main).
+# Mirrors be_game's deploy.yml: the server is reachable only inside a Tailscale tailnet, so the runner
+# joins it first (ephemeral node, workload identity federation: GitHub's OIDC token, no stored Tailscale
+# secret), then ships the exact commit CI tested over SSH and rebuilds with compose.selfhost.yml.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # GitHub OIDC token for Tailscale workload identity federation
+
+jobs:
+  deploy:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Holds the TS_* and DEPLOY_* secrets (same names as be_game; DEPLOY_PATH is this app's own folder).
+    environment: self-hosted
+    env:
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      # The commit CI tested (workflow_run), or the tip of main (manual run).
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      # Until the server is set up (no secrets yet) the run is skipped instead of failing on every push.
+      - name: Check configuration
+        id: cfg
+        run: |
+          if [ -z "$TS_OAUTH_CLIENT_ID" ] || [ -z "$TS_AUDIENCE" ] || [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_PATH" ]; then
+            echo "::notice title=Deploy skipped::TS_OAUTH_CLIENT_ID / TS_AUDIENCE / DEPLOY_HOST / DEPLOY_USER / DEPLOY_PATH are not set in the self-hosted environment (see README, Deploy self-host)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.ready == 'true'
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Join the tailnet
+        if: steps.cfg.outputs.ready == 'true'
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: ${{ vars.TS_TAGS || 'tag:ci' }}
+          ping: ${{ secrets.DEPLOY_HOST }}
+
+      - name: Prepare SSH
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host deploy
+            HostName $DEPLOY_HOST
+            Port $DEPLOY_PORT
+            User $DEPLOY_USER
+            IdentityFile ~/.ssh/id_deploy
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            BatchMode yes
+            ConnectTimeout 20
+          EOF
+
+      - name: Upload the release
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          git archive --format=tar.gz HEAD |
+            ssh deploy "mkdir -p '$DEPLOY_PATH' && cat > '$DEPLOY_PATH/.release.tar.gz'"
+
+      - name: Build and restart on the server
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          ssh deploy "DEPLOY_PATH='$DEPLOY_PATH' SHA='$SHA' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+
+          # Swap the code in place. Only .env survives; refuse to wipe a directory that holds anything
+          # else and is not a previous deploy of this repo (wrong DEPLOY_PATH, e.g. be_game's folder).
+          # No `| head`: under pipefail a SIGPIPE'd find would abort the deploy at random.
+          others=$(find . -mindepth 1 -maxdepth 1 ! -name .env ! -name .release.tar.gz)
+          if [ -n "$others" ] && ! grep -qs '"name": "zonenop-game"' package.json; then
+            echo "$DEPLOY_PATH is not empty and not a zonenop-game deploy, refusing to clean it" >&2
+            exit 1
+          fi
+          find . -mindepth 1 -maxdepth 1 ! -name .env ! -name .release.tar.gz -exec rm -rf {} +
+          tar -xzf .release.tar.gz
+          rm .release.tar.gz
+          echo "$SHA" > REVISION
+
+          # The rebuild moves the games_web:local tag to the new image, so note the old one's ID first and
+          # remove exactly that image afterwards. The host is shared: never a prune.
+          old=$(docker image inspect --format '{{.Id}}' games_web:local 2>/dev/null || true)
+          docker compose -f compose.selfhost.yml up -d --build --remove-orphans
+          new=$(docker image inspect --format '{{.Id}}' games_web:local)
+          if [ -n "$old" ] && [ "$old" != "$new" ] && docker image inspect "$old" >/dev/null 2>&1; then
+            docker image rm "$old" || echo "::warning::could not remove the previous games_web image $old"
+          fi
+          docker compose -f compose.selfhost.yml ps
+
+          for i in $(seq 1 30); do
+            # No published port: ask from inside the container (node:22 has fetch; the image has no curl).
+            # Captured, not piped into grep -q: under pipefail an early-exiting grep can fail the check.
+            health=$(docker compose -f compose.selfhost.yml exec -T web \
+              node -e "fetch('http://127.0.0.1:3000/robots.txt').then(r=>console.log(r.ok?'HEALTHY':'DOWN'),()=>{})" \
+              2>/dev/null || true)
+            if [[ $health == *HEALTHY* ]]; then
+              echo "healthy at $SHA"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "health check failed" >&2
+          docker compose -f compose.selfhost.yml logs --tail 50 web >&2
+          exit 1
+          REMOTE
+
+      # Public check once the server has a domain (e.g. through a Cloudflare Tunnel).
+      - name: Public health check
+        if: steps.cfg.outputs.ready == 'true' && vars.WEB_DOMAIN != ''
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS -o /dev/null "https://${{ vars.WEB_DOMAIN }}/robots.txt"; then
+              echo "healthy"; exit 0
+            fi
+            sleep 3
+          done
+          echo "health check failed" >&2
+          exit 1

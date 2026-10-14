@@ -30,7 +30,11 @@ $font-size-display: clamp(2.25rem, 6vw, 4.5rem);
 $container-prose: 44rem;
 $container-page: 48rem;
 $container-wide: 72rem;
-$container-admin: 60rem;
+
+// Admin shell chrome. Shared so the topbar's own height, the desktop
+// sidebar's sticky offset, and the page header's sticky offset (Phase 17)
+// can never drift apart into 3 independent literals of "3.5rem".
+$admin-topbar-height: 3.5rem;
 
 // Line-height scale — pair with `heading()`/prose, not applied ad hoc.
 $leading-tight: 1.15;
@@ -88,3 +92,5 @@ $syntax-string: var(--syntax-string);
 $syntax-comment: var(--syntax-comment);
 $syntax-title: var(--syntax-title);
 $syntax-deletion: var(--syntax-deletion);
+
+$marker-current: var(--marker-current);

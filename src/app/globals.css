@@ -4,6 +4,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * `short:` targets phones held sideways (landscape with little height), where the
+ * game tables have to squeeze into ~360px of height instead of scrolling.
+ */
+@custom-variant short (@media (orientation: landscape) and (max-height: 500px));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -134,6 +140,12 @@
   --syntax-title: var(--neutral-1000);
   --syntax-deletion: var(--destructive);
 
+  /* Marker (Phase 16) — the --accent-* ramp's first semantic consumer
+     outside syntax highlighting: flags an "ongoing/current" entry (e.g. a
+     present-day job) on the /cv timeline. One job on the whole site, so it
+     stays legible as a signal instead of decoration. */
+  --marker-current: var(--accent-600);
+
   /* Motion (Phase 10 §3/§6) */
   --duration-instant: 80ms;
   --duration-fast: 150ms;
@@ -210,6 +222,9 @@
   --syntax-title: var(--neutral-0);
   --syntax-deletion: var(--destructive);
 
+  /* Marker (Phase 16) — see :root for rationale. */
+  --marker-current: var(--accent-400);
+
   /* Motion (Phase 10 §3/§6) */
   --duration-instant: 80ms;
   --duration-fast: 150ms;
@@ -257,9 +272,10 @@
     --motion-distance-lg: 0px;
   }
 
-  *,
-  *::before,
-  *::after {
+  /* Game tables keep their own move/deal animations, which carry game state. */
+  *:not(.game-shell, .game-shell *),
+  *:not(.game-shell, .game-shell *)::before,
+  *:not(.game-shell, .game-shell *)::after {
     animation-duration: 1ms !important;
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
@@ -278,4 +294,50 @@
   html {
     @apply font-sans;
   }
+}
+/*
+ * Game tables and lobbies (every route is inside a `.game-shell`): no double-tap zoom or grey
+ * tap flash while playing, and inputs at 16px on iOS so focusing them doesn't zoom the page.
+ */
+.game-shell {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* viewport-fit=cover: keep the table clear of the notch when the phone is sideways. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+/* The game UI was written against Tailwind's preflight default (currentColor), not shadcn's
+   `border-border` from @layer base above. */
+@layer base {
+  .game-shell,
+  .game-shell * {
+    border-color: currentColor;
+  }
+}
+/*
+ * Game tables sit under the slim games top bar (GamesShell): shrink their
+ * `min-h-[100dvh]` root by the bar's height so the table still fits one screen.
+ * Unlayered, so it wins over the table's Tailwind utility. The bar also holds the table's own
+ * header (GameHeader), so it stays on sideways phones too.
+ */
+.games-shell-table {
+  --games-bar-h: calc(2.25rem + 1px); /* h-9 bar + its 1px bottom border */
+}
+.games-table > :first-child {
+  min-height: calc(100dvh - var(--games-bar-h));
+}
+@supports (-webkit-touch-callout: none) {
+  .game-shell input,
+  .game-shell select,
+  .game-shell textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
+/* Hub title. */
+.gradient-text {
+  background: linear-gradient(to right, var(--color-violet-500), var(--color-cyan-500));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

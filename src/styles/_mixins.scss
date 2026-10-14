@@ -31,7 +31,9 @@ $breakpoints: (
 }
 
 // General content container: constrains width, centers, responsive padding.
-// page-container/admin-page-container below delegate into this.
+// page-container below delegates into this. Admin's own content container
+// (layout.module.scss's .content) stopped using this mixin in Phase 17 —
+// a data table has no reason to sit in a narrower column than its screen.
 @mixin container($max: vars.$container-page) {
   width: 100%;
   max-width: $max;
@@ -55,15 +57,31 @@ $breakpoints: (
   gap: $gap;
 }
 
-// Wider content container for admin CRUD pages (tables, forms) —
-// page-container's width is too narrow for a data table.
-@mixin admin-page-container {
-  @include container(vars.$container-admin);
+// A document's measure, in characters rather than a fixed pixel/rem width —
+// for /cv (Phase 16), which reads as a typeset document, not a web card
+// layout. `ch` scales with the body face's own average glyph width, so the
+// column stays a comfortable reading measure across font-size changes.
+@mixin measure($ch: 68ch) {
+  width: 100%;
+  max-width: $ch;
+  margin-inline: auto;
 }
 
 // Heading typography — size/weight/line-height/letter-spacing/family from one
 // map, so page modules stop copy-pasting the same trio per title.
 $heading-levels: (
+  // Display size (Phase 16) — the site's one typographic peak, for a page's
+  // single most important line (home hero, /cv name). Deliberately separate
+  // from "h1": most h1s (page titles) should not jump to this size, so
+  // reusing the level would force a call site by call site opt-out instead
+  // of an opt-in.
+  "display": (
+    size: vars.$font-size-display,
+    weight: 700,
+    leading: 0.95,
+    tracking: vars.$tracking-tighter,
+    family: vars.$font-family-heading,
+  ),
   "h1": (
     size: vars.$font-size-2xl,
     weight: 700,
@@ -100,6 +118,18 @@ $heading-levels: (
   font-weight: map.get($config, weight);
   line-height: map.get($config, leading);
   letter-spacing: map.get($config, tracking);
+}
+
+// Small mono section label (Phase 16) — shared by home and /cv. Deliberately
+// text, not a numbered marker ("01 / 02 / 03"): these sections aren't a
+// sequence, so a number would decorate rather than encode anything true
+// about the content.
+@mixin eyebrow {
+  font-family: vars.$font-family-mono;
+  font-size: vars.$font-size-xs;
+  letter-spacing: vars.$tracking-wide;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
 }
 
 // Baseline a11y focus style for custom interactive elements (shadcn

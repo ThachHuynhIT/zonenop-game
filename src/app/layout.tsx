@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
-import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
-import { getSiteSettings } from "@/lib/queries";
+import { domMax, LazyMotion, MotionConfig } from "motion/react";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -23,33 +22,21 @@ const bricolageGrotesque = Bricolage_Grotesque({
   weight: ["600", "700"],
 });
 
-export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSiteSettings();
-  const siteName = settings?.siteName || "Portfolio";
-  const description =
-    settings?.defaultSeoDescription ||
-    settings?.tagline ||
-    "Personal portfolio with a self-built CMS.";
-
-  return {
-    metadataBase: new URL(SITE_URL),
-    title: {
-      default: settings?.defaultSeoTitle || siteName,
-      template: `%s | ${siteName}`,
-    },
-    description,
-    openGraph: {
-      siteName,
-      type: "website",
-      ...(settings?.ogImageUrl ? { images: [{ url: settings.ogImageUrl }] } : {}),
-    },
-    twitter: {
-      card: settings?.ogImageUrl ? "summary_large_image" : "summary",
-    },
-  };
-}
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Games — chơi online cùng bạn bè",
+    template: "%s | Games",
+  },
+  description:
+    "Tiến Lên, Mèo Nổ, Cờ Tỷ Phú, Splendor, Bang!, Ô Ăn Quan, Cờ Cá Ngựa — tạo phòng, gửi link mời bạn bè.",
+  openGraph: { siteName: "Games", type: "website" },
+  twitter: { card: "summary" },
+};
 
 export const viewport: Viewport = {
+  // Game tables run edge-to-edge on phones; the game shell handles safe-area insets.
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
@@ -59,7 +46,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="vi"
       className={`${geistSans.variable} ${geistMono.variable} ${bricolageGrotesque.variable} h-full antialiased`}
       suppressHydrationWarning
     >
@@ -70,7 +57,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           enableSystem
           disableTransitionOnChange
         >
-          <LazyMotion features={domAnimation} strict>
+          {/* domMax (not domAnimation): Cờ Tỷ Phú animates tokens with layoutId. */}
+          <LazyMotion features={domMax} strict>
             <MotionConfig reducedMotion="user">{children}</MotionConfig>
           </LazyMotion>
         </ThemeProvider>
