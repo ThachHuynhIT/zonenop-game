@@ -77,8 +77,10 @@ export function ActionBar({
   const content = (
     <div className={cn("relative flex w-full flex-col items-center gap-2 rounded-2xl", myTurn && (bottom ? "p-1.5" : "bg-rose-50/40 p-2 short:p-1.5"))}>
       {myTurn && <span aria-hidden className="game-beam" />}
-      <p className="flex items-center gap-2 text-xs sm:text-sm">
+      <p className="flex max-w-full items-center gap-2 text-xs sm:text-sm">
         {myTurn ? <GameBadge tone="accent" role="status">Lượt của bạn</GameBadge> : <span>Lượt của <b>{turnName}</b></span>}
+        {/* The bar's Mua button only has room for the price: the square's name goes on the turn line instead. */}
+        {bottom && myTurn && g.phase === "buy" && here && isOwnable(here) && <span className="min-w-0 truncate font-semibold text-white/90">{here.name}</span>}
         {g.deadline && <Countdown deadline={g.deadline} total={g.phase === "debt" ? DEBT_MS : stepMs} size={36} className={bottom ? undefined : COUNTDOWN_ON_CREAM} />}
       </p>
 
@@ -105,8 +107,9 @@ export function ActionBar({
           )}
           {g.phase === "buy" && here && isOwnable(here) && (
             <>
-              <CBtn primary hotkey="B" onClick={() => void run({ type: "buy" })} disabled={busy || mine.cash < here.price}>
-                🏷️ Mua {here.name} · {money(here.price)}
+              {/* A long square name wraps instead of running out of the panel / bar. */}
+              <CBtn primary hotkey="B" onClick={() => void run({ type: "buy" })} disabled={busy || mine.cash < here.price} className="h-auto min-h-11 max-w-full whitespace-normal py-1.5">
+                🏷️ Mua {!bottom && here.name} · {money(here.price)}
               </CBtn>
               <CBtn hotkey="S" onClick={() => void run({ type: "skip" })} disabled={busy}>
                 Bỏ qua
