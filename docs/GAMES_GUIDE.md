@@ -524,6 +524,21 @@ Hook **bỏ qua** phím khi:
 
 Bảng phím của từng game nằm ở mục "Phím tắt" trong §4.
 
+### 3.13. Bộ UI `game-ui` (`src/components/game-ui/`)
+
+Nền tảng giao diện casual-game dùng chung (spec: `docs/superpowers/specs/2026-10-14-game-ui-foundation-design.md`).
+Xem mọi component ở `/ui-kit` khi chạy `npm run dev` (bản production trả 404).
+
+- Màu nhấn theo game: `GameThemeScope game="<id>"` đặt `data-game`; dùng `bg-game-accent`, `text-game-accent-fg`,
+  `border-game-accent/40`… Không viết màu cứng cho phần "của game". `globals.css` không được có mã hex/rgb/hsl
+  (`src/styles/tokens.test.ts`).
+- Nút: `GameButton` (`primary` tối đa một nút chính mỗi khu vực; `confirm="Chắc chắn?"` thay `window.confirm`).
+- Hộp thoại: `GameDialog` (tự thành drawer trên điện thoại) thay cho modal `fixed inset-0` tự viết.
+- Chuyển động: `import { m } from "motion/react"` (app chạy `LazyMotion strict`); animation CSS mới phải tự có
+  `@media (prefers-reduced-motion: reduce)` vì rule chung bỏ qua `.game-shell`.
+- Base UI đánh dấu tab đang chọn bằng `data-active` (không phải `data-selected`); không gọi `setState` đồng bộ trong
+  `useEffect` (lint `react-hooks` báo lỗi) — đặt trong callback (`setTimeout`, `requestAnimationFrame`, sự kiện).
+
 ---
 
 ## 4. Từng game
