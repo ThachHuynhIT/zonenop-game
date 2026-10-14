@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { slugify } from "./slugify";
-import { slugPattern } from "@lib/admin/shared-schema";
+// Same shape the old admin slug field validated: lowercase words joined by single hyphens.
+const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 describe("slugify", () => {
   const nonEmptyCases = [

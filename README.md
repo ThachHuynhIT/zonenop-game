@@ -1,40 +1,55 @@
-# Portfolio with CMS
+# Games
 
-A personal portfolio site with a self-built admin CMS, built on Next.js (App Router), Prisma/PostgreSQL, Auth.js, and Cloudinary. See `docs plan` in `.claude/plans` (or ask the maintainer) for architecture and phased build plan.
+Board and card games to play online with friends, right in the browser: Tiến Lên Miền Nam, Mèo Nổ,
+Cờ Tỷ Phú, Đá Quý (Splendor), Đấu Súng (Bang!), Ô Ăn Quan, Cờ Cá Ngựa, plus an offline Contra.
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+- Frontend only (this repo): Next.js 16 (App Router), React 19, Tailwind 4, `motion`.
+- Rooms, game state and WebSockets: the separate **be_game** repo, reached via
+  `NEXT_PUBLIC_TIENLEN_SERVER_URL`.
+- No database, no auth.
 
-## Getting Started
+The hub is `/`; each game has a lobby at its route (`/tien-len`, `/meo-no`, …) and tables at
+`/<game>/<ROOM>`. How the game UI is put together: [`docs/GAMES_GUIDE.md`](docs/GAMES_GUIDE.md).
 
-First, run the development server:
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env    # set NEXT_PUBLIC_TIENLEN_SERVER_URL (be_game, default http://localhost:4000)
+npm install
+npm run dev             # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Run be_game alongside (`npm run dev` in that repo; it uses an in-memory store without Redis).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Script | What |
+|---|---|
+| `npm run lint` / `npm run typecheck` / `npm test` / `npm run build` | Checks run by CI |
+| `npm run art:meono` / `npm run art:bang` | Rebuild card art from `/art/` sources into `public/games/` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploy self-host (Docker)
 
-## Learn More
+Same setup as be_game: the server runs Traefik (external network `traefik_network`) behind a
+Cloudflare Tunnel; nothing publishes ports.
 
-To learn more about Next.js, take a look at the following resources:
+1. On the server, in the deploy folder (e.g. `~/apps/games_web`), create `.env`:
+   ```
+   WEB_DOMAIN=games.example.com
+   NEXT_PUBLIC_TIENLEN_SERVER_URL=https://game.example.com
+   ```
+2. Route `WEB_DOMAIN` to Traefik in the Cloudflare Tunnel (like be_game's domain).
+3. Add `https://<WEB_DOMAIN>` to be_game's `ALLOWED_ORIGIN`, or its WebSockets reject the site.
+4. GitHub → this repo → Settings → Environments → `self-hosted`: add the same secrets as be_game
+   (`TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`,
+   `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`) and `DEPLOY_PATH` = this app's own folder (**not**
+   be_game's). Optional variable `WEB_DOMAIN` enables the public health check.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Every push to `main` that passes CI is then deployed by `.github/workflows/deploy.yml`
+(`docker compose -f compose.selfhost.yml up -d --build`). By hand on the server:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+docker compose -f compose.selfhost.yml up -d --build
+```
 
-## Deploy on Vercel
+`NEXT_PUBLIC_*` values are baked in at build time, so changing them needs `--build`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Local run of the production image: `docker compose up --build` → http://localhost:3000.
