@@ -41,9 +41,15 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/src/generated/prisma
+
 
 # AI agent skill symlinks (installed by `prisma init`) — .agents/skills/ is the
 # real source copy and is tracked; these are per-tool symlinks into it.
 /.claude/skills/
 /.windsurf/skills/
+
+# source images for game card art (scripts/card-art.mjs writes the optimized copies to public/)
+/art/
+
+# Playwright MCP screenshots/logs
+/.playwright-mcp
