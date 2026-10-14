@@ -11,7 +11,8 @@ ARG NEXT_PUBLIC_TIENLEN_SERVER_URL
 ARG NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_TIENLEN_SERVER_URL=$NEXT_PUBLIC_TIENLEN_SERVER_URL \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
-    NEXT_TELEMETRY_DISABLED=1
+    NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_STANDALONE=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
@@ -19,7 +20,7 @@ RUN npm run build
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 WORKDIR /app
-# output: "standalone" (next.config.ts) bundles server.js with only the node_modules it needs;
+# output: "standalone" (next.config.ts, enabled by NEXT_STANDALONE=1 above) bundles server.js with only the node_modules it needs;
 # static assets and public/ are not part of it and are copied next to it.
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static

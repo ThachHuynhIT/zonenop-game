@@ -40,6 +40,10 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 - **Game shell keeps `border-color: currentColor`** (`globals.css`): shadcn's `@layer base`
   `border-border` would otherwise recolor every bare `border` in the game UI.
 - **Room pages read `params` with `use()`**: Next 16 passes `params` as a Promise.
+- **`output: "standalone"` only when `NEXT_STANDALONE=1`** (set by the Dockerfile): on Vercel it breaks
+  `next/font/google` ("next/font/google queries have exactly one entry" for Bricolage Grotesque).
+  Bisected on Vercel previews: `develop` builds, this branch failed, and the same branch built without the
+  `output` line.
 - `NEXT_PUBLIC_*` are build args in Docker (inlined at build time); changing them needs a rebuild.
 - `NEXT_PUBLIC_TIENLEN_FALLBACK_URL` (set on Vercel `portfolio`) is not read by any merged code,
   so it was not carried over.
