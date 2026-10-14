@@ -56,7 +56,7 @@ bằng Tailwind 4 + `cva`, chuyển động bằng `motion` (`m`, vì app chạy
 1. **Dialog mở trên trang game mất màu nhấn/viền** (portal ra `body`) → popup phải có `data-game` của trang. Kiểm ở Task 7
    (script đọc `--game-accent` trên popup).
 2. **Nút xác nhận 2 lần**: bấm lần 2 sau khi hết 3.5 s phải chỉ "arm" lại, không chạy hành động; bấm khi `disabled`
-   không làm gì. Kiểm ở Task 1 (`confirmStep`) và Task 3 (timer reset).
+   không làm gì. Kiểm ở Task 1 (`confirmStep`) và Task 6 Step 3 (chờ 4 s rồi bấm).
 3. **Đếm ngược với dữ liệu xấu**: `deadline` đã qua, `total` = 0, `deadline` = `NaN` → không âm, không `NaN`, hiện 0 và
    `urgent`. Kiểm ở Task 1.
 4. **Màu nhấn thiếu tương phản** trên từng game → `/ui-kit` hiện tỉ lệ, script Task 7 fail nếu < 4.5. Hàm tính ở Task 1.
@@ -1117,6 +1117,7 @@ export default function UiKitPage() {
 "use client";
 
 import { useEffect, useState } from "react";
+import { Toaster } from "sonner";
 import { Celebration, Countdown, GameBadge, GameButton, GameDialog, GamePanel, GameTabs, GameThemeScope, SeatChip, gameToast, type GameId } from "@/components/game-ui";
 import { contrastRatio } from "@/components/game-ui/logic";
 import { ONLINE_GAMES } from "@/components/games/gamesRegistry";
@@ -1142,12 +1143,10 @@ function ContrastTable() {
     document.body.appendChild(probe);
     const next = GAMES.map((g) => {
       probe.setAttribute("data-game", g ?? "hub");
-      const s = getComputedStyle(probe);
       probe.style.color = "var(--game-accent)";
       const accent = getComputedStyle(probe).color;
       probe.style.color = "var(--game-accent-fg)";
       const fg = getComputedStyle(probe).color;
-      void s;
       return { game: g ?? "hub", ratio: contrastRatio(toRgb(accent), toRgb(fg)) };
     });
     probe.remove();
@@ -1267,6 +1266,8 @@ export function UiKit() {
           <Celebration playing={celebrate.playing} show={celebrate.show} won title="Ván đã kết thúc" />
         </GamePanel>
       </GameThemeScope>
+      {/* /ui-kit is outside GamesShell, which normally mounts the toaster. */}
+      <Toaster theme="dark" position="top-center" richColors visibleToasts={3} />
     </div>
   );
 }
@@ -1276,9 +1277,8 @@ export function UiKit() {
 
 Run: `npm run dev` rồi mở `http://localhost:3000/ui-kit`.
 Expected: trang hiện đủ các khối; bấm từng game đổi màu nhấn; bảng tương phản hiện 8 số; "Rời bàn" bấm lần 1 đổi
-thành "Chắc chắn?", lần 2 hiện toast; "Mở hộp thoại" mở dialog giữa màn hình (thu cửa sổ < 768 px → drawer).
-Lưu ý: `/ui-kit` không nằm trong `GamesShell` nên không có `<Toaster>`; thêm `<Toaster theme="dark" position="top-center" richColors />`
-từ `sonner` vào cuối `UiKit` nếu toast không hiện.
+thành "Chắc chắn?", lần 2 hiện toast; bấm lần 1, **chờ 4 giây** (nút về lại "Rời bàn"), bấm tiếp → chỉ hiện lại
+"Chắc chắn?", không có toast; "Mở hộp thoại" mở dialog giữa màn hình (thu cửa sổ < 768 px → drawer).
 
 - [ ] **Step 4: Kiểm tra build production trả 404**
 
@@ -1379,7 +1379,7 @@ Expected: `ui-kit check passed`; 6 ảnh `ui-kit-*.png`. Nếu một màu nhấn
 
 - [ ] **Step 4: So kích thước bundle**
 
-Run: `git stash -u && npm run build > /tmp/before.txt; git stash pop && npm run build > /tmp/after.txt` rồi so dòng
+Run: `git switch develop && npm run build > "$TEMP/before.txt"; git switch feature/game-ui-foundation && npm run build > "$TEMP/after.txt"` rồi so dòng
 "First Load JS" của `/tien-len/[room]` và `/`.
 Expected: không đổi (PR 1 chưa import `game-ui` vào route thật). Ghi số vào mô tả PR.
 
