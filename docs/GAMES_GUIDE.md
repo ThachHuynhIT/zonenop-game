@@ -73,13 +73,18 @@ export default function MeoNoRoomPage({ params }: { params: { room: string } }) 
 
 Toàn bộ phần kết nối nằm trong `src/components/games/gameClient.ts`.
 
-**Server URL.** `serverBase()` lấy `process.env.NEXT_PUBLIC_TIENLEN_SERVER_URL`; nếu không đặt thì dùng `http://localhost:4000`. Dấu `/` cuối bị bỏ. URL WebSocket là URL đó với `http` đổi thành `ws`, rồi nối thêm path. Biến này là `NEXT_PUBLIC_`, nên giá trị được gắn vào bundle lúc build. Đổi biến thì phải build lại. Xem `.env.example`.
+**Server URL và máy chủ dự phòng.** `SERVER_BASES` = `NEXT_PUBLIC_TIENLEN_SERVER_URL` (máy chủ chính; không đặt thì `http://localhost:4000`), rồi `NEXT_PUBLIC_TIENLEN_FALLBACK_URL` nếu có đặt và khác máy chủ chính. Dấu `/` cuối bị bỏ. URL WebSocket là URL đó với `http` đổi thành `ws`, rồi nối thêm path. Hai biến là `NEXT_PUBLIC_`, nên giá trị được gắn vào bundle lúc build. Đổi biến thì phải build lại. Xem `.env.example`.
 
-**REST.** `fetchApi<T>(path)` gửi `GET serverBase()+path` với `cache: "no-store"`. Hai nơi dùng nó:
+- `activeServerBase()` chọn máy chủ cho **sảnh và bàn mới**: thử `GET <base>/api/rooms` (timeout 3 giây) theo thứ tự, lấy máy đầu tiên trả lời; không máy nào trả lời thì vẫn dùng máy chính để lỗi hiện ra. Kết quả nhớ 60 giây, nên máy chính sống lại thì khoảng một phút sau bàn mới quay về đó. Thử `/api/rooms` chứ không phải `/api`, vì trên Vercel `/api` không phải function và trả 404.
+- **Mỗi máy chủ có Redis riêng**: phòng, sảnh và bảng điểm của máy này không có ở máy kia. Vì vậy mỗi phòng được **ghim** vào máy chủ của nó (`sessionStorage["games:roomServers"]`, khoá `"<wsPath> <CODE>"`), ghi lúc tạo hoặc lúc vào được bàn; lần kết nối lại sau luôn quay về đúng máy đó (máy đó đang chết thì cứ thử lại, không nhảy sang máy kia).
+- Phòng chưa biết máy (mở link mời): thử máy đang dùng trước; máy đó trả `"Không tìm thấy phòng"` hoặc không kết nối được thì thử máy còn lại. Mọi máy đều trả "không có phòng" thì báo lỗi; có máy không kết nối được thì tiếp tục thử lại (phòng có thể nằm trên máy đang chết).
+- Trong lúc dùng máy dự phòng, sảnh chỉ hiện bàn và bảng điểm của máy dự phòng.
+
+**REST.** `fetchApi<T>(path)` gửi `GET <activeServerBase()>+path` với `cache: "no-store"` (lỗi mạng thì bỏ máy đang nhớ để lần sau thử lại); các GET giống nhau bắt đầu trong 4 giây dùng chung một request (`SHARED_GET_MS`). Hai nơi dùng nó:
 - `GameLobby` lấy `/api${apiPrefix}/rooms` (5 giây một lần) và `/api${apiPrefix}/leaderboard?limit=20`.
 - `AllRoomsPanel` lấy `roomsPath` của mọi game (10 giây một lần).
 
-**Tạo phòng.** `createGameRoom(wsPath)` mở một kết nối ngắn, gửi `{type:"create"}`, nhận `ack.code`, rồi đóng kết nối. `GameLobby` sau đó `router.push(`${basePath}/${code}`)`.
+**Tạo phòng.** `createGameRoom(wsPath)` mở một kết nối ngắn tới máy đang dùng (không kết nối được thì sang máy kế tiếp), gửi `{type:"create"}`, nhận `ack.code`, ghim phòng vào máy đó, rồi đóng kết nối. `GameLobby` sau đó `router.push(`${basePath}/${code}`)`.
 
 **Vào bàn.** Hook chính là `useGameRoom<V>(wsPath, code, name, mode = "play" | "watch", localize?)`. Nó trả về `{ view, status, error, call }`:
 

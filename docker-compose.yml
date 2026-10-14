@@ -7,6 +7,7 @@ services:
       context: .
       args:
         NEXT_PUBLIC_TIENLEN_SERVER_URL: ${NEXT_PUBLIC_TIENLEN_SERVER_URL:-http://localhost:4000}
+        NEXT_PUBLIC_TIENLEN_FALLBACK_URL: ${NEXT_PUBLIC_TIENLEN_FALLBACK_URL:-}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     image: games_web:local
     init: true
