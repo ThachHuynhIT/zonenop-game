@@ -1,24 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { toast as showToast } from "sonner";
 import { useHotkeys } from "@/components/games/useHotkeys";
-import { AIR_RENT, GROUP_COLORS, JAIL_FINE, type Ownable, UTIL_MULT, isOwnable } from "@/lib/typhu/board";
+import { JAIL_FINE, isOwnable } from "@/lib/typhu/board";
 import { type TPGameView, type TPPlayerView, type TPRoomView } from "@/lib/typhu/protocol";
 import { cn } from "@/lib/utils";
-import { Countdown } from "@/components/game-ui/Countdown";
-import { GameBadge } from "@/components/game-ui/GameBadge";
-import { boardRef, groupPositions } from "../board-ref";
-import { CBtn, GROUP_NAMES, buildableGroups, money, type Act } from "../shared";
+import { boardRef } from "../board-ref";
+import { buildableGroups, money, type Act } from "../shared";
+import { ActionBar } from "./ActionBar";
 import { Die } from "./Dice";
 import { LoanCard, TradeCard } from "./OfferCards";
 import { BuildPanel } from "../panels/BuildPanel";
-import { DebtControls } from "../panels/DebtControls";
-
-/** be_game's default step time (`stepSeconds` is optional in the room settings). */
-const DEFAULT_STEP_SECONDS = 30;
 
 export function Centre({
+  placement,
+  showBuild,
+  setShowBuild,
   g,
   view,
   myTurn,
@@ -31,6 +29,10 @@ export function Centre({
   onTrade,
   onLoan,
 }: {
+  /** Where the turn line and my buttons sit: here in the centre, or in the bottom bar the table renders itself. */
+  placement: "center" | "bottom";
+  showBuild: boolean;
+  setShowBuild: (open: boolean) => void;
   g: TPGameView;
   view: TPRoomView;
   myTurn: boolean;
@@ -46,11 +48,8 @@ export function Centre({
   const turnName = g.turn ? nameOf(g.turn) : "";
   const current = g.players.find((p) => p.id === g.turn);
   const here = current ? boardRef.current[current.pos] : null;
-  // Per-turn step time (the server's default is 30 s when the room never set one); `timeLimit` is the whole-game clock.
-  const stepMs = (view.settings.stepSeconds ?? DEFAULT_STEP_SECONDS) * 1000;
   // Re-run the dice animation on every new roll (each roll writes a "🎲" log line).
   const rollId = [...g.log].reverse().find((e) => e.text.startsWith("🎲"))?.id ?? 0;
-  const [showBuild, setShowBuild] = useState(false);
   const fullGroups = mine ? buildableGroups(g, mine.id, view.settings.needGroup !== false) : [];
   const ownsLand = !!mine && Object.values(g.deeds).some((d) => d.owner === mine.id);
   const debt = myTurn && g.phase === "debt" ? g.debt : null;
@@ -143,65 +142,9 @@ export function Centre({
           <span className="text-3xl sm:text-5xl short:text-2xl">🎲</span>
         )}
       </div>
-      {/* My turn: a light runs around the turn line + my controls. */}
-      <div className={cn("relative flex w-full flex-col items-center gap-2 rounded-2xl", myTurn && "bg-rose-50/40 p-2 short:p-1.5")}>
-        {myTurn && <span aria-hidden className="game-beam" />}
-        <p className="flex items-center gap-2 text-xs sm:text-sm">
-          {myTurn ? <GameBadge tone="accent" role="status">Lượt của bạn</GameBadge> : <span>Lượt của <b>{turnName}</b></span>}
-          {g.deadline && <Countdown deadline={g.deadline} total={stepMs} size={36} />}
-        </p>
-
-        {myTurn && mine && (
-          <div className="flex flex-wrap justify-center gap-2">
-            {g.phase === "roll" && (
-              <>
-                <CBtn primary hotkey="R" onClick={() => void run({ type: "roll" })} disabled={busy}>
-                  🎲 {g.rollAgain ? "Tung tiếp (đôi!)" : "Tung xúc xắc"}
-                </CBtn>
-                {mine.jail > 0 && (
-                  <>
-                    <CBtn hotkey="J" onClick={() => void run({ type: "payjail" })} disabled={busy || mine.cash < JAIL_FINE}>
-                      Nộp {money(JAIL_FINE)} ra tù
-                    </CBtn>
-                    {mine.jailCards > 0 && (
-                      <CBtn hotkey="K" onClick={() => void run({ type: "jailcard" })} disabled={busy}>
-                        🗝️ Dùng thẻ ra tù
-                      </CBtn>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-            {g.phase === "buy" && here && isOwnable(here) && (
-              <>
-                <CBtn primary hotkey="B" onClick={() => void run({ type: "buy" })} disabled={busy || mine.cash < here.price}>
-                  🏷️ Mua {here.name} · {money(here.price)}
-                </CBtn>
-                <CBtn hotkey="S" onClick={() => void run({ type: "skip" })} disabled={busy}>
-                  Bỏ qua
-                </CBtn>
-                <BuyHint g={g} sq={here} meId={mine.id} />
-              </>
-            )}
-            {g.phase === "end" && (
-              <CBtn primary hotkey="E" onClick={() => void run({ type: "end" })} disabled={busy}>
-                Kết thúc lượt ➜
-              </CBtn>
-            )}
-            {g.phase !== "debt" && (
-              <CBtn build hotkey="X" onClick={() => setShowBuild(true)} disabled={busy || !fullGroups.length} title={fullGroups.length ? undefined : view.settings.needGroup === false ? "Chưa có đất thành phố nào" : "Cần sở hữu đủ cả một nhóm màu"}>
-                🏠 Xây nhà{fullGroups.length ? ` (${fullGroups.length} nhóm)` : ""}
-              </CBtn>
-            )}
-            {g.phase !== "debt" && ownsLand && !assetsOpen && (
-              <CBtn hotkey="A" onClick={onOpenAssets} disabled={busy}>
-                💰 Thế chấp / Bán
-              </CBtn>
-            )}
-            {debt && <DebtControls debt={debt} cash={mine.cash} busy={busy} run={run} onOpenAssets={ownsLand ? onOpenAssets : undefined} />}
-          </div>
-        )}
-      </div>
+      {placement === "center" && (
+        <ActionBar placement="center" g={g} view={view} myTurn={myTurn} mine={mine} busy={busy} run={run} nameOf={nameOf} assetsOpen={assetsOpen} onOpenAssets={onOpenAssets} onBuild={() => setShowBuild(true)} />
+      )}
       {canTrade && !trade && !loan && (
         <div className="flex flex-wrap justify-center gap-2 max-lg:hidden short:flex">
           <button onClick={onTrade} className="rounded-lg border border-emerald-900/30 bg-white/60 px-3 py-1 text-xs font-semibold text-emerald-950 hover:bg-white/80 max-sm:min-h-9">
@@ -229,28 +172,4 @@ export function Centre({
       {showBuild && mine && <BuildPanel g={g} mine={mine} settings={view.settings} busy={busy} run={run} onClose={() => setShowBuild(false)} onOpenAssets={onOpenAssets} />}
     </div>
   );
-}
-
-/** One line under the Mua button: the rent you'd earn and how close you are to the full group. */
-function BuyHint({ g, sq, meId }: { g: TPGameView; sq: Ownable; meId: string }) {
-  let text: React.ReactNode;
-  if (sq.kind === "prop") {
-    const cells = groupPositions(sq.group);
-    const have = cells.filter((p) => g.deeds[p]?.owner === meId).length;
-    const others = cells.filter((p) => g.deeds[p] && g.deeds[p].owner !== meId).length;
-    text = (
-      <>
-        <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: GROUP_COLORS[sq.group] }} />
-        Thuê {money(sq.rent[0])} · khách sạn {money(sq.rent[5])} · nhóm {GROUP_NAMES[sq.group]}: bạn có {have}/{cells.length}
-        {have + 1 === cells.length && others === 0 && <b className="text-emerald-700"> — mua là đủ nhóm!</b>}
-        {others > 0 && <span className="text-rose-700"> (người khác đã giữ {others})</span>}
-      </>
-    );
-  } else if (sq.kind === "air") {
-    const have = Object.entries(g.deeds).filter(([pos, d]) => d.owner === meId && boardRef.current[Number(pos)].kind === "air").length;
-    text = <>Thuê {AIR_RENT.map((r) => money(r)).join(" → ")} theo số sân bay · bạn có {have}/4</>;
-  } else {
-    text = <>Thuê = xúc xắc × {UTIL_MULT[0]} (có cả hai: × {UTIL_MULT[1]})</>;
-  }
-  return <p className="w-full rounded-lg bg-white/60 px-2 py-1 text-[11px] text-emerald-950 sm:text-xs">{text}</p>;
 }

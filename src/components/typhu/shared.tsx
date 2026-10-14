@@ -85,6 +85,7 @@ export function CBtn({
   build,
   title,
   hotkey,
+  className,
 }: {
   children: React.ReactNode;
   onClick: () => void;
@@ -96,6 +97,7 @@ export function CBtn({
   /** The house-building button: stands out next to the main action. */
   build?: boolean;
   title?: string;
+  className?: string;
 }) {
   return (
     <GameButton
@@ -106,7 +108,7 @@ export function CBtn({
       disabled={disabled}
       title={title}
       // The centre panel is pale: the translucent-white secondary style would be unreadable on it.
-      className={!primary && !danger && !build ? "bg-emerald-900/80 text-white hover:bg-emerald-800/90" : undefined}
+      className={cn(!primary && !danger && !build && "bg-emerald-900/80 text-white hover:bg-emerald-800/90", className)}
     >
       {children}
       {hotkey && (

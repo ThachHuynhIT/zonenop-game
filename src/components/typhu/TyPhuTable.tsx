@@ -24,9 +24,11 @@ import { boardRef, groupPositions } from "./board-ref";
 import { NowProvider, NowClock } from "./now";
 import { TOKENS, money, pieceOfSeat, type Act } from "./shared";
 import { useWalkingTokens } from "./board/walk";
-import { usePhonePortrait } from "./prefs";
+import { usePhonePortrait, useTyPhuPrefs } from "./prefs";
+import { TableOptions } from "./TableOptions";
 import { cellLabel, isCompact, rentAmount, sideCellPx } from "./board/layout";
 import { type CellToken, NO_TOKENS, Cell } from "./board/Cell";
+import { ActionBar } from "./centre/ActionBar";
 import { Centre } from "./centre/Centre";
 import { AssetPanel } from "./panels/AssetPanel";
 import { BankruptOverlay, BuildOverlay, CardOverlay } from "./fx/Overlays";
@@ -164,6 +166,12 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   // Compact squares (no names): phones held upright only, and only while the squares are narrower than 64 px (measured on the board grid).
   const boardEl = useRef<HTMLDivElement>(null);
   const phonePortrait = usePhonePortrait();
+  // Action buttons: this viewer's choice (phones held upright only); everywhere else they stay in the board centre.
+  const [prefs, setPrefs] = useTyPhuPrefs();
+  const placement = phonePortrait && prefs.actions === "bottom" ? "bottom" : "center";
+  const [showBuild, setShowBuild] = useState(false);
+  // Height of the bottom bar (it grows when the buttons wrap): the page leaves that much room under its content.
+  const [barHeight, setBarHeight] = useState(120);
   const [narrow, setNarrow] = useState(false);
   const compact = phonePortrait && narrow;
   const edge = boardRef.current.length / 4;
@@ -194,11 +202,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   // Same condition as the Đổi đất / Vay buttons in the board centre.
   const canTrade = view.role === "player" && !!mine && !mine.bankrupt;
   const canPropose = canTrade && !g?.trade && !g?.loan;
-  // Chip tap: my own chip opens my assets while that panel can open (my turn), otherwise everybody gets their details.
-  const openPlayer = (id: string) => {
-    if (id === view.meId && mine && myTurn && !mine.bankrupt) openAssets();
-    else setViewPlayer(id);
-  };
+  // Chip tap: everybody gets their details (mine holds the piece picker, and "Tài sản" while my turn lets the assets open).
+  const openPlayer = (id: string) => setViewPlayer(id);
 
   const run = async (msg: Record<string, unknown> & { type: string }) => {
     setBusy(true);
@@ -289,9 +294,11 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
     }
   };
 
+  // The bottom bar shows the turn line to everybody while a game is on; the page leaves room below for it.
+  const showBar = placement === "bottom" && !!g && g.status !== "ended";
   return (
     <GameThemeScope game="typhu" className="contents">
-    <div className="relative isolate mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col gap-3 px-2 pb-[max(1rem,env(safe-area-inset-bottom))] xl:max-w-none pt-2 sm:px-4 sm:pt-3 short:gap-2 short:pt-1.5">
+    <div className={cn("relative isolate mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col gap-3 px-2 xl:max-w-none pt-2 sm:px-4 sm:pt-3 short:gap-2 short:pt-1.5", !showBar && "pb-[max(1rem,env(safe-area-inset-bottom))]")} style={showBar ? { paddingBottom: barHeight + 8 } : undefined}>
       {/* Whole-screen backdrop: the board-centre picture, blurred and cropped to cover the screen (its longest side fits). */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#0b1d3a]">
         <div className="absolute inset-0 scale-110 bg-cover bg-center blur-2xl" style={{ backgroundImage: "url(/games/typhu/center.webp)" }} />
@@ -304,6 +311,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
               ← Sảnh
             </Link>
             <span className="font-mono text-sm font-bold tracking-[0.2em] text-amber-300">{view.code}</span>
+            {/* Not in `extra`: on phones that folds into the ⋯ menu, which closes (and unmounts the dialog) when tapped. */}
+            {phonePortrait && <TableOptions prefs={prefs} onChange={setPrefs} />}
           </>
         }
         extra={
@@ -399,6 +408,9 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                 <Waiting view={view} me={me} act={act} nameOf={nameOf} />
               ) : (
                 <Centre
+                  placement={placement}
+                  showBuild={showBuild}
+                  setShowBuild={setShowBuild}
                   g={g}
                   view={view}
                   myTurn={myTurn}
@@ -534,9 +546,22 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
           onOpenChange={(o) => !o && setViewPlayer(null)}
           title={nameOf(viewPlayer)}
           footer={
-            <GameButton size="sm" onClick={() => setViewPlayer(null)}>
-              Đóng
-            </GameButton>
+            <>
+              {viewPlayer === view.meId && mine && myTurn && !mine.bankrupt && (
+                <GameButton
+                  size="sm"
+                  onClick={() => {
+                    setViewPlayer(null);
+                    openAssets();
+                  }}
+                >
+                  💰 Tài sản
+                </GameButton>
+              )}
+              <GameButton size="sm" onClick={() => setViewPlayer(null)}>
+                Đóng
+              </GameButton>
+            </>
           }
         >
           <ul>
@@ -557,6 +582,10 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
             />
           </ul>
         </GameDialog>
+      )}
+
+      {showBar && g && (
+        <ActionBar placement="bottom" g={g} view={view} myTurn={myTurn} mine={mine} busy={busy} run={run} nameOf={nameOf} assetsOpen={assetsOpen} onOpenAssets={openAssets} onBuild={() => setShowBuild(true)} onHeight={setBarHeight} />
       )}
 
       {picking && me && <PiecePicker seats={view.seats} meId={view.meId} act={act} onClose={() => setPicking(false)} />}
