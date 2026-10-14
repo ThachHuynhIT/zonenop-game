@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { fetchApi } from "./gameClient";
+import { fetchApi, pollWhileVisible } from "./gameClient";
 import { ONLINE_GAMES, type OnlineGame } from "./gamesRegistry";
 
-const REFRESH_MS = 10_000;
+/** Polls all 7 games' rooms (7 requests), so less often than a single game's lobby. */
+const REFRESH_MS = 20_000;
 
 interface RoomRow {
   code: string;
@@ -40,13 +41,7 @@ export function AllRoomsPanel({ currentGame, className }: { currentGame?: GameId
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    void load();
-    const id = setInterval(() => {
-      if (document.visibilityState === "visible") void load();
-    }, REFRESH_MS);
-    return () => clearInterval(id);
-  }, [load]);
+  useEffect(() => pollWhileVisible(() => void load(), REFRESH_MS), [load]);
 
   const rows = useMemo(() => {
     if (!rooms) return [];

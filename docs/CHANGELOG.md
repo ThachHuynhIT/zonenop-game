@@ -10,6 +10,23 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Lighter lobby polling
+
+- **Date:** 2026-10-14
+- **Branch:** `develop` → `perf/lobby-polling`
+
+**Why:** the be_game backup's Upstash Redis (free tier, 500k commands/month) hit 90%. Redis load
+grew with open lobby tabs: every `/rooms` poll costs Redis reads. be_game now caches these reads
+(be_game PR #7); this cuts the requests themselves.
+
+**Changes**
+- `fetchApi` shares one request between identical GETs within 4 s (`gameClient.ts`): on a lobby
+  page `GameLobby` and `AllRoomsPanel` poll the same `/rooms`. Failed requests are not shared.
+- Poll intervals: game lobby 5 s → 10 s, all-rooms panel 10 s → 20 s, both via
+  `pollWhileVisible()`, which also reloads right away when the tab becomes visible again.
+
+---
+
 ## Repurpose as the games site
 
 - **Date:** 2026-10-14
