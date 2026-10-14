@@ -169,6 +169,8 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests and build on every p
 ### Self-hosted with Docker (primary)
 
 The app ships as a Next.js **standalone** image and runs behind the host's Traefik + Cloudflare Tunnel, alongside be_game — no ports are published.
+Live at **https://play.fudio101.com** (server `vsmart-zangyapro`, an arm64 phone shared with its owner), talking to be_game at
+`https://play-api.fudio101.com` with `https://be-game-omega.vercel.app` as backup.
 
 ```bash
 # On the server, next to compose.selfhost.yml, create .env:
@@ -179,6 +181,10 @@ docker compose -f compose.selfhost.yml up -d --build
 ```
 
 Every push to `main` that passes CI is deployed by `.github/workflows/deploy.yml`: the runner joins the Tailscale tailnet (OIDC, no stored key), uploads the tested commit over SSH, rebuilds with Compose and checks health. It needs the `self-hosted` GitHub environment (`TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`, and its **own** `DEPLOY_PATH`) and is skipped until those exist.
+
+- `DEPLOY_PATH` must be an absolute path under the deploy user's `$HOME` (the script refuses anything else). Set path secrets from Git Bash with `MSYS_NO_PATHCONV=1`, or `/home/...` is rewritten into `C:/Program Files/Git/home/...`.
+- The image is built in this app's own BuildKit builder (`zonenop-game`, driver `docker-container`), never the host's shared `default` one. After each deploy its cache is pruned to 2 GB and the builder is stopped; never prune anything without `--builder zonenop-game`.
+- A full build takes about 10 minutes on the phone; the variable `WEB_DOMAIN` of the `self-hosted` environment enables the public health check.
 
 Run the production image locally:
 
