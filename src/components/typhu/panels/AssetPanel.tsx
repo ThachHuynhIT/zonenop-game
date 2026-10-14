@@ -3,7 +3,7 @@
 import { GROUP_COLORS, MAX_HOUSES, type Ownable, type Square, houseRefund, mortgageValue, unmortgageCost } from "@/lib/typhu/board";
 import { type TPGameView, type TPPlayerView, type TPSettings } from "@/lib/typhu/protocol";
 import { cn } from "@/lib/utils";
-import { ConfirmButton } from "@/components/games/ConfirmButton";
+import { GameButton } from "@/components/game-ui/GameButton";
 import { boardRef } from "../board-ref";
 import { useSecondsLeft } from "../now";
 import { ALL_GROUPS, Building, GROUP_NAMES, money, mortgageBlocker, type Act } from "../shared";
@@ -85,14 +85,9 @@ export function AssetPanel({
           <button onClick={() => void run({ type: "paydebt" })} disabled={busy || short > 0} className={cn(btn, "bg-emerald-500 px-3 text-black enabled:hover:bg-emerald-400")}>
             Trả nợ
           </button>
-          <ConfirmButton
-            onConfirm={() => void run({ type: "bankrupt" })}
-            disabled={busy}
-            confirmLabel="Bấm lần nữa để phá sản"
-            className={cn(btn, "bg-rose-600 px-3 text-white enabled:hover:bg-rose-500")}
-          >
+          <GameButton variant="danger" size="sm" confirm="Bấm lần nữa để phá sản" onClick={() => void run({ type: "bankrupt" })} disabled={busy}>
             Phá sản
-          </ConfirmButton>
+          </GameButton>
           <span className="w-full text-[11px] text-rose-100/55">Hết giờ thì máy tự bán nhà / thế chấp rồi trả.</span>
         </div>
       )}
@@ -158,15 +153,16 @@ export function AssetPanel({
                       </button>
                     )}
                     {sellLandOn && m && d.houses === 0 && (
-                      <ConfirmButton
-                        onConfirm={() => void run({ type: "sellland", pos })}
+                      <GameButton
+                        variant="danger"
+                        size="sm"
+                        confirm={`Bán lấy ${money(m.landPrice)}?`}
+                        onClick={() => void run({ type: "sellland", pos })}
                         disabled={busy || !!m.sellLand}
                         title={m.sellLand ?? `Bán đất cho ngân hàng, nhận ${money(m.landPrice)} — đất về chợ`}
-                        confirmLabel={`Bán lấy ${money(m.landPrice)}?`}
-                        className={cn(btn, "border border-amber-300/40 text-amber-200 enabled:hover:bg-amber-400/10")}
                       >
                         🏷️ Bán đất +{money(m.landPrice)}
-                      </ConfirmButton>
+                      </GameButton>
                     )}
                     {sq.kind === "prop" && d.houses > 0 && sellWhy && <span className="w-full text-right text-[10px] text-sky-100/45">{sellWhy}</span>}
                   </li>

@@ -6,14 +6,17 @@ import { useHotkeys } from "@/components/games/useHotkeys";
 import { AIR_RENT, GROUP_COLORS, JAIL_FINE, type Ownable, UTIL_MULT, isOwnable } from "@/lib/typhu/board";
 import { type TPGameView, type TPPlayerView, type TPRoomView } from "@/lib/typhu/protocol";
 import { cn } from "@/lib/utils";
-import { MyTurnBadge, TurnRing } from "@/components/games/TurnIndicator";
+import { Countdown } from "@/components/game-ui/Countdown";
+import { GameBadge } from "@/components/game-ui/GameBadge";
 import { boardRef, groupPositions } from "../board-ref";
-import { useSecondsLeft } from "../now";
 import { CBtn, GROUP_NAMES, buildableGroups, money, type Act } from "../shared";
 import { Die } from "./Dice";
 import { LoanCard, TradeCard } from "./OfferCards";
 import { BuildPanel } from "../panels/BuildPanel";
 import { DebtControls } from "../panels/DebtControls";
+
+/** be_game's default step time (`stepSeconds` is optional in the room settings). */
+const DEFAULT_STEP_SECONDS = 30;
 
 export function Centre({
   g,
@@ -43,8 +46,8 @@ export function Centre({
   const turnName = g.turn ? nameOf(g.turn) : "";
   const current = g.players.find((p) => p.id === g.turn);
   const here = current ? boardRef.current[current.pos] : null;
-  const secondsLeft = useSecondsLeft();
-  const secs = secondsLeft(g.deadline);
+  // Per-turn step time (the server's default is 30 s when the room never set one); `timeLimit` is the whole-game clock.
+  const stepMs = (view.settings.stepSeconds ?? DEFAULT_STEP_SECONDS) * 1000;
   // Re-run the dice animation on every new roll (each roll writes a "🎲" log line).
   const rollId = [...g.log].reverse().find((e) => e.text.startsWith("🎲"))?.id ?? 0;
   const [showBuild, setShowBuild] = useState(false);
@@ -140,12 +143,12 @@ export function Centre({
           <span className="text-3xl sm:text-5xl short:text-2xl">🎲</span>
         )}
       </div>
-      {/* My turn: pulsing ring around the turn line + my controls. */}
+      {/* My turn: a light runs around the turn line + my controls. */}
       <div className={cn("relative flex w-full flex-col items-center gap-2 rounded-2xl", myTurn && "bg-rose-50/40 p-2 short:p-1.5")}>
-        <TurnRing active={myTurn} className="inset-0" />
+        {myTurn && <span aria-hidden className="game-beam" />}
         <p className="flex items-center gap-2 text-xs sm:text-sm">
-          {myTurn ? <MyTurnBadge /> : <span>Lượt của <b>{turnName}</b></span>}
-          {secs !== null && <span className={cn("font-mono", secs <= 8 && "text-rose-600")}>⏱ {secs}s</span>}
+          {myTurn ? <GameBadge tone="accent" role="status">Lượt của bạn</GameBadge> : <span>Lượt của <b>{turnName}</b></span>}
+          {g.deadline && <Countdown deadline={g.deadline} total={stepMs} size={36} />}
         </p>
 
         {myTurn && mine && (

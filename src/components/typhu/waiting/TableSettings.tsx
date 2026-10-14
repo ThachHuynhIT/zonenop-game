@@ -1,7 +1,7 @@
 "use client";
 
 import { MAP_LABEL, MAP_SIZES, type MapSize, START_CASH_OPTIONS, TIME_LIMIT_OPTIONS, GO_SALARY, GO_SALARY_OPTIONS, LAND_SALE_OPTIONS, UNMORTGAGE_FEE_OPTIONS } from "@/lib/typhu/board";
-import { SettingsTabs } from "@/components/games/SettingsTabs";
+import { GameTabs } from "@/components/game-ui/GameTabs";
 import { RankPointsPicker } from "@/components/games/RankPointsPicker";
 import { STEP_SECONDS_OPTIONS, type TPRoomView } from "@/lib/typhu/protocol";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,7 @@ export function TableSettings({ view, isHost, act, className }: { view: TPRoomVi
         </div>
         <p className="mt-1 text-[11px] leading-snug text-emerald-900/60">{RULE_PRESETS[suggested].hint}</p>
       </div>
-        <SettingsTabs
+        <GameTabs
           light
           className="text-emerald-950"
           tabs={[

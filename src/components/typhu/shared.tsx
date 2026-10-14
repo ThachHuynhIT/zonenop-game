@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { createPortal } from "react-dom";
 import { AIR_RENT, UTIL_MULT, isOwnable, type Group, type Square } from "@/lib/typhu/board";
 import type { TPGameView, TPSeatView, TPSettings } from "@/lib/typhu/protocol";
+import { GameButton } from "@/components/game-ui/GameButton";
+import { GameDialog } from "@/components/game-ui/GameDialog";
 import { cn } from "@/lib/utils";
 import { boardRef, groupPositions } from "./board-ref";
 
@@ -97,23 +97,21 @@ export function CBtn({
   title?: string;
 }) {
   return (
-    <button
+    <GameButton
+      size="md"
+      variant={danger ? "danger" : primary || build ? "primary" : "secondary"}
+      shine={build}
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={cn(
-        "rounded-lg px-3 py-1.5 text-xs font-semibold shadow transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm",
-        primary && "bg-emerald-700 text-white enabled:hover:bg-emerald-600",
-        danger && "bg-rose-600 text-white enabled:hover:bg-rose-500",
-        build && "bg-gradient-to-b from-amber-300 to-orange-500 text-black shadow-[0_3px_0_#9a3412] enabled:hover:brightness-110 enabled:active:translate-y-0.5",
-        !primary && !danger && !build && "border border-emerald-800/30 bg-white/70 enabled:hover:bg-white",
-      )}
+      // The centre panel is pale: the translucent-white secondary style would be unreadable on it.
+      className={!primary && !danger && !build ? "bg-emerald-900/80 text-white hover:bg-emerald-800/90" : undefined}
     >
       {children}
       {hotkey && (
-        <kbd className="ml-1.5 hidden rounded border border-current/30 bg-black/10 px-1 align-middle font-mono text-[10px] font-normal opacity-70 lg:inline [@media(pointer:coarse)]:hidden">{hotkey}</kbd>
+        <kbd className="hidden rounded border border-current/30 bg-black/10 px-1 font-mono text-[10px] font-normal opacity-70 lg:inline [@media(pointer:coarse)]:hidden">{hotkey}</kbd>
       )}
-    </button>
+    </GameButton>
   );
 }
 
@@ -144,50 +142,25 @@ export function rentDue(g: TPGameView, pos: number): { text: string; row: number
 }
 
 /**
- * Dialog: a bottom sheet on phones (backdrop above it to tap away, a full-width "Đóng" bar at the bottom),
- * centred from `sm` up. The ✕ stays put while the content scrolls; Esc closes too.
+ * Dialog for the table: a drawer on phones, centred from `md` up (GameDialog; Esc and the "Đóng" button close it).
+ * `dark` for the pre-styled dark content (it brings its own heading); otherwise the cream surface with dark text.
+ * Without a `title` the heading is kept for screen readers only.
  */
-export function Modal({ children, onClose, dark }: { children: React.ReactNode; onClose: () => void; dark?: boolean }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  // Portalled to <body>: a dialog opened from inside the board centre must not be trapped by its overflow / filter containing block.
-  if (typeof document === "undefined") return null;
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal
-        className={cn(
-          "relative flex max-h-[82dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl text-left shadow-2xl sm:max-h-[88dvh] sm:rounded-2xl",
-          dark ? "border border-white/10 bg-[#0c2233] text-sky-50" : "bg-[#f4efe1]",
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className={cn(
-            "absolute right-2 top-2 z-10 grid size-9 place-items-center rounded-full text-lg leading-none shadow",
-            dark ? "bg-white/10 text-white hover:bg-white/20" : "bg-black/35 text-white hover:bg-black/50",
-          )}
-          aria-label="Đóng"
-        >
-          ✕
-        </button>
-        <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain", dark && "p-5 [&>h2:first-child]:pr-10")}>{children}</div>
-        <button
-          onClick={onClose}
-          className={cn(
-            "shrink-0 border-t py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sm font-semibold sm:hidden",
-            dark ? "border-white/10 bg-black/20 text-sky-100" : "border-emerald-900/15 bg-white/60 text-emerald-950",
-          )}
-        >
+export function Modal({ children, onClose, dark, title }: { children: React.ReactNode; onClose: () => void; dark?: boolean; title?: string }) {
+  return (
+    <GameDialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={title ?? "Chi tiết"}
+      hideTitle={!title}
+      light={!dark}
+      footer={
+        <GameButton size="sm" variant={dark ? "secondary" : "primary"} onClick={onClose}>
           Đóng
-        </button>
-      </div>
-    </div>,
-    document.body,
+        </GameButton>
+      }
+    >
+      {children}
+    </GameDialog>
   );
 }

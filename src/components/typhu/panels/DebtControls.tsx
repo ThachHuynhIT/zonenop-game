@@ -1,7 +1,7 @@
 "use client";
 
 import { type TPGameView } from "@/lib/typhu/protocol";
-import { ConfirmButton } from "@/components/games/ConfirmButton";
+import { GameButton } from "@/components/game-ui/GameButton";
 import { CBtn, money, type Act } from "../shared";
 
 /** Debt line + Trả nợ / Phá sản in the board centre: small, so the board around it stays visible. */
@@ -36,14 +36,9 @@ export function DebtControls({
             </CBtn>
           </span>
         )}
-        <ConfirmButton
-          onConfirm={() => void run({ type: "bankrupt" })}
-          disabled={busy}
-          confirmLabel="Bấm lần nữa để phá sản"
-          className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow enabled:hover:bg-rose-500 disabled:opacity-40 sm:text-sm"
-        >
+        <GameButton variant="danger" size="sm" confirm="Bấm lần nữa để phá sản" onClick={() => void run({ type: "bankrupt" })} disabled={busy}>
           Phá sản
-        </ConfirmButton>
+        </GameButton>
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ import { GROUP_COLORS, MAX_HOUSES } from "@/lib/typhu/board";
 import { type TPGameView, type TPPlayerView, type TPSeatView } from "@/lib/typhu/protocol";
 import { type Reaction } from "@/lib/tienlen";
 import { cn } from "@/lib/utils";
-import { ConfirmButton } from "@/components/games/ConfirmButton";
+import { GameButton } from "@/components/game-ui/GameButton";
 import { boardRef } from "../board-ref";
 
 // ─── Side panel ─────────────────────────────────────────────────────
@@ -85,14 +85,15 @@ export function PlayerRow({
           </p>
         </div>
         {onKick && (
-          <ConfirmButton
-            onConfirm={onKick}
-            confirmLabel="Chắc chắn?"
+          <GameButton
+            variant="danger"
+            size="sm"
+            confirm="Chắc chắn?"
+            onClick={onKick}
             title={p && !p.bankrupt ? "Kích người mất kết nối — họ bị tính phá sản" : "Mời người mất kết nối ra khỏi bàn"}
-            className="rounded bg-rose-600 px-1.5 text-[11px] font-semibold text-white hover:bg-rose-500 max-sm:min-h-8 max-sm:px-2.5"
           >
             Kích
-          </ConfirmButton>
+          </GameButton>
         )}
       </div>
       {owned.length > 0 && (

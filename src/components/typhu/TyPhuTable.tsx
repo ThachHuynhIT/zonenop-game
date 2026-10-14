@@ -15,7 +15,9 @@ import { boardOf } from "@/lib/typhu/board";
 import { TYPHU_WS_PATH, type TPGameView, type TPRoomView, type TPSeatView } from "@/lib/typhu/protocol";
 import { type Reaction } from "@/lib/tienlen";
 import { cn } from "@/lib/utils";
-import { WinCelebration } from "@/components/games/WinCelebration";
+import { Celebration } from "@/components/game-ui/Celebration";
+import { GamePanel } from "@/components/game-ui/GamePanel";
+import { GameThemeScope } from "@/components/game-ui/theme";
 import { boardRef } from "./board-ref";
 import { NowProvider, NowClock } from "./now";
 import { TOKENS, money, pieceOfSeat, type Act } from "./shared";
@@ -256,6 +258,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   };
 
   return (
+    <GameThemeScope game="typhu" className="contents">
     <div className="relative isolate mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col gap-3 px-2 pb-[max(1rem,env(safe-area-inset-bottom))] xl:max-w-none pt-2 sm:px-4 sm:pt-3 short:gap-2 short:pt-1.5">
       {/* Whole-screen backdrop: the board-centre picture, blurred and cropped to cover the screen (its longest side fits). */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#0b1d3a]">
@@ -397,8 +400,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
               <TableSettings view={view} isHost={!!me?.isHost && view.role === "player"} act={act} />
             </div>
           )}
-          <div className="rounded-2xl bg-black/35 p-3 short:p-2">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sky-100/60">Người chơi</p>
+          <GamePanel title="Người chơi" className="p-3 sm:p-3 short:p-2">
             <ul ref={playersRef} className="grid grid-cols-2 gap-2 lg:grid-cols-1">
               {view.seats
                 .filter((s): s is TPSeatView => !!s)
@@ -421,11 +423,10 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                   );
                 })}
             </ul>
-          </div>
+          </GamePanel>
 
           {g && !!g.loans?.length && (
-            <div className="rounded-2xl bg-black/35 p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sky-100/60">🏦 Khoản vay</p>
+            <GamePanel title="🏦 Khoản vay" className="p-3 sm:p-3">
               <ul ref={loansRef} className="space-y-1 text-xs">
                 {g.loans.map((l) => (
                   <li key={l.id} className={cn("rounded bg-white/5 px-2 py-1", l.borrower === view.meId && "ring-1 ring-rose-300/60")}>
@@ -434,19 +435,21 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                   </li>
                 ))}
               </ul>
-            </div>
+            </GamePanel>
           )}
 
           {g && (
-            <div className="rounded-2xl bg-black/35 p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-sky-100/60">Diễn biến</p>
-                <button onClick={() => setShowLog(true)} className="rounded px-1.5 py-0.5 text-[11px] text-sky-200 hover:bg-white/10 max-sm:min-h-8">
+            <GamePanel
+              title="Diễn biến"
+              className="p-3 sm:p-3"
+              actions={
+                <button onClick={() => setShowLog(true)} className="rounded px-1.5 py-0.5 text-[11px] font-normal text-sky-200 hover:bg-white/10 max-sm:min-h-8">
                   Xem toàn bộ ({g.log.length}) ↗
                 </button>
-              </div>
+              }
+            >
               <LogList log={g.log} className="max-h-64" />
-            </div>
+            </GamePanel>
           )}
 
         </aside>
@@ -471,8 +474,9 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
       {showTrade && g && <TradeModal g={g} meId={view.meId} nameOf={nameOf} run={run} onClose={() => setShowTrade(false)} />}
       {showLog && g && <LogModal log={g.log} onClose={() => setShowLog(false)} />}
       {showScores && <ScoreboardModal view={view} onClose={() => setShowScores(false)} note={SCORE_NOTE} />}
-      <WinCelebration show={g?.status === "ended"} playing={!!playing} won={!!view.meId && g?.finished[0] === view.meId} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
+      <Celebration show={g?.status === "ended"} playing={!!playing} won={!!view.meId && g?.finished[0] === view.meId} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
     </div>
+    </GameThemeScope>
   );
 }

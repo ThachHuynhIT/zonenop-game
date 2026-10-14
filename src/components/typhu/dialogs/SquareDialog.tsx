@@ -3,7 +3,7 @@
 import { AIR_RENT, GROUP_COLORS, JAIL_FINE, MAX_HOUSES, type Ownable, type Square, UTIL_MULT, houseCost, houseRefund, isOwnable, landSaleValue, mortgageValue, unmortgageCost } from "@/lib/typhu/board";
 import { type TPGameView, type TPSettings } from "@/lib/typhu/protocol";
 import { cn } from "@/lib/utils";
-import { ConfirmButton } from "@/components/games/ConfirmButton";
+import { GameButton } from "@/components/game-ui/GameButton";
 import { boardRef, groupPositions } from "../board-ref";
 import { ArtIcon, Building, CBtn, Modal, money, mortgageBlocker, rentDue, squareImg, type Act } from "../shared";
 
@@ -99,15 +99,16 @@ export function SquareModal({
                 </CBtn>
               )}
               {m && settings.sellLand && deed.houses === 0 && (
-                <ConfirmButton
-                  onConfirm={() => void run({ type: "sellland", pos })}
+                <GameButton
+                  variant="danger"
+                  size="sm"
+                  confirm="Chắc chắn bán?"
+                  onClick={() => void run({ type: "sellland", pos })}
                   disabled={busy || !!m.sellLand}
                   title={m.sellLand ?? "Đất về chợ, ai cũng mua lại được"}
-                  confirmLabel="Chắc chắn bán?"
-                  className="rounded-lg border border-emerald-800/30 bg-white/70 px-3 py-1.5 text-xs font-semibold shadow enabled:hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm"
                 >
                   🏷️ Bán đất (+{money(m.landPrice)})
-                </ConfirmButton>
+                </GameButton>
               )}
               {deed.mortgaged && (
                 <CBtn onClick={() => void run({ type: "unmortgage", pos })} disabled={busy || inDebt}>
