@@ -203,7 +203,7 @@ export function Centre({
         )}
       </div>
       {canTrade && !trade && !loan && (
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className="flex flex-wrap justify-center gap-2 max-lg:hidden short:flex">
           <button onClick={onTrade} className="rounded-lg border border-emerald-900/30 bg-white/60 px-3 py-1 text-xs font-semibold text-emerald-950 hover:bg-white/80 max-sm:min-h-9">
             🤝 Đổi đất / mua bán
           </button>
@@ -217,15 +217,6 @@ export function Centre({
         <p className="text-xs text-rose-700">
           {turnName} đang xoay {money(g.debt.amount)} để trả nợ…
         </p>
-      )}
-      {g.log.length > 0 && (
-        <ul className="w-full space-y-0.5 text-[11px] text-emerald-950/80 lg:hidden short:hidden">
-          {g.log.slice(debt || (g.phase === "buy" && myTurn) ? -1 : -2).map((e) => (
-            <li key={e.id} className="truncate rounded bg-white/50 px-2 py-0.5">
-              {e.text}
-            </li>
-          ))}
-        </ul>
       )}
       {mine?.jail ? <p className="text-xs text-zinc-700">🚔 Bạn đang ở tù — tung đôi, nộp phạt hoặc dùng thẻ để ra.</p> : null}
       {view.role === "player" && mine && !mine.bankrupt && (

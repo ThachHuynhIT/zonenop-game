@@ -16,6 +16,8 @@ import { TYPHU_WS_PATH, type TPGameView, type TPRoomView, type TPSeatView } from
 import { type Reaction } from "@/lib/tienlen";
 import { cn } from "@/lib/utils";
 import { Celebration } from "@/components/game-ui/Celebration";
+import { GameButton } from "@/components/game-ui/GameButton";
+import { GameDialog } from "@/components/game-ui/GameDialog";
 import { GamePanel } from "@/components/game-ui/GamePanel";
 import { GameThemeScope } from "@/components/game-ui/theme";
 import { boardRef, groupPositions } from "./board-ref";
@@ -29,6 +31,7 @@ import { Centre } from "./centre/Centre";
 import { AssetPanel } from "./panels/AssetPanel";
 import { BankruptOverlay, BuildOverlay, CardOverlay } from "./fx/Overlays";
 import { PlayerRow } from "./players/PlayerRow";
+import { PlayerStrip } from "./players/PlayerStrip";
 import { SquareModal } from "./dialogs/SquareDialog";
 import { LoanModal } from "./dialogs/LoanDialog";
 import { TradeModal } from "./dialogs/TradeDialog";
@@ -155,6 +158,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   useHotkeys({ l: g ? () => setShowLog((v) => !v) : undefined }, true, ["l"]);
   const [showRules, setShowRules] = useState(false);
   const [showAssets, setShowAssets] = useState(false);
+  // Phone strip: whose details are open (a seat id).
+  const [viewPlayer, setViewPlayer] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Compact squares (no names): phones held upright only, and only while the squares are narrower than 64 px (measured on the board grid).
   const boardEl = useRef<HTMLDivElement>(null);
@@ -166,6 +171,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   useLayoutEffect(() => {
     const el = boardEl.current;
     if (!el) return;
+    // Measure now (before the first paint) as well as on every resize; clientWidth is the grid without its border, like contentRect.
+    setNarrow(isCompact(sideCellPx(el.clientWidth, edge)));
     const ro = new ResizeObserver(([entry]) => setNarrow(isCompact(sideCellPx(entry.contentRect.width, edge))));
     ro.observe(el);
     return () => ro.disconnect();
@@ -183,6 +190,15 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   useEffect(() => {
     if (!myTurn) setShowAssets(false);
   }, [myTurn]);
+  const ownsLand = !!mine && Object.values(g?.deeds ?? {}).some((d) => d.owner === mine.id);
+  // Same condition as the Đổi đất / Vay buttons in the board centre.
+  const canTrade = view.role === "player" && !!mine && !mine.bankrupt;
+  const canPropose = canTrade && !g?.trade && !g?.loan;
+  // Chip tap: my own chip opens my assets while that panel can open (my turn), otherwise everybody gets their details.
+  const openPlayer = (id: string) => {
+    if (id === view.meId && mine && myTurn && !mine.bankrupt) openAssets();
+    else setViewPlayer(id);
+  };
 
   const run = async (msg: Record<string, unknown> & { type: string }) => {
     setBusy(true);
@@ -338,7 +354,9 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
       )}
 
       {/* Sideways phone: board as tall as the screen allows on the left, the side panel scrolling on the right. */}
-      <div className="grid flex-1 grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-[minmax(0,calc(100dvh-5rem))_20rem] lg:justify-center lg:gap-4 xl:grid-cols-[minmax(0,calc(100dvh-5rem))_22rem] short:grid-cols-[auto_minmax(0,1fr)] short:items-start short:gap-2">
+      <div className="grid flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 lg:grid-cols-[minmax(0,calc(100dvh-5rem))_20rem] lg:justify-center lg:gap-4 xl:grid-cols-[minmax(0,calc(100dvh-5rem))_22rem] short:grid-cols-[auto_minmax(0,1fr)] short:items-start short:gap-2">
+        {/* Phones held upright: the players above the board, the short log and quick buttons below it. */}
+        <PlayerStrip seats={view.seats} g={g} meId={view.meId} tokenOf={tokenOf} onOpen={openPlayer} />
         {/* Board */}
         <div className="relative mx-auto w-full max-w-[min(100%,calc(100dvh-7rem))] lg:max-w-none short:w-[calc(100dvh-3.75rem)] short:max-w-none">
           <SpectatorReactions reactions={live.filter((r) => !r.playerId)} />
@@ -400,6 +418,39 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
           </PinchZoom>
         </div>
 
+        {g && (
+          <div className="flex flex-col gap-2 lg:hidden short:hidden">
+            {g.log.length > 0 && (
+              <button type="button" onClick={() => setShowLog(true)} aria-label="Xem toàn bộ diễn biến" className="flex flex-col gap-0.5 rounded-xl text-left text-xs text-white/80">
+                {g.log.slice(-3).reverse().map((e) => (
+                  <span key={e.id} className="truncate rounded bg-white/10 px-2 py-1">
+                    {e.text}
+                  </span>
+                ))}
+              </button>
+            )}
+            {playing && (
+              <div className="flex flex-wrap gap-2">
+                {ownsLand && myTurn && !assetsOpen && (
+                  <GameButton size="sm" onClick={openAssets}>
+                    💰 Tài sản
+                  </GameButton>
+                )}
+                {canPropose && (
+                  <>
+                    <GameButton size="sm" onClick={() => setShowTrade(true)}>
+                      🤝 Đổi đất
+                    </GameButton>
+                    <GameButton size="sm" onClick={() => setShowLoan(true)}>
+                      🏦 Vay
+                    </GameButton>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Side panel */}
         {/* Bottom padding below lg: lets the log scroll clear of the floating chat / emoji buttons. */}
         <aside className="flex flex-col gap-3 max-lg:pb-14 short:max-h-[calc(100dvh-3.75rem)] short:gap-2 short:overflow-y-auto">
@@ -422,7 +473,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
               <TableSettings view={view} isHost={!!me?.isHost && view.role === "player"} act={act} />
             </div>
           )}
-          <GamePanel title="Người chơi" className="p-3 sm:p-3 short:p-2">
+          <GamePanel title="Người chơi" className="p-3 sm:p-3 max-lg:hidden short:block short:p-2">
             <ul ref={playersRef} className="grid grid-cols-2 gap-2 lg:grid-cols-1">
               {view.seats
                 .filter((s): s is TPSeatView => !!s)
@@ -463,7 +514,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
           {g && (
             <GamePanel
               title="Diễn biến"
-              className="p-3 sm:p-3"
+              className="p-3 sm:p-3 max-lg:hidden short:block"
               actions={
                 <button onClick={() => setShowLog(true)} className="rounded px-1.5 py-0.5 text-[11px] font-normal text-sky-200 hover:bg-white/10 max-sm:min-h-8">
                   Xem toàn bộ ({g.log.length}) ↗
@@ -476,6 +527,35 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
 
         </aside>
       </div>
+
+      {viewPlayer && seatOf(viewPlayer) && (
+        <GameDialog
+          open
+          onOpenChange={(o) => !o && setViewPlayer(null)}
+          title={nameOf(viewPlayer)}
+          footer={
+            <GameButton size="sm" onClick={() => setViewPlayer(null)}>
+              Đóng
+            </GameButton>
+          }
+        >
+          <ul>
+            <PlayerRow
+              seat={seatOf(viewPlayer)!}
+              p={g?.players.find((x) => x.id === viewPlayer) ?? null}
+              g={g}
+              self={viewPlayer === view.meId}
+              token={tokenOf(viewPlayer)}
+              isTurn={g?.turn === viewPlayer && playing}
+              reactions={[]}
+              onOpen={(pos) => {
+                setViewPlayer(null);
+                setOpenSquare(pos);
+              }}
+            />
+          </ul>
+        </GameDialog>
+      )}
 
       {picking && me && <PiecePicker seats={view.seats} meId={view.meId} act={act} onClose={() => setPicking(false)} />}
 
