@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DeltaBadge } from "@/components/tienlen/Scoreboard";
 import { cn } from "@/lib/utils";
-import { createGameRoom, fetchApi, usePlayerName } from "./gameClient";
+import { createGameRoom, fetchApi, pollWhileVisible, usePlayerName } from "./gameClient";
 import { useGamesShell } from "./GamesShell";
 
-const ROOMS_REFRESH_MS = 5000;
+const ROOMS_REFRESH_MS = 10_000;
 
 interface LobbyRoom {
   code: string;
@@ -66,14 +66,11 @@ export function GameLobby({ title, tagline, icons, basePath, wsPath, apiPrefix, 
   }, [apiPrefix]);
 
   useEffect(() => {
-    void loadRooms();
-    const id = setInterval(() => {
-      if (document.visibilityState === "visible") void loadRooms();
-    }, ROOMS_REFRESH_MS);
+    const stop = pollWhileVisible(() => void loadRooms(), ROOMS_REFRESH_MS);
     fetchApi<{ players: LeaderRow[] }>(`/api${apiPrefix}/leaderboard?limit=20`)
       .then((r) => setBoard(r.players))
       .catch(() => setBoard([]));
-    return () => clearInterval(id);
+    return stop;
   }, [loadRooms, apiPrefix]);
 
   const onCreate = async () => {

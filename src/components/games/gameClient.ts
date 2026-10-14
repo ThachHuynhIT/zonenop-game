@@ -24,11 +24,45 @@ export const serverBase = () => (process.env.NEXT_PUBLIC_TIENLEN_SERVER_URL || "
 
 const wsUrl = (path: string) => serverBase().replace(/^http/, "ws") + path;
 
+/**
+ * Identical GETs started within this window share one request: on a lobby page the game's lobby and
+ * the all-rooms panel poll the same `/rooms` endpoint, and every request costs the backend Redis reads.
+ */
+const SHARED_GET_MS = 4_000;
+const sharedGets = new Map<string, { at: number; promise: Promise<unknown> }>();
+
 /** GET a JSON endpoint of the backend (rooms list, leaderboard). */
-export async function fetchApi<T>(path: string): Promise<T> {
-  const res = await fetch(serverBase() + path, { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return (await res.json()) as T;
+export function fetchApi<T>(path: string): Promise<T> {
+  const now = Date.now();
+  const hit = sharedGets.get(path);
+  if (hit && now - hit.at < SHARED_GET_MS) return hit.promise as Promise<T>;
+  const promise = (async () => {
+    const res = await fetch(serverBase() + path, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as T;
+  })();
+  sharedGets.set(path, { at: now, promise });
+  // A failed request is not shared: the next caller retries.
+  promise.catch(() => {
+    if (sharedGets.get(path)?.promise === promise) sharedGets.delete(path);
+  });
+  return promise;
+}
+
+/** Runs `load` now, every `ms` while the tab is visible, and right away when the tab becomes visible again. */
+export function pollWhileVisible(load: () => void, ms: number): () => void {
+  load();
+  const id = setInterval(() => {
+    if (document.visibilityState === "visible") load();
+  }, ms);
+  const onVisible = () => {
+    if (document.visibilityState === "visible") load();
+  };
+  document.addEventListener("visibilitychange", onVisible);
+  return () => {
+    clearInterval(id);
+    document.removeEventListener("visibilitychange", onVisible);
+  };
 }
 
 const randomToken = () =>
