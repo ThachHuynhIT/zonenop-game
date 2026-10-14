@@ -9,7 +9,9 @@ auth: rooms, game state and WebSockets live in the separate **be_game** repo,
 reached via `NEXT_PUBLIC_TIENLEN_SERVER_URL`, with an optional backup backend in
 `NEXT_PUBLIC_TIENLEN_FALLBACK_URL` (lobbies and new rooms fail over to it; each room is pinned to the
 backend it lives on, so never make a reconnect switch backends; `docs/GAMES_GUIDE.md` §1.2). It is self-hosted with Docker
-(`compose.selfhost.yml`, deployed by `.github/workflows/deploy.yml`), like be_game.
+(`compose.selfhost.yml`, deployed by `.github/workflows/deploy.yml`), like be_game: live at `https://play.fudio101.com`,
+backend `https://play-api.fudio101.com`. The server is shared with its owner: build only in our own BuildKit builder
+`zonenop-game` and never run a global `prune` (README, Deployment).
 
 (History: this repo started as a portfolio with a self-built CMS, abandoned in
 favour of hosting the games; that code was removed in `refactor/repurpose-as-games`.)
