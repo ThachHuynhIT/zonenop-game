@@ -1,6 +1,6 @@
 # Hướng dẫn frontend các game online
 
-Tài liệu này dành cho người (hoặc AI) cần **sửa giao diện một game mà không phải đọc hết mã nguồn**. Nó nói về phần frontend trong repo này (portfolio_with_cms — site games, tách ra từ repo portfolio).
+Tài liệu này dành cho người (hoặc AI) cần **sửa giao diện một game mà không phải đọc hết mã nguồn**. Nó nói về phần frontend trong repo này (zonenop-game — site games, tách ra từ repo portfolio).
 
 **Luật chơi, state và protocol của từng game không được viết lại ở đây.** Nguồn sự thật là backend be_game:
 - Tổng quan backend: `be_game/docs/GUIDE.md`
@@ -131,7 +131,7 @@ Cấu hình preview nằm trong `D:\WorkSpace\.claude\launch.json` (ở thư m�
 
 | Config | Lệnh | Cổng |
 |---|---|---|
-| `"portfolio_with_cms"` | `npm --prefix D:/WorkSpace/portfolio_with_cms run dev` | 3000 |
+| (chưa có config riêng) | `npm run dev` trong thư mục repo zonenop-game | 3000 |
 | `"be_game"` | `npm --prefix D:/WorkSpace/be_game run dev` (`tsx watch src/local.ts`) | 4000 |
 
 - be_game chạy local **không cần Redis**. Không có `REDIS_URL` thì nó dùng store trong bộ nhớ, và log báo `rooms: memory`.

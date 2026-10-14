@@ -1,4 +1,4 @@
-# Games
+# zonenop-game
 
 Board and card games to play online with friends, right in the browser: Tiến Lên Miền Nam, Mèo Nổ,
 Cờ Tỷ Phú, Đá Quý (Splendor), Đấu Súng (Bang!), Ô Ăn Quan, Cờ Cá Ngựa, plus an offline Contra.

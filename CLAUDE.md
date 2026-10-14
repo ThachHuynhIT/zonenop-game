@@ -2,7 +2,7 @@
 
 ## What this repo is
 
-The games site: 7 online multiplayer games (Tiến Lên, Mèo Nổ, Cờ Tỷ Phú, Splendor,
+**zonenop-game** (GitHub `ThachHuynhIT/zonenop-game`, formerly `portfolio_with_cms`), the games site: 7 online multiplayer games (Tiến Lên, Mèo Nổ, Cờ Tỷ Phú, Splendor,
 Bang!, Ô Ăn Quan, Cờ Cá Ngựa) plus offline Contra. The hub is `/`, each game lives
 at its own route (`/tien-len`, `/meo-no`, …, `/contra`). There is no database and no
 auth: rooms, game state and WebSockets live in the separate **be_game** repo,
