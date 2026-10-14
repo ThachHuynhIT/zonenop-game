@@ -1,7 +1,8 @@
 # Self-hosted behind the host's Traefik + Cloudflare Tunnel (no published ports), same as be_game.
 #   docker compose -f compose.selfhost.yml up -d --build      → https://${WEB_DOMAIN}
 # Deployed by .github/workflows/deploy.yml. .env next to this file: WEB_DOMAIN and
-# NEXT_PUBLIC_TIENLEN_SERVER_URL (required), NEXT_PUBLIC_SITE_URL (defaults to https://${WEB_DOMAIN}).
+# NEXT_PUBLIC_TIENLEN_SERVER_URL (required), NEXT_PUBLIC_TIENLEN_FALLBACK_URL (optional backup be_game),
+# NEXT_PUBLIC_SITE_URL (defaults to https://${WEB_DOMAIN}).
 # NEXT_PUBLIC_* are baked in at build time: changing them needs `up -d --build`, not just a restart.
 # be_game's ALLOWED_ORIGIN must include https://${WEB_DOMAIN}, or its WebSockets reject this site.
 name: games_web
@@ -11,6 +12,7 @@ services:
       context: .
       args:
         NEXT_PUBLIC_TIENLEN_SERVER_URL: ${NEXT_PUBLIC_TIENLEN_SERVER_URL:?set NEXT_PUBLIC_TIENLEN_SERVER_URL in .env}
+        NEXT_PUBLIC_TIENLEN_FALLBACK_URL: ${NEXT_PUBLIC_TIENLEN_FALLBACK_URL:-}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://${WEB_DOMAIN}}
     image: games_web:local
     restart: unless-stopped

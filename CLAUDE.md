@@ -6,7 +6,9 @@
 Bang!, Ô Ăn Quan, Cờ Cá Ngựa) plus offline Contra. The hub is `/`, each game lives
 at its own route (`/tien-len`, `/meo-no`, …, `/contra`). There is no database and no
 auth: rooms, game state and WebSockets live in the separate **be_game** repo,
-reached via `NEXT_PUBLIC_TIENLEN_SERVER_URL`. It is self-hosted with Docker
+reached via `NEXT_PUBLIC_TIENLEN_SERVER_URL`, with an optional backup backend in
+`NEXT_PUBLIC_TIENLEN_FALLBACK_URL` (lobbies and new rooms fail over to it; each room is pinned to the
+backend it lives on, so never make a reconnect switch backends; `docs/GAMES_GUIDE.md` §1.2). It is self-hosted with Docker
 (`compose.selfhost.yml`, deployed by `.github/workflows/deploy.yml`), like be_game.
 
 (History: this repo started as a portfolio with a self-built CMS, abandoned in
