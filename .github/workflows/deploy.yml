@@ -101,8 +101,8 @@ jobs:
           # else and is not a previous deploy of this repo (wrong DEPLOY_PATH, e.g. be_game's folder).
           # No `| head`: under pipefail a SIGPIPE'd find would abort the deploy at random.
           others=$(find . -mindepth 1 -maxdepth 1 ! -name .env ! -name .release.tar.gz)
-          if [ -n "$others" ] && ! grep -qs '"name": "portfolio_with_cms"' package.json; then
-            echo "$DEPLOY_PATH is not empty and not a portfolio_with_cms deploy, refusing to clean it" >&2
+          if [ -n "$others" ] && ! grep -qs '"name": "zonenop-game"' package.json; then
+            echo "$DEPLOY_PATH is not empty and not a zonenop-game deploy, refusing to clean it" >&2
             exit 1
           fi
           find . -mindepth 1 -maxdepth 1 ! -name .env ! -name .release.tar.gz -exec rm -rf {} +
