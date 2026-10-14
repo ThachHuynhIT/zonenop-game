@@ -1,14 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-      },
-    ],
-  },
+  // Self-contained server bundle for the Docker image (see Dockerfile).
+  output: "standalone",
 };
 
 export default nextConfig;
