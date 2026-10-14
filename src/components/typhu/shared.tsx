@@ -1,10 +1,11 @@
 "use client";
 
-import { AIR_RENT, UTIL_MULT, isOwnable, type Group, type Square } from "@/lib/typhu/board";
+import { UTIL_MULT, isOwnable, type Group, type Square } from "@/lib/typhu/board";
 import type { TPGameView, TPSeatView, TPSettings } from "@/lib/typhu/protocol";
 import { GameButton } from "@/components/game-ui/GameButton";
 import { GameDialog } from "@/components/game-ui/GameDialog";
 import { cn } from "@/lib/utils";
+import { rentAmount } from "./board/layout";
 import { boardRef, groupPositions } from "./board-ref";
 
 /** A seat's token. A server from before token picking sends no `piece`: fall back to the starting token of the seat. */
@@ -131,13 +132,12 @@ export function rentDue(g: TPGameView, pos: number): { text: string; row: number
   const b = boardRef.current[pos];
   if (!d || !isOwnable(b)) return null;
   if (d.mortgaged) return { text: "0 — đang thế chấp", row: null, free: true };
-  if (b.kind === "prop") {
-    if (d.houses > 0) return { text: money(b.rent[d.houses]), row: d.houses };
-    const full = groupPositions(b.group).every((p) => g.deeds[p]?.owner === d.owner);
-    return { text: money(full ? b.rent[0] * 2 : b.rent[0]), row: 0 };
-  }
   const count = Object.entries(g.deeds).filter(([p, x]) => x.owner === d.owner && boardRef.current[Number(p)].kind === b.kind).length;
-  if (b.kind === "air") return { text: money(AIR_RENT[Math.max(0, count - 1)]), row: count - 1 };
+  // The number comes from rentAmount, the same helper the board squares use, so the two never disagree.
+  const full = b.kind === "prop" && groupPositions(b.group).every((p) => g.deeds[p]?.owner === d.owner);
+  const amount = rentAmount(b, d, count, full);
+  if (b.kind === "prop") return { text: money(amount ?? 0), row: d.houses > 0 ? d.houses : 0 };
+  if (b.kind === "air") return { text: money(amount ?? 0), row: count - 1 };
   return { text: `tổng xúc xắc × ${UTIL_MULT[count >= 2 ? 1 : 0]}`, row: count >= 2 ? 1 : 0 };
 }
 

@@ -18,10 +18,11 @@ import { cn } from "@/lib/utils";
 import { Celebration } from "@/components/game-ui/Celebration";
 import { GamePanel } from "@/components/game-ui/GamePanel";
 import { GameThemeScope } from "@/components/game-ui/theme";
-import { boardRef } from "./board-ref";
+import { boardRef, groupPositions } from "./board-ref";
 import { NowProvider, NowClock } from "./now";
 import { TOKENS, money, pieceOfSeat, type Act } from "./shared";
 import { useWalkingTokens } from "./board/walk";
+import { cellLabel, isCompact, rentAmount, sideCellPx } from "./board/layout";
 import { type CellToken, NO_TOKENS, Cell } from "./board/Cell";
 import { Centre } from "./centre/Centre";
 import { AssetPanel } from "./panels/AssetPanel";
@@ -154,6 +155,17 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const [showRules, setShowRules] = useState(false);
   const [showAssets, setShowAssets] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Squares narrower than 64 px (phones) switch to the compact look: measured on the board grid itself.
+  const boardEl = useRef<HTMLDivElement>(null);
+  const [compact, setCompact] = useState(false);
+  const edge = boardRef.current.length / 4;
+  useEffect(() => {
+    const el = boardEl.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setCompact(isCompact(sideCellPx(entry.contentRect.width, edge))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [edge]);
   const inDebt = myTurn && g?.phase === "debt" && !!g.debt;
   // The assets panel sits in the side column (below the board on phones) so it never covers the board;
   // it opens by itself while I'm in debt.
@@ -328,12 +340,16 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
           <SpectatorReactions reactions={live.filter((r) => !r.playerId)} />
           <PinchZoom className="rounded-xl shadow-2xl">
           <div
+            ref={boardEl}
             className="grid aspect-square w-full gap-[2px] rounded-xl border-4 border-[#1e3a2f] bg-[#1e3a2f] shadow-2xl"
             style={{ gridTemplateColumns: `1.6fr repeat(${boardRef.current.length / 4 - 1}, 1fr) 1.6fr`, gridTemplateRows: `1.6fr repeat(${boardRef.current.length / 4 - 1}, 1fr) 1.6fr` }}
           >
             {boardRef.current.map((sq, i) => {
               const here = hereByPos.get(i);
               const deed = g?.deeds[i];
+              // Same-kind squares (airports / utilities) the owner holds, and whether they hold the whole colour group: both set the rent.
+              const owned = deed && g ? Object.entries(g.deeds).filter(([p, x]) => x.owner === deed.owner && boardRef.current[Number(p)].kind === sq.kind).length : 0;
+              const full = sq.kind === "prop" && !!deed && !!g && groupPositions(sq.group).every((p) => g.deeds[p]?.owner === deed.owner);
               return (
                 <Cell
                   key={i}
@@ -345,6 +361,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                   owner={deed ? tokenOf(deed.owner) : null}
                   here={here ?? NO_TOKENS}
                   highlight={!!here?.some((t) => t.turn)}
+                  compact={compact}
+                  label={cellLabel(sq, deed, rentAmount(sq, deed, owned, full))}
                   onOpen={setOpenSquare}
                 />
               );

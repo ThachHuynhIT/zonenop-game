@@ -6,6 +6,7 @@ import { m as motion } from "motion/react";
 import { GROUP_COLORS, MAX_HOUSES, type Square, isOwnable } from "@/lib/typhu/board";
 import { type Deed } from "@/lib/typhu/protocol";
 import { cn } from "@/lib/utils";
+import { tokenSlots } from "./layout";
 import { ArtIcon, Building, money, squareImg } from "../shared";
 
 /** Grid cell (1-based row/col) of a board position, Khởi hành bottom-right; the ring has `side` squares per edge. */
@@ -115,6 +116,10 @@ interface CellProps {
   owner: { emoji: string; color: string } | null;
   here: CellToken[];
   highlight: boolean;
+  /** Narrow squares (phones): no name, one short label, thinner colour band. */
+  compact: boolean;
+  /** The one number a compact square shows (price, rent, "TC"…), from `cellLabel`. */
+  label: string;
   onOpen: (pos: number) => void;
 }
 
@@ -124,6 +129,8 @@ const sameCell = (a: CellProps, b: CellProps) =>
   a.sq === b.sq &&
   a.pot === b.pot &&
   a.highlight === b.highlight &&
+  a.compact === b.compact &&
+  a.label === b.label &&
   a.onOpen === b.onOpen &&
   a.deed?.owner === b.deed?.owner &&
   a.deed?.houses === b.deed?.houses &&
@@ -133,7 +140,7 @@ const sameCell = (a: CellProps, b: CellProps) =>
   a.here.length === b.here.length &&
   a.here.every((t, i) => t.id === b.here[i].id && t.emoji === b.here[i].emoji && t.color === b.here[i].color && t.turn === b.here[i].turn);
 
-export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here, highlight, onOpen }: CellProps) {
+export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here, highlight, compact, label, onOpen }: CellProps) {
   const { row, col, side } = cellOf(index, edge);
   const band = sq.kind === "prop" ? GROUP_COLORS[sq.group] : null;
   const bandSide = side === "bottom" ? "top" : side === "top" ? "bottom" : side === "left" ? "right" : side === "right" ? "left" : null;
@@ -159,10 +166,10 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
         side === "corner" && "bg-[#e6f4ea]",
         highlight && "ring-2 ring-inset ring-amber-400",
         deed?.mortgaged && "opacity-60 grayscale-[40%]",
-        band && bandSide === "top" && (houses ? "pt-[40%]" : "pt-[22%]"),
-        band && bandSide === "bottom" && (houses ? "pb-[40%]" : "pb-[22%]"),
-        band && bandSide === "left" && (houses ? "pl-[40%]" : "pl-[22%]"),
-        band && bandSide === "right" && (houses ? "pr-[40%]" : "pr-[22%]"),
+        band && bandSide === "top" && (compact ? (houses ? "pt-[30%]" : "pt-[18%]") : houses ? "pt-[40%]" : "pt-[22%]"),
+        band && bandSide === "bottom" && (compact ? (houses ? "pb-[30%]" : "pb-[18%]") : houses ? "pb-[40%]" : "pb-[22%]"),
+        band && bandSide === "left" && (compact ? (houses ? "pl-[30%]" : "pl-[18%]") : houses ? "pl-[40%]" : "pl-[22%]"),
+        band && bandSide === "right" && (compact ? (houses ? "pr-[30%]" : "pr-[18%]") : houses ? "pr-[40%]" : "pr-[22%]"),
       )}
       title={deed ? `${sq.name} — chủ ${owner?.emoji}` : sq.name}
     >
@@ -174,7 +181,9 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
             bandSide === "bottom" && "inset-x-0 bottom-0",
             bandSide === "left" && "inset-y-0 left-0",
             bandSide === "right" && "inset-y-0 right-0",
-            bandSide === "top" || bandSide === "bottom" ? (houses ? "h-[40%]" : "h-[22%]") : houses ? "w-[40%]" : "w-[22%]",
+            bandSide === "top" || bandSide === "bottom"
+              ? compact ? (houses ? "h-[30%]" : "h-[18%]") : houses ? "h-[40%]" : "h-[22%]"
+              : compact ? (houses ? "w-[30%]" : "w-[18%]") : houses ? "w-[40%]" : "w-[22%]",
           )}
           style={{ background: band }}
         >
@@ -182,19 +191,27 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
         </span>
       )}
       {band && <BuildBurst count={houses} />}
-      <span className="pointer-events-none flex flex-col items-center px-[2px]">
-        {squareImg(sq) ? (
-          <ArtIcon name={squareImg(sq)!} className={cn(side === "corner" ? "size-5 sm:size-9 short:size-5" : "size-3.5 sm:size-6 short:size-3.5")} />
-        ) : null}
-        <span className={cn("line-clamp-2 font-semibold", side === "corner" ? "text-[8px] sm:text-xs short:text-[8px]" : "text-[6px] sm:text-[9px] xl:text-[10px] short:text-[6px]")}>
-          {sq.kind === "air" ? sq.name.replace("Sân bay ", "SB ") : sq.name}
+      {compact ? (
+        <span className="pointer-events-none flex flex-col items-center px-[2px]">
+          {sq.kind !== "prop" && squareImg(sq) ? <ArtIcon name={squareImg(sq)!} className={side === "corner" ? "size-5" : "size-4"} /> : null}
+          {label !== "" && <span className="text-[10px] font-extrabold leading-none tabular-nums">{label}</span>}
+          {sq.kind === "parking" && !!pot && <span className="rounded bg-amber-300 px-1 text-[10px] font-bold leading-none text-amber-950">💰 {money(pot)}</span>}
         </span>
-        {isOwnable(sq) && !deed && <span className="hidden text-[8px] text-emerald-900/70 sm:block short:hidden">{money(sq.price)}</span>}
-        {deed?.mortgaged && <span className="text-[6px] font-bold text-rose-700 sm:text-[8px] short:text-[6px]">THẾ CHẤP</span>}
-        {sq.kind === "parking" && !!pot && (
-          <span className="rounded bg-amber-300 px-1 text-[7px] font-bold text-amber-950 sm:text-[10px] short:text-[7px]">💰 {money(pot)}</span>
-        )}
-      </span>
+      ) : (
+        <span className="pointer-events-none flex flex-col items-center px-[2px]">
+          {squareImg(sq) ? (
+            <ArtIcon name={squareImg(sq)!} className={cn(side === "corner" ? "size-5 sm:size-9 short:size-5" : "size-3.5 sm:size-6 short:size-3.5")} />
+          ) : null}
+          <span className={cn("line-clamp-2 font-semibold", side === "corner" ? "text-[8px] sm:text-xs short:text-[8px]" : "text-[6px] sm:text-[9px] xl:text-[10px] short:text-[6px]")}>
+            {sq.kind === "air" ? sq.name.replace("Sân bay ", "SB ") : sq.name}
+          </span>
+          {isOwnable(sq) && !deed && <span className="hidden text-[8px] text-emerald-900/70 sm:block short:hidden">{money(sq.price)}</span>}
+          {deed?.mortgaged && <span className="text-[6px] font-bold text-rose-700 sm:text-[8px] short:text-[6px]">THẾ CHẤP</span>}
+          {sq.kind === "parking" && !!pot && (
+            <span className="rounded bg-amber-300 px-1 text-[7px] font-bold text-amber-950 sm:text-[10px] short:text-[7px]">💰 {money(pot)}</span>
+          )}
+        </span>
+      )}
       {owner && deed && (
         <motion.span
           key={deed.owner}
@@ -202,7 +219,8 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 15 }}
           className={cn(
-            "pointer-events-none absolute flex aspect-square h-[30%] min-h-[10px] items-center justify-center rounded-full border border-white text-[6px] shadow sm:text-[10px] short:text-[6px]",
+            "pointer-events-none absolute flex aspect-square h-[30%] items-center justify-center rounded-full border border-white shadow",
+            compact ? "min-h-[12px] text-[10px]" : "min-h-[10px] text-[6px] sm:text-[10px] short:text-[6px]",
             badgePos,
           )}
           style={{ background: owner.color }}
@@ -211,22 +229,26 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
         </motion.span>
       )}
       {here.length > 0 && (
-        <span className="absolute inset-0 flex flex-wrap items-center justify-center gap-[1px] p-[2px]">
-          {here.map((p) => (
-            <motion.span
-              key={p.id}
-              layoutId={`token-${p.id}`}
-              // Short tween per square: the walk itself is the square-by-square steps.
-              transition={{ layout: { type: "tween", ease: "easeOut", duration: 0.16 } }}
-              className={cn(
-                "flex h-[42%] min-h-[12px] w-auto aspect-square items-center justify-center rounded-full border border-white text-[8px] shadow-md sm:text-sm short:text-[8px]",
-                p.turn && "ring-2 ring-amber-400",
-              )}
-              style={{ background: p.color }}
-            >
-              {p.emoji}
-            </motion.span>
-          ))}
+        <span className="pointer-events-none absolute inset-0">
+          {here.map((p, i) => {
+            const slot = tokenSlots(here.length)[i] ?? tokenSlots(6)[i % 6];
+            return (
+              <motion.span
+                key={p.id}
+                layoutId={`token-${p.id}`}
+                // Short tween per square: the walk itself is the square-by-square steps.
+                transition={{ layout: { type: "tween", ease: "easeOut", duration: 0.16 } }}
+                className={cn(
+                  "absolute flex aspect-square -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white text-[8px] shadow-md sm:text-sm short:text-[8px]",
+                  p.turn && "z-10 ring-2 ring-amber-400",
+                )}
+                // Height in percent of the square (aspect-square gives the width) so slots never overlap.
+                style={{ left: `${slot.x}%`, top: `${slot.y}%`, height: `${42 * slot.scale}%`, minHeight: 12, background: p.color }}
+              >
+                {p.emoji}
+              </motion.span>
+            );
+          })}
         </span>
       )}
     </button>
