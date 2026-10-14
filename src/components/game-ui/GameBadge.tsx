@@ -8,7 +8,7 @@ const TONES = {
   accent: "bg-game-accent text-game-accent-fg",
   success: "bg-emerald-400 text-emerald-950",
   warning: "bg-amber-300 text-amber-950",
-  danger: "bg-rose-500 text-white",
+  danger: "bg-rose-600 text-white",
   neutral: "bg-white/12 text-white ring-1 ring-inset ring-white/15",
 } as const;
 

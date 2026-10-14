@@ -14,7 +14,7 @@ export const gameButtonVariants = cva(
         primary: "game-raised bg-game-accent text-game-accent-fg active:not-disabled:game-pressed",
         secondary:
           "game-raised bg-white/12 text-white ring-1 ring-inset ring-white/15 [--game-raise-color:oklch(0_0_0/0.45)] hover:bg-white/18 active:not-disabled:game-pressed",
-        danger: "game-raised bg-rose-500 text-white [--game-raise-color:var(--color-rose-800)] active:not-disabled:game-pressed",
+        danger: "game-raised bg-rose-600 text-white [--game-raise-color:var(--color-rose-900)] active:not-disabled:game-pressed",
         ghost: "bg-transparent text-white/80 hover:bg-white/10 hover:text-white active:not-disabled:scale-95",
       },
       size: {

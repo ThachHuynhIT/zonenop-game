@@ -57,6 +57,7 @@ export function UiKit() {
   const [game, setGame] = useState<GameId | null>("tienlen");
   const [dialog, setDialog] = useState(false);
   const [deadline, setDeadline] = useState<number | null>(null);
+  const [lateDeadline, setLateDeadline] = useState<number | null>(null);
   const [points, setPoints] = useState(12);
   const [celebrate, setCelebrate] = useState({ playing: true, show: false });
   // Set after mount: a Date.now() during render would differ between server and client.
@@ -134,6 +135,22 @@ export function UiKit() {
             <GameButton size="sm" onClick={() => setDeadline(Date.now() + 6_000)}>
               Còn 6 s
             </GameButton>
+            {/* Mounted without a deadline, started later: must not show a stale value. */}
+            <span data-testid="late-countdown">
+              <Countdown deadline={lateDeadline} total={120_000} />
+            </span>
+            <GameButton data-testid="start-late" size="sm" onClick={() => setLateDeadline(Date.now() + 120_000)}>
+              Bắt đầu 2 phút
+            </GameButton>
+          </div>
+          <div data-testid="light-tabs" className="mb-4 rounded-2xl bg-amber-50 p-2 text-emerald-950">
+            <GameTabs
+              light
+              tabs={[
+                { id: "a", label: "Bàn cờ", content: <p>Nền sáng như bảng cài đặt của Cờ Tỷ Phú.</p> },
+                { id: "b", label: "Tiền", content: <p>Tiền khởi điểm.</p> },
+              ]}
+            />
           </div>
           <GameTabs
             className="mb-4"

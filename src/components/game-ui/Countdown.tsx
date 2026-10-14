@@ -9,8 +9,14 @@ export function Countdown({ deadline, total, size = 44, className }: { deadline:
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (deadline === null) return;
-    const id = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(id);
+    // `now` stood still while there was no deadline: refresh it on the next frame, not only on the first tick.
+    const tick = () => setNow(Date.now());
+    const frame = requestAnimationFrame(tick);
+    const id = setInterval(tick, 250);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearInterval(id);
+    };
   }, [deadline]);
   if (deadline === null) return null;
 
