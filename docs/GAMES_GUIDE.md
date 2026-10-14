@@ -477,7 +477,7 @@ Mỗi game cài đặt riêng mẫu này:
 | Game | Component | Vị trí | Ghi chú |
 |---|---|---|---|
 | Tiến Lên, Mèo Nổ | `Sheet` | `tienlen/Sheet.tsx` | Có header cố định với `title`. Bảng điểm của **mọi** game dùng component này qua `ScoreboardModal`. |
-| Tỷ Phú | `Modal({children,onClose,dark?})` | cuối `typhu/TyPhuTable.tsx` | `dark` cho nền `#0c2233`, mặc định là nền giấy sáng `#f4efe1`. `SquareModal` dùng nền sáng. |
+| Tỷ Phú | `Modal({children,onClose,dark?,title?})` | `typhu/shared.tsx` | Bọc `GameDialog` (§3.13), không còn là bottom sheet tự viết. `dark` = nội dung nền tối, mặc định nền giấy sáng. `SquareModal` dùng nền sáng. |
 | Đá Quý | `Modal({children,onClose})` | cuối `splendor/SplendorTable.tsx` | Thêm `short:max-h-[94dvh] short:max-w-2xl` |
 | Đấu Súng | `Sheet({children,onClose,title?,tabs?})` | cuối `bang/Pieces.tsx` | Khác `tienlen/Sheet`: có `tabs` và mặc định `max-w-2xl` |
 | Cá Ngựa | `Modal` | cuối `cangua/CaNguaTable.tsx` | Chỉ dùng cho luật |
@@ -673,49 +673,124 @@ Các lời nhắc của `ChoicePanel` (xem bài, cho bài, đào, nhét, đổi)
 
 Luật và protocol: `be_game/docs/games/typhu.md`.
 
-**File map.** Tất cả nằm trong một file: `typhu/TyPhuTable.tsx` (khoảng 2500 dòng).
+**File map.** `typhu/TyPhuTable.tsx` (khoảng 600 dòng) chỉ còn là gốc bàn (state, `run()`, bố cục). Mọi thứ khác nằm trong các thư mục con; `TyPhuTable.tsx` re-export `money`, `pieceOfSeat`, `TOKENS` (từ `shared`) và `TyPhuRules` (trang sảnh `co-ty-phu/page.tsx` import từ đây).
+
+```
+typhu/
+  TyPhuTable.tsx      TyPhuTable (default), Table, TableBody
+  TableOptions.tsx    ⚙ trên thanh trên (chỉ điện thoại dọc): chọn vị trí nút hành động
+  prefs.ts            parsePrefs, useTyPhuPrefs, usePhonePortrait, PREFS_KEY  (+ prefs.test.ts)
+  board-ref.ts        boardRef, groupPositions
+  now.tsx             NowProvider, NowContext, useSecondsLeft, NowClock, useNow, formatClock
+  shared.tsx          TOKENS, pieceOfSeat, money, Act, CBtn, Modal, Building, GROUP_NAMES, buildableGroups,
+                      buildRuleText, mortgageBlocker, rentDue, ArtIcon, squareImg
+  board/              Cell.tsx (Cell, CellToken), layout.ts (+ layout.test.ts), walk.ts (useWalkingTokens)
+  centre/             Centre.tsx, ActionBar.tsx, Dice.tsx, OfferCards.tsx (LoanCard, TradeCard)
+  panels/             AssetPanel.tsx, BuildPanel.tsx, DebtControls.tsx
+  dialogs/            SquareDialog.tsx, LoanDialog.tsx, TradeDialog.tsx, RulesDialog.tsx, LogDialog.tsx, PiecePicker.tsx
+  players/            PlayerRow.tsx, PlayerStrip.tsx
+  waiting/            Waiting.tsx, TableSettings.tsx
+  fx/                 Overlays.tsx (BankruptOverlay, BuildOverlay, CardOverlay)
+```
 
 | Component / hàm | Vai trò |
 |---|---|
-| `TyPhuTable` (default), `Table`, `TableBody` | `Table` chỉ bọc `NowProvider` quanh `TableBody` (gốc bàn). State của `TableBody`: `openSquare`, `picking`, `showLog`, `showTrade`, `showScores`, `showRules`, `showAssets`, `busy`, `cardFx`, `buildFx`, `bankruptFx`. `run()` bọc `act` và bật `busy` trong lúc chờ. Đầu hàm đặt biến module `BOARD = boardOf(g?.map ?? settings.map)` (xem "Bản đồ" bên dưới). |
-| **`NowProvider`** + `NowContext`, `useSecondsLeft()`, `NowClock` | Đồng hồ 500 ms nằm trong **context**, không phải state của `TableBody`: chỉ các chỗ hiện đếm ngược (`Centre`, `AssetPanel`, `TradeCard`, đồng hồ ván) render lại mỗi nhịp; cả bàn (ô cờ, dòng người chơi…) không còn render lại 2 lần/giây. Provider render `children` là prop nên React bỏ qua cây con khi chỉ giá trị context đổi. Cần đếm ngược ở chỗ mới → `useSecondsLeft()(deadline)`. |
-| `TOKENS` (export), `pieceOfSeat(seat)`, `money(n)` (export), `SQUARE_ICON` | 6 quân khởi đầu (🛵 🐃 🚲 🚤 🐉 🎩). `pieceOfSeat` = `seat.piece` do server gửi, thiếu (server cũ) thì rơi về `TOKENS[seat.color]` — **đừng đọc `seat.piece` trực tiếp**, nó từng làm bàn crash trên server cũ. `money` định dạng `"1.500tr"`. |
-| `useWalkingTokens(g)`, `walkPath(...)` | Quân đi từng ô. Mỗi bước `max(60, min(220, 2600/len))` ms. Đi lùi khi bị lùi ≤ 3 ô. Vào tù thì đi tới ô Vào tù (tìm theo `kind === "gotojail"` trên bản đồ hiện tại) rồi nhảy. |
-| `cellOf(i, side)` | Chỉ số ô → hàng/cột 1-based trên grid `(side+1)²` với `side` = ô mỗi cạnh (10 / 12 / 14). Ô Khởi hành ở góc dưới phải. |
-| **`Cell`** (`memo`), `Building`, `Buildings` | Một ô bàn cờ: dải màu, màu chủ sở hữu, giá, nhãn THẾ CHẤP, quỹ đỗ xe, các quân. Nhà mới có hiệu ứng nảy lên. `Cell` chỉ nhận **dữ liệu nó vẽ** (`CellProps`: `index`, `edge`, `sq`, `deed`, `pot`, `owner`, `here: CellToken[]`, `highlight`, `onOpen`) và `memo` với `sameCell` so từng trường — không so identity vì mỗi state từ server là object mới. Quân đứng trên mỗi ô (kể cả đang đi) do `TableBody` gom vào `hereByPos`. **Mọi thứ ảnh hưởng tới cách vẽ phải nằm trong props** (xem bẫy §9: `edge`). |
-| `Die`, `PIPS` | Xúc xắc |
-| **`Centre`** | Giữa bàn: tiêu đề, xúc xắc, dòng lượt, `TurnRing`/`MyTurnBadge`, các nút theo từng phase (dùng `CBtn`), 1–2 dòng log cuối (chỉ trên điện thoại), gợi ý khi ở tù hoặc phá sản. Nó mở `BuildPanel` và chứa `DebtControls`. |
-| `BuyHint` | Dòng dưới nút Mua: tiền thuê, số ô cùng nhóm mình đã có |
-| **`BuildPanel`** | `Modal dark`: mọi nhóm màu và ô xây được, nút "+ Nhà n / Khách sạn", mục "Còn thiếu để xây". Dùng `buildableGroups` và `buildRuleText`. |
-| `CBtn` | Nút ở giữa bàn, biến thể `primary` / `danger` / `build` |
-| **`ConfirmButton`** | Bấm hai lần để xác nhận, tự huỷ sau 3,5 giây. Thay cho `window.confirm`, vốn bị chặn trong một số trình duyệt in-app. Giờ nằm ở `src/components/games/ConfirmButton.tsx` (có `as="span"` cho chỗ nằm trong một `<button>`), mọi nút Kích dùng chung. |
-| **`DebtControls`** | Trong `Centre` khi đang nợ: dòng nợ, Trả nợ, nút "💰 Bán / thế chấp ↓" (`lg:hidden short:hidden`, cuộn tới `AssetPanel`) và Phá sản (qua `ConfirmButton`) |
-| **`AssetPanel`** | `<section>` trong cột bên, **không phải modal**. Liệt kê các ô mình sở hữu theo nhóm, rồi "Sân bay & công ty", với các nút Bán nhà / Thế chấp / Chuộc / Bán đất. Khi đang nợ, panel có thêm Trả nợ, Phá sản, đồng hồ, và không có nút ✕. Panel mở khi `mine && myTurn && (showAssets \|\| inDebt)`. `mortgageBlocker()` cho biết vì sao một ô chưa thế chấp được. |
-| `BankruptOverlay` | "PHÁ SẢN!" toàn màn hình, `createPortal` vào `document.body`, tiền bay xuống (`MONEY_BITS`) |
-| `BuildOverlay`, `CardOverlay` | Banner khi xây nhà (log bắt đầu bằng "🏠"). Lá Cơ hội / Khí vận lật ra, bấm để đóng, `pointerEvents:"none"` khi đang thoát. |
-| `PlayerRow` | Dòng người chơi: quân, 👑, tiền, tổng tài sản, tù, thẻ ra tù, điểm, nút Kích, các chip giấy tờ đất (bấm để mở `SquareModal`), `SeatBubble` |
-| **`SquareModal`** + `OwnableInfo` + `SQUARE_TEXT` | `Modal` nền sáng: thông tin ô (bảng tiền thuê và giá xây), và các nút quản lý khi tới lượt mình |
-| **`PiecePicker`** | Hộp "Quân cờ & màu nhà": 12 quân + 8 màu, mục đã có người dùng bị làm mờ; bấm → `act({type:"pick", emoji, color})`. Mở khi bấm quân tròn của chính mình ở `PlayerRow` (`onPick`). Đổi được cả giữa ván. |
-| `LogList`, **`LogModal`** | Danh sách log (mới nhất ở trên, tô màu theo `tone`) dùng ở panel "Diễn biến" và hộp "Toàn bộ diễn biến" (nút 📜 trên thanh trên, phím `L`). Server giữ 150 dòng. |
-| `LoanCard`, `LoanModal` | Vay tiền: thẻ xin vay ở giữa bàn (Cho vay / Từ chối / Rút), modal soạn (người cho vay, số tiền, lãi 10 / 20 %, dòng "sau 5 lượt phải trả …"), cột "🏦 Khoản vay" ở panel bên liệt kê các khoản đang nợ |
-| `rentDue()` + `SquareModal` | Bấm vào ô đã có chủ: khung lớn **in đậm số tiền phải trả** khi dừng ở đó (đất trống ×2 nếu đủ nhóm, nhà, sân bay, công ty = tổng xúc xắc × k, 0 nếu thế chấp) và tô đậm đúng hàng trong bảng thuê |
-| `TradeCard`, `TradeModal`, `CashInput` | Giao dịch: thẻ **ở giữa bàn cờ**, trong `Centre` (Đồng ý / Từ chối / Rút lời mời — điện thoại thấy ngay không phải cuộn xuống), nút 🤝 cũng ở `Centre`, và modal soạn đề nghị (có `Picker` lồng bên trong) |
-| `Waiting` | Giữa bàn trước ván (số người/6) hoặc sau ván (kết quả với `DeltaBadge`), nút Bắt đầu / Ván mới |
-| **`TableSettings`**, `RULE_PRESETS`, `SettingSelect`, `Toggle`, `SELECT` | Luật bàn trong `SettingsTabs light`, với hàng nút **"Luật nhanh"** phía trên (xem Cài đặt) |
-| `TyPhuRules` (export), `RulesModal` | Luật, cũng dùng ở lobby |
-| **`Modal({children,onClose,dark?})`** | Dialog của file (§3.10) |
+| `TyPhuTable` (default), `Table`, `TableBody` | `Table` chỉ bọc `NowProvider` quanh `TableBody` (gốc bàn). State của `TableBody`: `openSquare`, `viewPlayer`, `picking`, `showLog`, `showTrade`, `showLoan`, `showScores`, `showRules`, `showAssets`, `showBuild`, `busy`, `narrow`, `barHeight`, `cardFx`, `buildFx`, `bankruptFx`. `run()` bọc `act` và bật `busy` trong lúc chờ. Đầu hàm đặt `boardRef.current = boardOf(g?.map ?? settings.map)` (xem "Bản đồ" bên dưới). Bàn bọc trong `GameThemeScope game="typhu"` (màu nhấn vàng). |
+| **`NowProvider`** + `NowContext`, `useSecondsLeft()`, `NowClock` (`now.tsx`) | Đồng hồ 500 ms nằm trong **context**, không phải state của `TableBody`: chỉ các chỗ hiện đếm ngược (`ActionBar`, `AssetPanel`, `TradeCard`, đồng hồ ván) render lại mỗi nhịp; cả bàn (ô cờ, dòng người chơi…) không còn render lại 2 lần/giây. Provider render `children` là prop nên React bỏ qua cây con khi chỉ giá trị context đổi. Cần đếm ngược ở chỗ mới → `useSecondsLeft()(deadline)`. |
+| `TOKENS`, `pieceOfSeat(seat)`, `money(n)` (`shared.tsx`) | 6 quân khởi đầu (🛵 🐃 🚲 🚤 🐉 🎩). `pieceOfSeat` = `seat.piece` do server gửi, thiếu (server cũ) thì rơi về `TOKENS[seat.color]` — **đừng đọc `seat.piece` trực tiếp**, nó từng làm bàn crash trên server cũ. `money` định dạng `"1.500tr"`. |
+| `useWalkingTokens(g)`, `walkPath(...)` (`board/walk.ts`) | Quân đi từng ô. Mỗi bước `max(60, min(220, 2600/len))` ms. Đi lùi khi bị lùi ≤ 3 ô. Vào tù thì đi tới ô Vào tù (tìm theo `kind === "gotojail"` trên bản đồ hiện tại) rồi nhảy. |
+| **`Cell`** (`memo`, `board/Cell.tsx`), `cellOf(i, side)`, `Building`, `Buildings` | Một ô bàn cờ: dải màu, màu chủ sở hữu, giá, nhãn THẾ CHẤP, quỹ đỗ xe, các quân. `cellOf` đổi chỉ số ô thành hàng/cột 1-based trên grid `(side+1)²` với `side` = ô mỗi cạnh (10 / 12 / 14); ô Khởi hành ở góc dưới phải. Nhà mới có hiệu ứng nảy lên. `Cell` chỉ nhận **dữ liệu nó vẽ** (`CellProps`: `index`, `edge`, `sq`, `deed`, `pot`, `owner`, `here: CellToken[]`, `highlight`, `compact`, `onOpen`…) và `memo` với `sameCell` so từng trường — không so identity vì mỗi state từ server là object mới. Quân đứng trên mỗi ô (kể cả đang đi) do `TableBody` gom vào `hereByPos`. **Mọi thứ ảnh hưởng tới cách vẽ phải nằm trong props** (vd. `edge` và `compact`: nếu `Cell` đọc `boardRef.current.length` hay hỏi viewport thay vì nhận qua props thì `memo` không thấy thay đổi và ô không vẽ lại khi đổi bản đồ hoặc xoay máy). |
+| `board/layout.ts` (thuần, có test) | `cellLabel(sq, deed, rent)` = nhãn một dòng của ô rút gọn (tiền thuê hiện tại hoặc giá, "TC" khi thế chấp); `shortNum`, `rentAmount`; `tokenSlots(n)` = vị trí và cỡ các quân cùng ô (không chồng nhau); `sideCellPx(boardPx, edge)`, `COMPACT_CELL_PX = 64`, `isCompact(cellPx)`. |
+| `Die`, `PIPS` (`centre/Dice.tsx`) | Xúc xắc |
+| **`Centre`** (`centre/Centre.tsx`) | Giữa bàn: tiêu đề, xúc xắc, `LoanCard` / `TradeCard`, nút 🤝 / 🏦 (chỉ máy tính và `short:`; điện thoại dọc có hai nút này ở hàng nút nhanh dưới bàn), gợi ý khi ở tù hoặc phá sản, huy hiệu "Tự động chơi". Chứa **phím tắt** (`useHotkeys`) và phím ẩn Ctrl+Shift+Y. Nó mở `BuildPanel` (qua `showBuild`) và vẽ `ActionBar placement="center"` khi viewer không chọn thanh dưới. |
+| **`ActionBar`** (`centre/ActionBar.tsx`) | Dòng lượt (huy hiệu "Lượt của bạn" hoặc "Lượt của X" + `Countdown`) và các nút của mình theo phase (`CBtn`): Tung / Nộp ra tù / Mua + Bỏ qua / Kết thúc lượt, Xây nhà, Thế chấp / Bán, `DebtControls` khi nợ. Một component, hai chỗ đặt: `placement="center"` (trong `Centre`, khung kính giữa bàn) hoặc `placement="bottom"` (thanh `fixed inset-x-0 bottom-0 z-30` do `TableBody` vẽ, báo chiều cao qua `onHeight` để trang chừa chỗ đáy; `pr-24` chừa góc phải cho nút chat / emoji `z-40` nổi trên thanh). Cùng nút, cùng điều kiện ở cả hai chỗ. Trên thanh dưới nút Mua chỉ có giá (tên ô nằm ở dòng lượt), không có `BuyHint`. |
+| `BuyHint` | Dòng dưới nút Mua (chỉ ở giữa bàn): tiền thuê, số ô cùng nhóm mình đã có |
+| **`BuildPanel`** (`panels/BuildPanel.tsx`) | `Modal dark`: mọi nhóm màu và ô xây được, nút "+ Nhà n / Khách sạn", mục "Còn thiếu để xây". Dùng `buildableGroups` và `buildRuleText`. |
+| `CBtn` (`shared.tsx`) | Bọc `GameButton size="md"` (cao 44 px), biến thể `primary` / `danger` / `build`, prop `hotkey` hiện `<kbd>` (chỉ `lg:` và chuột). |
+| **`ConfirmButton`** | Bấm hai lần để xác nhận, tự huỷ sau 3,5 giây. Thay cho `window.confirm`, vốn bị chặn trong một số trình duyệt in-app. `src/components/games/ConfirmButton.tsx` (có `as="span"` cho chỗ nằm trong một `<button>`), mọi nút Kích dùng chung. Nút Phá sản và Bán đất của Tỷ Phú dùng `GameButton confirm="…"` (cùng ý: hai lần bấm trong 3,5 s). |
+| **`DebtControls`** (`panels/DebtControls.tsx`) | Trong `ActionBar` khi đang nợ: dòng nợ, Trả nợ, nút "💰 Bán / thế chấp ↓" (`lg:hidden short:hidden`, cuộn tới `AssetPanel`) và Phá sản (`GameButton confirm`). |
+| **`AssetPanel`** (`panels/AssetPanel.tsx`) | `<section>` trong cột bên, **không phải modal**. Liệt kê các ô mình sở hữu theo nhóm, rồi "Sân bay & công ty", với các nút Bán nhà / Thế chấp / Chuộc / Bán đất. Khi đang nợ, panel có thêm Trả nợ, Phá sản, đồng hồ, và không có nút ✕. Panel mở khi `mine && myTurn && (showAssets \|\| inDebt)`. `mortgageBlocker()` cho biết vì sao một ô chưa thế chấp được. |
+| `BankruptOverlay`, `BuildOverlay`, `CardOverlay` (`fx/Overlays.tsx`) | "PHÁ SẢN!" toàn màn hình (`createPortal` vào `document.body`, tiền bay xuống `MONEY_BITS`). Banner khi xây nhà (log bắt đầu bằng "🏠"). Lá Cơ hội / Khí vận lật ra, bấm để đóng, `pointerEvents:"none"` khi đang thoát. |
+| `PlayerRow` (`players/PlayerRow.tsx`) | Dòng người chơi (cột bên máy tính và `short:`; trong dialog người chơi trên điện thoại): quân, 👑, tiền, tổng tài sản, tù, thẻ ra tù, điểm, nút Kích, các chip giấy tờ đất (bấm để mở `SquareModal`), `SeatBubble` |
+| **`PlayerStrip`** (`players/PlayerStrip.tsx`) | Điện thoại dọc: một hàng `SeatChip` (tên + tiền + đèn lượt) phía trên bàn, tự cuộn ngang tới chip đang tới lượt. Bấm chip → `GameDialog` chứa `PlayerRow` của người đó; với chính mình có nút đổi quân cờ (`onPick`) và, lúc tới lượt, nút "💰 Tài sản" (mở `AssetPanel`). |
+| **`SquareModal`** + `OwnableInfo` + `SQUARE_TEXT` (`dialogs/SquareDialog.tsx`) | `Modal` nền sáng: thông tin ô (bảng tiền thuê và giá xây), và các nút quản lý khi tới lượt mình. Ô rút gọn không có tên, nên **chạm vào ô luôn mở dialog đầy đủ**. |
+| **`PiecePicker`** (`dialogs/PiecePicker.tsx`) | Hộp "Quân cờ & màu nhà": 12 quân + 8 màu, mục đã có người dùng bị làm mờ; bấm → `act({type:"pick", emoji, color})`. Mở khi bấm quân tròn của chính mình ở `PlayerRow` (`onPick`). Đổi được cả giữa ván. |
+| `LogList`, **`LogModal`** (`dialogs/LogDialog.tsx`) | Danh sách log (mới nhất ở trên, tô màu theo `tone`) dùng ở panel "Diễn biến" và hộp "Toàn bộ diễn biến" (nút 📜 trên thanh trên, phím `L`; trên điện thoại dọc bấm vào 3 dòng log dưới bàn). Server giữ 150 dòng. |
+| `LoanCard` (`centre/OfferCards.tsx`), `LoanModal` (`dialogs/LoanDialog.tsx`) | Vay tiền: thẻ xin vay ở giữa bàn (Cho vay / Từ chối / Rút), modal soạn (người cho vay, số tiền, lãi 10 / 20 %, dòng "sau 5 lượt phải trả …"), cột "🏦 Khoản vay" ở panel bên liệt kê các khoản đang nợ |
+| `rentDue()` (`shared.tsx`) + `SquareModal` | Bấm vào ô đã có chủ: khung lớn **in đậm số tiền phải trả** khi dừng ở đó (đất trống ×2 nếu đủ nhóm, nhà, sân bay, công ty = tổng xúc xắc × k, 0 nếu thế chấp) và tô đậm đúng hàng trong bảng thuê |
+| `TradeCard` (`centre/OfferCards.tsx`), `TradeModal`, `CashInput` (`dialogs/TradeDialog.tsx`) | Giao dịch: thẻ **ở giữa bàn cờ**, trong `Centre` (Đồng ý / Từ chối / Rút lời mời — điện thoại thấy ngay không phải cuộn xuống), và modal soạn đề nghị (có `Picker` lồng bên trong). Nút 🤝 ở `Centre` (máy tính) hoặc hàng nút nhanh dưới bàn (điện thoại dọc). |
+| `Waiting` (`waiting/Waiting.tsx`) | Giữa bàn trước ván (số người/6) hoặc sau ván (kết quả với `DeltaBadge`), nút Bắt đầu / Ván mới |
+| **`TableSettings`**, `RULE_PRESETS`, `SettingSelect`, `Toggle`, `SELECT` (`waiting/TableSettings.tsx`) | Luật bàn trong `SettingsTabs light`, với hàng nút **"Luật nhanh"** phía trên (xem Cài đặt) |
+| `TyPhuRules` (export), `RulesModal` (`dialogs/RulesDialog.tsx`) | Luật, cũng dùng ở lobby |
+| **`Modal({children,onClose,dark?,title?})`** (`shared.tsx`) | Bọc `GameDialog` (§3.13): drawer dưới 768 px (vaul), hộp giữa màn hình từ `md`. `GameDialog` tự render qua portal nên mở từ đâu cũng nằm trên cùng. `dark` = nội dung nền tối có tiêu đề riêng; mặc định nền giấy sáng (`light`). Nút "Đóng" ở chân; Esc đóng. |
+| `GameDialog` trực tiếp | `TableBody` dùng cho dialog người chơi (`viewPlayer`); `TableOptions` dùng cho "Tuỳ chọn hiển thị". |
+
+**Ô rút gọn (điện thoại).** Ô bàn cờ chỉ rút gọn (`compact`: không tên, một nhãn ngắn `cellLabel`, dải màu mỏng, quân xếp theo `tokenSlots`) khi **cả hai** điều kiện đúng: `usePhonePortrait()` (< `lg` = 1024 px và không phải `short:` ngang) **và** `isCompact(sideCellPx(bề rộng lưới, edge))`, tức ô cạnh **< 64 px** (`COMPACT_CELL_PX`). Bề rộng lưới đo bằng `ResizeObserver` trên `boardEl` và đo ngay trong `useLayoutEffect` trước lần vẽ đầu (nên không nháy tên rồi mới rút gọn). Máy tính (kể cả laptop 1366×768) và điện thoại xoay ngang giữ ô đầy đủ dù ô nhỏ. Nhãn rút gọn luôn ≥ 10 px.
+
+**`boardRef` (`board-ref.ts`).** Bản đồ của bàn đang xem, thay cho biến module `BOARD` cũ: `boardRef.current: Square[]`; `TableBody` gán lại ở đầu mỗi lần render, các file khác đọc `boardRef.current[i]` (và `groupPositions(group)`). Cùng hợp đồng như trước, chỉ là chia sẻ qua nhiều file. Chỉ có **một** bàn Tỷ Phú trên trang.
+
+**Vị trí nút hành động và `typhu:prefs`.** Chỉ **điện thoại dọc** (`usePhonePortrait()`), mỗi người chọn cho mình: nút ⚙ ("Tuỳ chọn hiển thị", `TableOptions`) nằm ở `primary` của `GameHeader` (không ở `extra`: `extra` gấp vào menu ⋯ và menu đóng sẽ gỡ dialog đang mở) mở một `GameDialog` với hai lựa chọn "Nút ở giữa bàn" (mặc định) hoặc "Thanh nút dưới màn hình". Lưu ở `localStorage["typhu:prefs"]` = `{"actions":"center"|"bottom"}` (chỉ trên máy này). `parsePrefs` gặp JSON hỏng hoặc giá trị lạ thì dùng mặc định; `useTyPhuPrefs` đọc sau khi mount (server render luôn dùng mặc định) và bọc `try/catch` cho trình duyệt chặn storage. Máy tính và điện thoại ngang luôn để nút ở giữa bàn, dù prefs ghi `bottom`. Khi dùng thanh dưới: `Centre` không vẽ `ActionBar`, thanh `fixed` ở đáy, trang chừa `paddingBottom = barHeight + 8`.
 
 **Bố cục**
-- Bàn cờ là grid vuông, `gridTemplateColumns/Rows: 1.6fr repeat(side−1, 1fr) 1.6fr` với `side = BOARD.length / 4` (11×11, 13×13 hoặc 15×15). `Centre` chiếm `2 / side+1` và tự cuộn (`overflow-y-auto`, `justify-center-safe`).
-- **Điện thoại dọc:** một cột. Bàn cờ rộng hết màn hình nhưng không cao quá màn hình (`max-w-[min(100%,calc(100dvh-7rem))]`). Dưới đó là `aside`, với `max-lg:pb-14` để chừa chỗ cho chat.
-  - Danh sách người chơi 2 cột.
-  - Tiêu đề "CỜ TỶ PHÚ" và giá các ô bị ẩn.
-  - `Centre` hiện log rút gọn.
-  - Giữa các ván, thẻ "⚙️ Luật bàn" chuyển xuống `aside` (`hidden max-sm:block short:block`), còn `Waiting` ghi "Luật bàn ở bên dưới ↓".
-- **`short:`:** grid `[auto_minmax(0,1fr)]`. Bàn cờ bên trái, vuông `calc(100dvh-3.75rem)`. `aside` bên phải tự cuộn. Chữ trong ô `short:text-[6px]`/`[8px]`, xúc xắc `short:h-8`.
+- Bàn cờ là grid vuông, `gridTemplateColumns/Rows: 1.6fr repeat(side−1, 1fr) 1.6fr` với `side = boardRef.current.length / 4` (11×11, 13×13 hoặc 15×15), nằm trong `PinchZoom` (`boardEl` là grid). `Centre` chiếm `2 / side+1` và tự cuộn (`overflow-y-auto`, `justify-center-safe`).
+- **Điện thoại dọc:** một cột, không cần cuộn để thấy người chơi + lượt + nút.
+  - `PlayerStrip` ở trên cùng; dưới đó là bàn cờ rộng hết màn hình nhưng không cao quá màn hình (`max-w-[min(100%,calc(100dvh-7rem))]`) với ô rút gọn.
+  - Dưới bàn: 3 dòng log cuối (bấm mở `LogModal`) và hàng nút nhanh `💰 Tài sản` (khi tới lượt và có đất), `🤝 Đổi đất`, `🏦 Vay`.
+  - `aside` (`max-lg:pb-14` chừa chỗ cho chat): `AssetPanel` khi mở, `🏦 Khoản vay`, và giữa các ván thẻ "⚙️ Luật bàn" (`hidden max-sm:block short:block`, `Waiting` ghi "Luật bàn ở bên dưới ↓"). Panel "Người chơi" và "Diễn biến" ẩn (`max-lg:hidden`): đã có `PlayerStrip` và log dưới bàn.
+  - Nút hành động ở giữa bàn (mặc định) hoặc thanh dưới (⚙, `typhu:prefs`). Mọi hộp thoại là drawer.
+  - Tiêu đề "CỜ TỶ PHÚ" ở giữa bàn chỉ hiện từ `sm`.
+- **`short:`:** grid `[auto_minmax(0,1fr)]`. Bàn cờ bên trái, vuông `calc(100dvh-3.75rem)`. `aside` bên phải tự cuộn, có "Người chơi" và "Diễn biến". Ô đầy đủ (chữ `short:text-[6px]`/`[8px]`), xúc xắc `short:h-8`. Không có ⚙ / thanh dưới.
 - **`lg:`:** grid `[minmax(0,calc(100dvh-5rem))_20rem]` căn giữa. `AssetPanel` cuộn với `lg:max-h-[calc(100dvh-16rem)]`.
 - **`xl:`:** cột bên `22rem`, bỏ `max-w`, tên ô `xl:text-[10px]`.
-- Thứ tự trong `aside`: `AssetPanel` (khi mở), thẻ luật (điện thoại / `short:`), "Người chơi", "Diễn biến" (`max-h-64`).
+- Thứ tự trong `aside`: `AssetPanel` (khi mở), thẻ luật (điện thoại / `short:`), "Người chơi" (`lg:` / `short:`), "Khoản vay", "Diễn biến" (`lg:` / `short:`, `max-h-64`).
+
+**Chạy thử bàn với bot** (script nằm ngoài repo, ví dụ `$TEMP/shots/typhu-bots.mjs`). Cần be_game chạy local (`PORT=4123 npx tsx src/local.ts` trong repo be_game) và frontend `NEXT_PUBLIC_TIENLEN_SERVER_URL=http://localhost:4123 NEXT_PUBLIC_TIENLEN_FALLBACK_URL= npx next dev -p 3105`. Rồi `node typhu-bots.mjs 3 4`: tạo phòng, 3 bot ngồi vào và in `CODE xxxxx`; mở `http://localhost:3105/co-ty-phu/xxxxx` để ngồi ghế thứ 4, bàn bắt đầu khi đủ 4 ghế (tham số thứ hai). Bot chỉ tung / mua / kết thúc lượt (nợ thì phá sản ngay), không trả lời lời mời đổi đất / vay. Muốn chơi trọn ván bằng tay thì cho bot trả lời `loananswer` / `tradeanswer` `{accept:true}` và đặt luật dễ qua `{type:"settings", startCash:1000, needGroup:false, …}` từ bot chủ bàn trước `start`.
+
+```js
+// typhu-bots.mjs — node typhu-bots.mjs [số bot=3] [số ghế để bắt đầu=bot+1]
+const BASE = (process.env.GAME_SERVER ?? "http://localhost:4123").replace(/^http/, "ws");
+const PATH = "/api/typhu/ws";
+const n = Number(process.argv[2] ?? 3);
+const want = Number(process.argv[3] ?? n + 1);
+function conn() {
+  const ws = new WebSocket(BASE + PATH);
+  let nextId = 1;
+  const pending = new Map();
+  const c = { ws, view: null, onState: () => {} };
+  c.send = (msg) => new Promise((res) => { const id = nextId++; pending.set(id, res); ws.send(JSON.stringify({ ...msg, id })); });
+  ws.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.type === "ack") { pending.get(m.id)?.(m); pending.delete(m.id); }
+    else if (m.type === "state") { c.view = m.view; c.onState(m.view); }
+  };
+  c.open = new Promise((r) => (ws.onopen = r));
+  return c;
+}
+const host = conn(); await host.open;
+const { code } = await host.send({ type: "create" });
+host.ws.close();
+console.log("CODE", code);
+for (let i = 0; i < n; i++) {
+  const b = conn(); await b.open;
+  const name = ["Lan", "Minh", "Hùng", "Mai", "Tú"][i];
+  let busy = false;
+  b.onState = async (v) => {
+    const g = v.current;
+    if (i === 0 && !g && v.seats.filter(Boolean).length >= want) { await b.send({ type: "start" }); return; }
+    if (!g || g.status !== "playing" || g.turn !== v.meId || busy) return;
+    busy = true;
+    await new Promise((r) => setTimeout(r, 900));
+    const p = g.phase;
+    const cmd = p === "roll" ? "roll" : p === "buy" ? "buy" : p === "end" ? "end" : p === "jail" ? "payjail" : p === "debt" ? "bankrupt" : null;
+    if (cmd) { const a = await b.send({ type: cmd }); if (!a.ok && cmd === "buy") await b.send({ type: "skip" }); }
+    busy = false;
+  };
+  console.log(name, (await b.send({ type: "join", code, name, token: `bot-${name}-xxxx` })).ok);
+  setInterval(() => b.ws.send(JSON.stringify({ type: "ping" })), 10_000);
+}
+```
+
+**Kiểm tra bố cục** (Playwright + bot, ở 375, 390, 844×390, 768 và 1440 px): không tràn ngang; `GameButton` md / lg ≥ 44 px; dưới `lg` dọc mọi nhãn ô ≥ 10 px, `PlayerStrip` hiện không cần cuộn, quân cùng ô chồng nhau ≤ 30 %; ô đất / vay / đổi đất / luật / diễn biến / chọn quân là drawer (`[data-vaul-drawer]`) ở 375–390 px và `[role=dialog]` giữa màn hình từ 768 px; ⚙ → thanh dưới không đè nội dung lên nút chat; console không lỗi. Trong Playwright giả lập di động, `click()` không tới được phần tử trong `PinchZoom` — dùng `tap()`.
 
 **Hiệu ứng** (framer-motion, không có keyframes riêng)
 - Quân đi từng ô (`motion.span layoutId`, tween 0,16 giây).
@@ -731,7 +806,7 @@ Luật và protocol: `be_game/docs/games/typhu.md`.
 
 Phải khớp be_game `src/typhu/board.ts` và `protocol.ts`. `board.ts` là **bản chép nguyên văn** (chép lại mỗi khi be_game đổi): ngoài `BOARD` chuẩn còn có `MapSize`, `MAP_SIZES`, `MAP_LABEL`, `boardOf(map)`, `jailPos`, `CHANCE`/`CHEST`. `protocol.ts` có thêm `TPPiece`, `PIECE_EMOJIS`, `PIECE_COLORS`, `settings.map`, `current.map`.
 
-**Bản đồ.** Có 3 cỡ (40 / 48 / 56 ô, `MapSize`). `BOARD` trong `TyPhuTable.tsx` là **biến module** (`let BOARD: Square[] = STD_BOARD`, và `groupPositions` bọc theo nó) được `TableBody` gán lại ở đầu mỗi lần render theo bản đồ của ván — để các hàm ngoài component (`mortgageBlocker`, `buildableGroups`, `walkPath`…) không phải truyền bản đồ. Hệ quả: chỉ có **một** bàn Tỷ Phú trên trang, và component nào phụ thuộc kích thước bản đồ nhưng được `memo` thì phải nhận nó qua props.
+**Bản đồ.** Có 3 cỡ (40 / 48 / 56 ô, `MapSize`). `boardRef.current` (`board-ref.ts`, mặc định `STD_BOARD`; `groupPositions` bọc theo nó) được `TableBody` gán lại ở đầu mỗi lần render theo bản đồ của ván — để các hàm ngoài component (`mortgageBlocker`, `buildableGroups`, `walkPath`…) không phải truyền bản đồ. Hệ quả: chỉ có **một** bàn Tỷ Phú trên trang, và component nào phụ thuộc kích thước bản đồ nhưng được `memo` thì phải nhận nó qua props (`Cell` nhận `edge`).
 
 **Cài đặt.** `TableSettings` (`SettingsTabs light`, mỗi thay đổi gửi `act({type:"settings", …})`) có năm tab (💰, 🗺️, ⏱️, 🏠, 🏆):
 - **Luật nhanh** (`RULE_PRESETS`, hàng nút phía trên các tab, chỉ chủ bàn bấm được): gửi **một** message `settings` gộp nhiều trường. "⚡ Luật 2 người" = `doubleGo: true`, `timeLimit: 0` (đến khi còn 1 người), `stepSeconds: 45`. "⚡ Luật 3+ người" = như trên + `timeLimit: 45`, `buildRule: "chain"`, `needGroup: false`. Nút hợp với số người đang ngồi được tô đậm và ghi "(hợp với N người)".
@@ -741,7 +816,7 @@ Phải khớp be_game `src/typhu/board.ts` và `protocol.ts`. `board.ts` là **b
 - 🏠 Luật nhà: `buildRule` (`"even"`/`"chain"`), `needGroup` (tắt thì chưa đủ nhóm chỉ xây tối đa 3 nhà), `risingCost`, `sellLand` (đất đang thế chấp cũng bán được, chỉ nhận phần chênh), `bankruptTo`
 - 🏆 Điểm: `RankPointsPicker`
 
-**Phím tắt** (`useHotkeys`, lượt của mình; `Centre`):
+**Phím tắt** (`useHotkeys`, lượt của mình; `centre/Centre.tsx`):
 
 | Phím | Việc |
 |---|---|
@@ -753,7 +828,7 @@ Phải khớp be_game `src/typhu/board.ts` và `protocol.ts`. `board.ts` là **b
 | `L` | Mở / đóng "Toàn bộ diễn biến" (cả khi chưa tới lượt; nằm ở `TableBody`, `allowInDialog: ["l"]`) |
 | `Esc` | Đóng hộp Xây nhà |
 
-`CBtn` có prop `hotkey` (hiện `<kbd>`). Không bật khi `busy`. Dòng "Phím tắt: …" nằm dưới bàn (`lg:` và không cảm ứng).
+`CBtn` có prop `hotkey` (hiện `<kbd>`, cả ở `ActionBar` giữa bàn lẫn thanh dưới). Không bật khi `busy`. Dòng "Phím tắt: …" nằm dưới bàn (`lg:` và không cảm ứng).
 
 **Giới hạn đã biết**
 - Chưa có đấu giá, chưa có hiệu ứng khi tiền thay đổi.
@@ -1282,9 +1357,9 @@ Giả sử game có id `xyz` và route `/xyz`.
 - **Phím tắt chạy đôi.** Space / Enter trên nút đang focus đã được trình duyệt xử lý; `useHotkeys` bỏ qua trường hợp này. Nếu file đã có listener `keydown` riêng (Esc của dialog…), đừng thêm một binding trùng — kiểm tra `grep keydown` trước.
 - **`short:` và `lg:` cùng khớp.** Xem §5.1: tablet hoặc điện thoại ngang có thể vừa `sm:`/`md:` vừa `short:`, nên phải kiểm tra cả hai.
 
-- **Tỷ Phú: `Modal` phải render qua portal.** Giữa bàn cờ có lớp có `overflow` / `backdrop-filter`; một phần tử `fixed` nằm trong đó bị kẹt trong khung đó (hộp thoại "Xây nhà" từng chỉ hiện trong khu trung tâm và không đóng được trên tablet / điện thoại). `Modal` trong `TyPhuTable.tsx` dùng `createPortal(…, document.body)`, nên mở từ đâu cũng nằm trên cùng. Khung xanh ở giữa bàn chỉ vừa nội dung (`max-w-md`, nền mờ 85 %) để ảnh nền `public/games/typhu/center.webp` lộ ra xung quanh.
+- **Tỷ Phú: hộp thoại phải render qua portal.** Giữa bàn cờ có lớp có `overflow` / `backdrop-filter`; một phần tử `fixed` nằm trong đó bị kẹt trong khung đó (hộp thoại "Xây nhà" từng chỉ hiện trong khu trung tâm và không đóng được trên tablet / điện thoại). `Modal` (`typhu/shared.tsx`) bọc `GameDialog`, vốn tự render qua portal (drawer vaul dưới 768 px, base-ui Dialog từ `md`), nên mở từ đâu cũng nằm trên cùng. Đừng tự viết lại `fixed inset-0` trong `typhu/`. Khung xanh ở giữa bàn chỉ vừa nội dung (`max-w-md`, nền mờ 85 %) để ảnh nền `public/games/typhu/center.webp` lộ ra xung quanh.
 - **Tỷ Phú: hiệu ứng xây.** `BuildBurst` (trong `Cell`) nổ ngay trên ô khi số nhà tăng — chớp sáng, vòng sóng lan ra và tia lửa (khách sạn: vàng, to hơn). Nhà / khách sạn trên bản đồ có viền trắng mỏng (`drop-shadow` 4 hướng) để nổi trên dải màu. Banner giữa bàn (`BuildOverlay`) vẫn giữ.
 - **Thư viện dùng chung cho game** (đã thêm vào `package.json`): `@number-flow/react` (số tiền nhảy mượt — `PlayerRow` của Tỷ Phú), `@formkit/auto-animate` (`useAutoAnimate` cho danh sách log / người chơi / khoản vay), `sonner` (một `<Toaster>` trong `GamesShell`; lỗi lệnh và lời mời đổi / vay gửi cho mình hiện bằng `toast()`), `canvas-confetti` (nạp động trong `WinCelebration`, pháo từ hai góc + pháo hoa) và `@use-gesture/react` (`PinchZoom.tsx`: pinch-zoom 1×–2,6× và kéo để di chuyển bàn Tỷ Phú dưới `lg`, nút "🔍 Thu nhỏ"; ở 1× một ngón vẫn cuộn trang, chạm vào ô vẫn mở được). Bàn game khác cần zoom thì bọc bằng `PinchZoom`.
 - **Font tiêu đề game**: `gameFont.ts` (Baloo 2, có tiếng Việt) qua `next/font`, đặt biến `--font-game` ở wrapper của `GamesShell`; mọi `h1`/`h2`/`h3` trong các trang game dùng font này, chỗ khác dùng `[font-family:var(--font-game)]`. Chỉ nạp cùng layout games, các trang còn lại của site không bị ảnh hưởng.
-- **Tỷ Phú: tự động chơi (tính năng ẩn).** `Ctrl+Shift+Y` gửi `{ type: "auto", on }` lên be_game; **server** chơi thay như với người mất kết nối (mỗi bước `ABSENT_MS` = 2,5 s, xử lý cả tù và nợ — bán tài sản / trả nợ / phá sản), vẫn chạy khi tab bị ẩn và giữ nguyên sau khi tải lại. Khác người mất kết nối: mua ô nếu giá `< AUTO_BUY_BELOW` (300) **và** tiền sau khi mua `> AUTO_KEEP_CASH` (150), cuối lượt tự xây nhà ở chỗ `buildBlocker` cho phép (đủ nhóm màu, xây đều / chuỗi, không thế chấp) — ô ít nhà nhất rồi rẻ nhất — vẫn giữ > 150tr. Đổi đất, vay, trả lời lời mời vẫn thủ công (lời mời gửi tới mình vẫn chờ tới hạn). Huy hiệu "🤖 Tự động chơi" lấy từ `view.auto` (chỉ có trong view của chính mình). Client chỉ có phím tắt trong `Centre` (`TyPhuTable.tsx`); luật nằm ở be_game `src/typhu/game.ts` (`autoStep`, `autoBuild`).
+- **Tỷ Phú: tự động chơi (tính năng ẩn).** `Ctrl+Shift+Y` gửi `{ type: "auto", on }` lên be_game; **server** chơi thay như với người mất kết nối (mỗi bước `ABSENT_MS` = 2,5 s, xử lý cả tù và nợ — bán tài sản / trả nợ / phá sản), vẫn chạy khi tab bị ẩn và giữ nguyên sau khi tải lại. Khác người mất kết nối: mua ô nếu giá `< AUTO_BUY_BELOW` (300) **và** tiền sau khi mua `> AUTO_KEEP_CASH` (150), cuối lượt tự xây nhà ở chỗ `buildBlocker` cho phép (đủ nhóm màu, xây đều / chuỗi, không thế chấp) — ô ít nhà nhất rồi rẻ nhất — vẫn giữ > 150tr. Đổi đất, vay, trả lời lời mời vẫn thủ công (lời mời gửi tới mình vẫn chờ tới hạn). Huy hiệu "🤖 Tự động chơi" lấy từ `view.auto` (chỉ có trong view của chính mình). Client chỉ có phím tắt trong `Centre` (`typhu/centre/Centre.tsx`); luật nằm ở be_game `src/typhu/game.ts` (`autoStep`, `autoBuild`).
 - **Tỷ Phú: nền toàn màn hình** — ảnh `public/games/typhu/center.webp` làm mờ (`blur-2xl`), phóng `scale-110` và `bg-cover` để phủ kín màn hình theo cạnh dài nhất, phủ thêm lớp đen 55 %. Nằm ở đầu root của `TableBody` (`fixed inset-0 -z-10`, root có `isolate`).
