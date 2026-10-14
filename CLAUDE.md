@@ -19,6 +19,30 @@ favour of hosting the games; that code was removed in `refactor/repurpose-as-gam
 - `docs/GAMES_GUIDE.md`: how to add a game. `scripts/card-art.mjs`: card art
   pipeline (`npm run art:meono` / `art:bang`).
 
+### Game notes (carried over from the portfolio repo's CLAUDE.md)
+- `src/lib/<game>/` are client copies of be_game's data + protocol
+  (`be_game/src/<game>/{cards|board,protocol}.ts`) — keep them in sync. Rule
+  tests live in be_game (`npx vitest run`).
+- Hub cards (taglines, player-count tags) are hard-coded in `src/app/page.tsx`
+  — update them when a game's rules/player counts change.
+- One player name for all games: `localStorage["games:playerName"]`
+  (`getSavedName`/`saveName`/`usePlayerName` in `gameClient.ts`). Table pages
+  freeze the name at mount. "My turn" highlight: `TurnRing` + `MyTurnBadge`
+  (`src/components/games/TurnIndicator.tsx`).
+- Player icon + colour: the client sends `look` (`{icon,color}`,
+  `getSavedProfile()`) in `join`/`watch`; be_game attaches `looks` (by name) to
+  every state view. Read it with `useLookOf(name)` / `SeatAvatar`
+  (`src/components/games/PlayerAvatar.tsx`) — new games should use `SeatAvatar`.
+- Cờ Tỷ Phú: 3 map sizes (`MapSize` 40/48/56, `boardOf(map)` in
+  `src/lib/typhu/board.ts`); `TyPhuTable` sets the module-level `BOARD` from
+  `g.map ?? settings.map` before rendering children. "Luật nhanh"
+  (`RULE_PRESETS`) sends one merged `settings` message.
+- Keyboard shortcuts: `useHotkeys` (`src/components/games/useHotkeys.ts`);
+  each key repeats its button's condition and the button shows a `<kbd>` badge
+  (hidden on touch). Per-game tables: `docs/GAMES_GUIDE.md` §3.12 and §4.
+- Win effect: `WinCelebration` inside each game's `Table`, fired only on the
+  playing → finished transition (`docs/GAMES_GUIDE.md` §3.11b).
+
 ## Repository conventions
 
 ### Secrets
