@@ -46,15 +46,16 @@ export function SeatChip({
           aria-hidden
           className={cn("absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-black/60", online ? "bg-emerald-400" : "bg-zinc-500")}
         />
+        {/* The host's crown sits on top of their avatar. */}
+        {isHost && (
+          <span role="img" aria-label="Chủ phòng" className={cn("pointer-events-none absolute left-1/2 -translate-x-1/2 leading-none drop-shadow", size === "sm" ? "-top-2 text-[10px]" : "-top-3 text-sm")}>
+            👑
+          </span>
+        )}
       </span>
       <span className="min-w-0">
         <span className="flex min-w-0 items-center gap-1 font-bold leading-tight">
           <span className="truncate">{name}</span>
-          {isHost && (
-            <span role="img" aria-label="Chủ phòng" className="shrink-0">
-              👑
-            </span>
-          )}
           {isYou && <span className="shrink-0 rounded-full bg-white/15 px-1.5 text-[10px] font-extrabold">Bạn</span>}
         </span>
         {points !== undefined && <NumberFlow value={points} className="block text-xs font-bold tabular-nums text-game-accent" />}

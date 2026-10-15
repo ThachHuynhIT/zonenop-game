@@ -73,11 +73,17 @@ export function ActionBar({
     return () => ro.disconnect();
   }, [onHeight, bottom]);
 
-  // My turn: a light runs around the turn line + my controls.
+  // My turn: a light runs around my controls; in the board centre "Lượt của bạn" and my clock sit on that border.
+  const onBorder = myTurn && !bottom;
   const content = (
-    <div className={cn("relative flex w-full flex-col items-center gap-2 rounded-2xl", myTurn && (bottom ? "p-1.5" : "bg-rose-50/40 p-2 short:p-1.5"))}>
+    <div className={cn("relative flex w-full flex-col items-center gap-2 rounded-2xl", myTurn && (bottom ? "p-1.5" : "mt-5 bg-rose-50/40 p-2 pt-6 short:mt-4 short:p-1.5 short:pt-5"))}>
       {myTurn && <span aria-hidden className="game-beam" />}
-      <p className="flex max-w-full items-center gap-2 text-xs sm:text-sm">
+      <p
+        className={cn(
+          "flex max-w-full items-center gap-2 text-xs sm:text-sm",
+          onBorder && "absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#e8f5ec] py-0.5 pl-1 pr-0.5 shadow-md",
+        )}
+      >
         {myTurn ? <GameBadge tone="accent" role="status">Lượt của bạn</GameBadge> : <span>Lượt của <b>{turnName}</b></span>}
         {/* The bar's Mua button only has room for the price: the square's name goes on the turn line instead. */}
         {bottom && myTurn && g.phase === "buy" && here && isOwnable(here) && <span className="min-w-0 truncate font-semibold text-white/90">{here.name}</span>}

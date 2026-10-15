@@ -6,7 +6,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { toast as showToast } from "sonner";
 import { ChatBox } from "@/components/games/ChatBox";
 import { GameHeader, HeaderLabel, headerBtn } from "@/components/games/GameHeader";
-import { useGameRoom } from "@/components/games/gameClient";
+import { useGameRoom, useRoomLooks } from "@/components/games/gameClient";
 import { PinchZoom } from "@/components/games/PinchZoom";
 import { useHotkeys } from "@/components/games/useHotkeys";
 import { SpectatorReactions, useLiveReactions } from "@/components/tienlen/Effects";
@@ -23,6 +23,7 @@ import { GameThemeScope } from "@/components/game-ui/theme";
 import { boardRef } from "./board-ref";
 import { NowProvider, NowClock } from "./now";
 import { TOKENS, money, pieceOfSeat, type Act } from "./shared";
+import { seatTokens } from "./tokens";
 import { useWalkingTokens } from "./board/walk";
 import { usePhonePortrait, useTyPhuPrefs } from "./prefs";
 import { TableOptions } from "./TableOptions";
@@ -38,7 +39,6 @@ import { SquareModal } from "./dialogs/SquareDialog";
 import { LoanModal } from "./dialogs/LoanDialog";
 import { TradeModal } from "./dialogs/TradeDialog";
 import { RulesModal } from "./dialogs/RulesDialog";
-import { PiecePicker } from "./dialogs/PiecePicker";
 import { LogList, LogModal } from "./dialogs/LogDialog";
 import { Waiting } from "./waiting/Waiting";
 // Only needed before a game starts / after it ends (and Base UI tabs are heavy): fetched on demand.
@@ -137,10 +137,11 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const seatOf = (id: string) => view.seats.find((s) => s?.id === id) ?? null;
   const nameOf = (id: string) =>
     seatOf(id)?.name ?? view.history.flatMap((h) => h.results).find((r) => r.id === id)?.name ?? "?";
-  const tokenOf = (id: string) => {
-    const seat = seatOf(id);
-    return seat ? pieceOfSeat(seat) : TOKENS[(g?.players.findIndex((p) => p.id === id) ?? 0) % TOKENS.length];
-  };
+  // Tokens wear each player's site look (icon + colour); a colour already taken at the table is swapped for a free one.
+  const looks = useRoomLooks();
+  const seated = view.seats.filter((s): s is TPSeatView => !!s);
+  const tokens = seatTokens(seated, looks, (id) => pieceOfSeat(seated.find((s) => s.id === id)!));
+  const tokenOf = (id: string) => tokens.get(id) ?? TOKENS[(g?.players.findIndex((p) => p.id === id) ?? 0) % TOKENS.length];
 
   const shownPos = useWalkingTokens(g);
   // Who stands on each square right now (walking animation included): the cells only get what they draw.
@@ -153,7 +154,6 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
     hereByPos.set(pos, list);
   }
   const [openSquare, setOpenSquare] = useState<number | null>(null);
-  const [picking, setPicking] = useState(false);
   const [showTrade, setShowTrade] = useState(false);
   const [showLoan, setShowLoan] = useState(false);
   const [showScores, setShowScores] = useState(false);
@@ -368,7 +368,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
       {/* Sideways phone: board as tall as the screen allows on the left, the side panel scrolling on the right. */}
       <div className="grid flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 lg:grid-cols-[minmax(0,calc(100dvh-5rem))_20rem] lg:justify-center lg:gap-4 xl:grid-cols-[minmax(0,calc(100dvh-5rem))_22rem] short:grid-cols-[auto_minmax(0,1fr)] short:items-start short:gap-2">
         {/* Phones held upright: the players above the board, the short log and quick buttons below it. */}
-        <PlayerStrip seats={view.seats} g={g} meId={view.meId} tokenOf={tokenOf} onOpen={openPlayer} />
+        {minimal && <PlayerStrip seats={view.seats} g={g} meId={view.meId} tokenOf={tokenOf} onOpen={openPlayer} />}
         {/* Board */}
         <div className="relative mx-auto w-full max-w-[min(100%,calc(100dvh-7rem))] lg:max-w-none short:w-[calc(100dvh-3.75rem)] short:max-w-none">
           <SpectatorReactions reactions={live.filter((r) => !r.playerId)} />
@@ -393,7 +393,6 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                   here={here ?? NO_TOKENS}
                   highlight={!!here?.some((t) => t.turn)}
                   compact={compact}
-                  names={!minimal}
                   onOpen={setOpenSquare}
                 />
               );
@@ -487,8 +486,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
               </Suspense>
             </div>
           )}
-          <GamePanel title="Người chơi" className={cn("p-3 sm:p-3 short:p-2", minimal && "hidden")}>
-            <ul ref={playersRef} className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+          <GamePanel className={cn("p-3 sm:p-3 short:p-2", minimal && "hidden")}>
+            <ul ref={playersRef} aria-label="Người chơi" className="grid grid-cols-2 gap-2 lg:grid-cols-1">
               {view.seats
                 .filter((s): s is TPSeatView => !!s)
                 .map((s) => {
@@ -504,7 +503,6 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                       isTurn={g?.turn === s.id && playing}
                       reactions={reactionsFor(s.id)}
                       onOpen={setOpenSquare}
-                      onPick={s.id === view.meId ? () => setPicking(true) : undefined}
                       onKick={me?.isHost && !s.connected && !s.kicked ? () => void kick(s) : undefined}
                     />
                   );
@@ -579,7 +577,6 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                 setViewPlayer(null);
                 setOpenSquare(pos);
               }}
-              onPick={viewPlayer === view.meId ? () => { setViewPlayer(null); setPicking(true); } : undefined}
               onKick={me?.isHost && !seatOf(viewPlayer)!.connected && !seatOf(viewPlayer)!.kicked ? () => { setViewPlayer(null); void kick(seatOf(viewPlayer)!); } : undefined}
             />
           </ul>
@@ -590,7 +587,6 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
         <ActionBar placement="bottom" g={g} view={view} myTurn={myTurn} mine={mine} busy={busy} run={run} nameOf={nameOf} assetsOpen={assetsOpen} onOpenAssets={openAssets} onBuild={() => setShowBuild(true)} onHeight={setBarHeight} />
       )}
 
-      {picking && me && <PiecePicker seats={view.seats} meId={view.meId} act={act} onClose={() => setPicking(false)} />}
 
       {openSquare !== null && (
         <SquareModal

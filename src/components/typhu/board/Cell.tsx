@@ -118,8 +118,6 @@ interface CellProps {
   highlight: boolean;
   /** Narrow squares (phones): smaller icon and name, thinner colour band. */
   compact: boolean;
-  /** False in the minimal view: icons and colours only, no square names or prices. */
-  names: boolean;
   onOpen: (pos: number) => void;
 }
 
@@ -130,7 +128,6 @@ const sameCell = (a: CellProps, b: CellProps) =>
   a.pot === b.pot &&
   a.highlight === b.highlight &&
   a.compact === b.compact &&
-  a.names === b.names &&
   a.onOpen === b.onOpen &&
   a.deed?.owner === b.deed?.owner &&
   a.deed?.houses === b.deed?.houses &&
@@ -140,7 +137,7 @@ const sameCell = (a: CellProps, b: CellProps) =>
   a.here.length === b.here.length &&
   a.here.every((t, i) => t.id === b.here[i].id && t.emoji === b.here[i].emoji && t.color === b.here[i].color && t.turn === b.here[i].turn);
 
-export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here, highlight, compact, names, onOpen }: CellProps) {
+export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here, highlight, compact, onOpen }: CellProps) {
   const { row, col, side } = cellOf(index, edge);
   const band = sq.kind === "prop" ? GROUP_COLORS[sq.group] : null;
   const bandSide = side === "bottom" ? "top" : side === "top" ? "bottom" : side === "left" ? "right" : side === "right" ? "left" : null;
@@ -195,7 +192,7 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
         <span className="pointer-events-none flex flex-col items-center">
           {sq.kind !== "prop" && squareImg(sq) ? <ArtIcon name={squareImg(sq)!} className={side === "corner" ? "size-5" : "size-4"} /> : null}
           {/* The place name, not its price: tap the square for prices and rents. */}
-          {names && <span className="line-clamp-2 break-words text-[7px] font-semibold leading-[1.1]">{sq.kind === "air" ? sq.name.replace("Sân bay ", "SB ") : sq.name}</span>}
+          <span className="line-clamp-2 break-words text-[7px] font-semibold leading-[1.1]">{sq.kind === "air" ? sq.name.replace("Sân bay ", "SB ") : sq.name}</span>
           {sq.kind === "parking" && !!pot && <span className="rounded bg-amber-300 px-1 text-[10px] font-bold leading-none text-amber-950">💰 {money(pot)}</span>}
         </span>
       ) : (
@@ -203,12 +200,10 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
           {squareImg(sq) ? (
             <ArtIcon name={squareImg(sq)!} className={cn(side === "corner" ? "size-5 sm:size-9 short:size-5" : "size-3.5 sm:size-6 short:size-3.5")} />
           ) : null}
-          {names && (
-            <span className={cn("line-clamp-2 font-semibold", side === "corner" ? "text-[8px] sm:text-xs short:text-[8px]" : "text-[6px] sm:text-[9px] xl:text-[10px] short:text-[6px]")}>
-              {sq.kind === "air" ? sq.name.replace("Sân bay ", "SB ") : sq.name}
-            </span>
-          )}
-          {names && isOwnable(sq) && !deed && <span className="hidden text-[8px] text-emerald-900/70 sm:block short:hidden">{money(sq.price)}</span>}
+          <span className={cn("line-clamp-2 font-semibold", side === "corner" ? "text-[8px] sm:text-xs short:text-[8px]" : "text-[6px] sm:text-[9px] xl:text-[10px] short:text-[6px]")}>
+            {sq.kind === "air" ? sq.name.replace("Sân bay ", "SB ") : sq.name}
+          </span>
+          {isOwnable(sq) && !deed && <span className="hidden text-[8px] text-emerald-900/70 sm:block short:hidden">{money(sq.price)}</span>}
           {deed?.mortgaged && <span className="text-[6px] font-bold text-rose-700 sm:text-[8px] short:text-[6px]">THẾ CHẤP</span>}
           {sq.kind === "parking" && !!pot && (
             <span className="rounded bg-amber-300 px-1 text-[7px] font-bold text-amber-950 sm:text-[10px] short:text-[7px]">💰 {money(pot)}</span>

@@ -1,6 +1,5 @@
 "use client";
 
-import { SeatAvatar } from "@/components/games/PlayerAvatar";
 import NumberFlow from "@number-flow/react";
 import { SeatBubble } from "@/components/tienlen/Effects";
 import { signed } from "@/components/tienlen/Scoreboard";
@@ -22,19 +21,17 @@ export function PlayerRow({
   isTurn,
   reactions,
   onOpen,
-  onPick,
   onKick,
 }: {
   seat: TPSeatView;
   p: TPPlayerView | null;
   g: TPGameView | null;
   self: boolean;
+  /** The player's token: their site look (see seatTokens). */
   token: { emoji: string; color: string };
   isTurn: boolean;
   reactions: Reaction[];
   onOpen: (pos: number) => void;
-  /** Own row only: opens the token picker. */
-  onPick?: () => void;
   onKick?: () => void;
 }) {
   const owned = g ? Object.entries(g.deeds).filter(([, d]) => d.owner === seat.id).map(([pos]) => Number(pos)) : [];
@@ -43,25 +40,21 @@ export function PlayerRow({
       <div className="flex items-center gap-2">
         <span className="relative">
           <SeatBubble reactions={reactions} />
-          <button
-            type="button"
-            disabled={!onPick}
-            onClick={onPick}
-            title={onPick ? "Đổi quân cờ & màu" : undefined}
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-lg",
-              (!seat.connected || seat.kicked) && "grayscale",
-              onPick && "cursor-pointer ring-amber-300 hover:ring-2 max-sm:min-h-9",
-            )}
+          <span
+            className={cn("flex size-9 items-center justify-center rounded-full border-2 border-white text-lg font-bold text-black", (!seat.connected || seat.kicked) && "grayscale")}
             style={{ background: token.color }}
           >
             {token.emoji}
-          </button>
+          </span>
+          {/* The host's crown sits on top of their token. */}
+          {seat.isHost && (
+            <span role="img" aria-label="Chủ bàn" title="Chủ bàn" className="pointer-events-none absolute -top-3 left-1/2 -translate-x-1/2 text-sm leading-none drop-shadow">
+              👑
+            </span>
+          )}
         </span>
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1 truncate text-sm font-semibold">
-            {seat.isHost && <span title="Chủ bàn">👑</span>}
-            <SeatAvatar name={seat.name} className="grid size-5 shrink-0 place-items-center rounded-full text-[11px]" fallbackClassName="bg-white/15 font-bold" />
             <span className="truncate">{seat.name}</span>
             {self && <span className="text-xs font-normal text-white/60">(bạn)</span>}
           </p>
