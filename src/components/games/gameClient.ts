@@ -379,7 +379,7 @@ export function useGameRoom<V>(
     let retry = 0;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     const token = getToken();
-    /** Backend this room lives on once known. Reconnects stay on it: the other backend has no such room. */
+    /** Backend this room lives on once known. Reconnects try it first, then the others (see basesToTry). */
     let roomBase = knownRoomServer(wsPath, code);
 
     /** Connect to one backend and join (or watch) the room there. */
@@ -413,7 +413,7 @@ export function useGameRoom<V>(
      * Open a channel and join. Used for the first connection, after drops, and
      * for a planned hand-over (`reconnect` from the server before the platform
      * cuts the connection): the new channel joins before the old one closes.
-     * While the room's backend is unknown (a shared link), each backend is tried in turn.
+     * Each backend is tried in turn, the room's own first once it is known.
      */
     const open = async () => {
       if (disposed) return;
@@ -430,7 +430,11 @@ export function useGameRoom<V>(
           if (!roomBase) markUnreachable(base);
           continue;
         }
-        if (outcome === "not-found") continue;
+        // The room's own backend answering "not found" is final: the room is gone.
+        if (outcome === "not-found") {
+          if (base === roomBase) break;
+          continue;
+        }
         if (!(outcome instanceof Channel)) {
           setStatus("error");
           setError(outcome.error);
