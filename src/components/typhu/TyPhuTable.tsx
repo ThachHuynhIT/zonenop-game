@@ -20,13 +20,13 @@ import { GameButton } from "@/components/game-ui/GameButton";
 import { GameDialog } from "@/components/game-ui/GameDialog";
 import { GamePanel } from "@/components/game-ui/GamePanel";
 import { GameThemeScope } from "@/components/game-ui/theme";
-import { boardRef, groupPositions } from "./board-ref";
+import { boardRef } from "./board-ref";
 import { NowProvider, NowClock } from "./now";
 import { TOKENS, money, pieceOfSeat, type Act } from "./shared";
 import { useWalkingTokens } from "./board/walk";
 import { usePhonePortrait, useTyPhuPrefs } from "./prefs";
 import { TableOptions } from "./TableOptions";
-import { cellLabel, isCompact, rentAmount, sideCellPx } from "./board/layout";
+import { isCompact, sideCellPx } from "./board/layout";
 import { type CellToken, NO_TOKENS, Cell } from "./board/Cell";
 import { ActionBar } from "./centre/ActionBar";
 import { Centre } from "./centre/Centre";
@@ -170,6 +170,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   // Action buttons: this viewer's choice (phones held upright only); everywhere else they stay in the board centre.
   const [prefs, setPrefs] = useTyPhuPrefs();
   const placement = phonePortrait && prefs.actions === "bottom" ? "bottom" : "center";
+  // Minimal view (phones held upright only): no square names, no players panel (the chips above the board stay).
+  const minimal = phonePortrait && prefs.view === "minimal";
   const [showBuild, setShowBuild] = useState(false);
   // Height of the bottom bar (it grows when the buttons wrap): the page leaves that much room under its content.
   const [barHeight, setBarHeight] = useState(120);
@@ -379,9 +381,6 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
             {boardRef.current.map((sq, i) => {
               const here = hereByPos.get(i);
               const deed = g?.deeds[i];
-              // Same-kind squares (airports / utilities) the owner holds, and whether they hold the whole colour group: both set the rent.
-              const owned = deed && g ? Object.entries(g.deeds).filter(([p, x]) => x.owner === deed.owner && boardRef.current[Number(p)].kind === sq.kind).length : 0;
-              const full = sq.kind === "prop" && !!deed && !!g && groupPositions(sq.group).every((p) => g.deeds[p]?.owner === deed.owner);
               return (
                 <Cell
                   key={i}
@@ -394,17 +393,17 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                   here={here ?? NO_TOKENS}
                   highlight={!!here?.some((t) => t.turn)}
                   compact={compact}
-                  label={cellLabel(sq, deed, rentAmount(sq, deed, owned, full))}
+                  names={!minimal}
                   onOpen={setOpenSquare}
                 />
               );
             })}
             {/* Centre */}
-            <div className="relative flex flex-col items-center justify-center-safe gap-2 overflow-y-auto overflow-x-hidden bg-[#0b1d3a] bg-cover bg-center p-[5%] text-emerald-950 short:gap-1 short:p-[3%]" style={{ gridColumn: `2 / ${boardRef.current.length / 4 + 1}`, gridRow: `2 / ${boardRef.current.length / 4 + 1}`, backgroundImage: "url(/games/typhu/center.webp)" }}>
+            <div className="relative flex flex-col items-center justify-center-safe gap-2 overflow-y-auto overflow-x-hidden bg-[#0b1d3a] bg-cover bg-center p-[2%] text-emerald-950 short:gap-1 short:p-[1.5%]" style={{ gridColumn: `2 / ${boardRef.current.length / 4 + 1}`, gridRow: `2 / ${boardRef.current.length / 4 + 1}`, backgroundImage: "url(/games/typhu/center.webp)" }}>
               <CardOverlay card={cardFx} nameOf={nameOf} onClose={() => setCardFx(null)} />
               <BuildOverlay fx={buildFx} />
               <BankruptOverlay fx={bankruptFx} />
-              <div className="flex max-h-full min-h-0 w-full max-w-md flex-none flex-col items-center justify-center-safe gap-2 overflow-y-auto rounded-[1.5rem] bg-[#dff1e5]/85 p-2 shadow-xl ring-1 ring-amber-300/50 sm:p-4 short:gap-1 short:p-1.5">
+              <div className="flex max-h-full min-h-0 w-full max-w-md flex-none flex-col items-center justify-center-safe gap-2 overflow-y-auto rounded-[1.5rem] bg-[#dff1e5]/60 p-1.5 shadow-xl ring-1 ring-amber-300/50 backdrop-blur-[2px] sm:p-2.5 short:gap-1 short:p-1">
               {!g || g.status === "ended" ? (
                 <Waiting view={view} me={me} act={act} nameOf={nameOf} />
               ) : (
@@ -488,7 +487,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
               </Suspense>
             </div>
           )}
-          <GamePanel title="Người chơi" className="p-3 sm:p-3 max-lg:hidden short:block short:p-2">
+          <GamePanel title="Người chơi" className={cn("p-3 sm:p-3 short:p-2", minimal && "hidden")}>
             <ul ref={playersRef} className="grid grid-cols-2 gap-2 lg:grid-cols-1">
               {view.seats
                 .filter((s): s is TPSeatView => !!s)

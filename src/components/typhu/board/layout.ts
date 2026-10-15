@@ -1,13 +1,6 @@
 import { AIR_RENT, isOwnable, type Square } from "@/lib/typhu/board";
 import type { Deed } from "@/lib/typhu/protocol";
 
-/** Compact number for tiny squares: 220, 1k, 1,3k. */
-export function shortNum(n: number): string {
-  if (n < 1000) return String(n);
-  const k = Math.round(n / 100) / 10;
-  return `${String(k).replace(".", ",")}k`;
-}
-
 /**
  * Rent due on an owned square right now (null = no deed, or it depends on the dice). `ownerCount` = squares of the same
  * kind (airports / utilities) the owner holds; `fullGroup` = the owner holds the whole colour group.
@@ -20,14 +13,6 @@ export function rentAmount(sq: Square, deed: Deed | undefined, ownerCount: numbe
   return null; // utilities: dice total × multiplier
 }
 
-/** The one number a compact square shows: price when free, rent when owned, the amount for a tax; "" for icon-only squares. */
-export function cellLabel(sq: Square, deed: Deed | undefined, rent: number | null): string {
-  if (sq.kind === "tax") return shortNum(sq.amount);
-  if (!isOwnable(sq)) return "";
-  if (!deed) return shortNum(sq.price);
-  if (deed.mortgaged) return "TC";
-  return rent === null ? "🎲" : shortNum(rent);
-}
 
 const SLOTS: { x: number; y: number }[][] = [
   [],

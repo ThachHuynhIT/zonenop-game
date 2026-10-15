@@ -3,18 +3,24 @@
 import { useCallback, useState, useSyncExternalStore } from "react";
 
 export type ActionsPlacement = "center" | "bottom";
+export type ViewMode = "full" | "minimal";
 export interface TyPhuPrefs {
   /** Phones only: action buttons in the board centre (default) or in a bar stuck to the bottom of the screen. */
   actions: ActionsPlacement;
+  /** Phones only: everything on screen (players with cash and houses, square names) or just the board and the player chips. */
+  view: ViewMode;
 }
-export const DEFAULT_PREFS: TyPhuPrefs = { actions: "center" };
+export const DEFAULT_PREFS: TyPhuPrefs = { actions: "center", view: "full" };
 export const PREFS_KEY = "typhu:prefs";
 
 /** Saved prefs, falling back to the defaults for anything missing or broken. */
 export function parsePrefs(raw: string | null): TyPhuPrefs {
   try {
     const v: unknown = raw ? JSON.parse(raw) : null;
-    if (v && typeof v === "object" && !Array.isArray(v) && (v as { actions?: unknown }).actions === "bottom") return { actions: "bottom" };
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const { actions, view } = v as { actions?: unknown; view?: unknown };
+      return { actions: actions === "bottom" ? "bottom" : "center", view: view === "minimal" ? "minimal" : "full" };
+    }
   } catch {
     // broken JSON: defaults
   }

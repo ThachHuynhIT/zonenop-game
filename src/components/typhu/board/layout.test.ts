@@ -1,23 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { BOARD, type Square } from "@/lib/typhu/board";
 import type { Deed } from "@/lib/typhu/protocol";
-import { COMPACT_CELL_PX, cellLabel, isCompact, rentAmount, shortNum, sideCellPx, tokenMinPx, tokenSlots } from "./layout";
+import { COMPACT_CELL_PX, isCompact, rentAmount, sideCellPx, tokenMinPx, tokenSlots } from "./layout";
 
 const prop = BOARD.find((s) => s.kind === "prop") as Extract<Square, { kind: "prop" }>;
 const air = BOARD.find((s) => s.kind === "air")!;
 const util = BOARD.find((s) => s.kind === "util")!;
-const tax = BOARD.find((s) => s.kind === "tax") as Extract<Square, { kind: "tax" }>;
-const chance = BOARD.find((s) => s.kind === "chance")!;
 const deed = (d: Partial<Deed> = {}): Deed => ({ owner: "p1", houses: 0, mortgaged: false, ...d }) as Deed;
-
-describe("shortNum", () => {
-  it("keeps small numbers and shortens thousands", () => {
-    expect(shortNum(220)).toBe("220");
-    expect(shortNum(1000)).toBe("1k");
-    expect(shortNum(1250)).toBe("1,3k");
-    expect(shortNum(2000)).toBe("2k");
-  });
-});
 
 describe("rentAmount", () => {
   it("is the base rent, doubled for a full group, then the house row", () => {
@@ -32,21 +21,6 @@ describe("rentAmount", () => {
   });
   it("grows with the number of airports owned", () => {
     expect(rentAmount(air, deed(), 2, false)).toBeGreaterThan(rentAmount(air, deed(), 1, false)!);
-  });
-});
-
-describe("cellLabel", () => {
-  it("shows the price of a free square and the rent of an owned one", () => {
-    expect(cellLabel(prop, undefined, null)).toBe(shortNum(prop.price));
-    expect(cellLabel(prop, deed(), 26)).toBe("26");
-  });
-  it("marks mortgaged squares, dice-based rent and taxes (the amount only: \"Thuế 150\" does not fit a 20 px square, the icon says it is a tax)", () => {
-    expect(cellLabel(prop, deed({ mortgaged: true }), 0)).toBe("TC");
-    expect(cellLabel(util, deed(), null)).toBe("🎲");
-    expect(cellLabel(tax, undefined, null)).toBe(shortNum(tax.amount));
-  });
-  it("is empty for squares that only show an icon", () => {
-    expect(cellLabel(chance, undefined, null)).toBe("");
   });
 });
 

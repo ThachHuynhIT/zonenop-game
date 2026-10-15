@@ -115,7 +115,7 @@ export function ActionBar({
                 disabled={busy || mine.cash < here.price}
                 // The bar shows the price only: the screen-reader name still says which square.
                 aria-label={bottom ? `Mua ${here.name} · ${money(here.price)}` : undefined}
-                className="h-auto min-h-11 max-w-full whitespace-normal py-1.5">
+                className="h-auto min-h-10 max-w-full whitespace-normal py-1.5">
                 🏷️ Mua {!bottom && here.name} · {money(here.price)}
               </CBtn>
               <CBtn hotkey="S" onClick={() => void run({ type: "skip" })} disabled={busy}>

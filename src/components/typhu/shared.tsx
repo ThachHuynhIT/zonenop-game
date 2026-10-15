@@ -111,7 +111,7 @@ export function CBtn({
       title={title}
       aria-label={ariaLabel}
       // The centre panel is pale: the translucent-white secondary style would be unreadable on it.
-      className={cn(!primary && !danger && !build && "bg-emerald-900/80 text-white hover:bg-emerald-800/90", className)}
+      className={cn("h-10 min-w-10 px-4 text-sm", !primary && !danger && !build && "bg-emerald-900/80 text-white hover:bg-emerald-800/90", className)}
     >
       {children}
       {hotkey && (
@@ -138,7 +138,7 @@ export function rentDue(g: TPGameView, pos: number): { text: string; row: number
   if (!d || !isOwnable(b)) return null;
   if (d.mortgaged) return { text: "0 — đang thế chấp", row: null, free: true };
   const count = Object.entries(g.deeds).filter(([p, x]) => x.owner === d.owner && boardRef.current[Number(p)].kind === b.kind).length;
-  // The number comes from rentAmount, the same helper the board squares use, so the two never disagree.
+  // The number comes from rentAmount, which the rent tests pin down.
   const full = b.kind === "prop" && groupPositions(b.group).every((p) => g.deeds[p]?.owner === d.owner);
   const amount = rentAmount(b, d, count, full);
   if (b.kind === "prop") return { text: money(amount ?? 0), row: d.houses > 0 ? d.houses : 0 };
