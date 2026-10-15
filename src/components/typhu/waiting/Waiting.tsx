@@ -1,9 +1,12 @@
 "use client";
 
+import { lazy, Suspense } from "react";
 import { DeltaBadge } from "@/components/tienlen/Scoreboard";
 import { type TPRoomView, type TPSeatView } from "@/lib/typhu/protocol";
 import { money, type Act } from "../shared";
-import { TableSettings } from "./TableSettings";
+
+// Base UI tabs are heavy and only the host's lobby needs them: fetched on demand.
+const TableSettings = lazy(() => import("./TableSettings").then((m) => ({ default: m.TableSettings })));
 
 // ─── Waiting / results ──────────────────────────────────────────────
 
@@ -45,7 +48,9 @@ export function Waiting({ view, me, act, nameOf }: { view: TPRoomView; me: TPSea
       )}
 
       {/* Small boards (phones): the rules live beside / below the board instead of in its tiny centre. */}
-      <TableSettings view={view} isHost={isHost} act={act} className="mb-3 max-sm:hidden short:hidden" />
+      <Suspense fallback={null}>
+        <TableSettings view={view} isHost={isHost} act={act} className="mb-3 max-sm:hidden short:hidden" />
+      </Suspense>
       <p className="mb-2 hidden text-[11px] text-emerald-900/70 max-sm:block short:block">
         ⚙️ Luật bàn ở <span className="short:hidden">bên dưới ↓</span>
         <span className="hidden short:inline">bên phải →</span>

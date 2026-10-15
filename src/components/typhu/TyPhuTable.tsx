@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { toast as showToast } from "sonner";
@@ -41,7 +41,8 @@ import { RulesModal } from "./dialogs/RulesDialog";
 import { PiecePicker } from "./dialogs/PiecePicker";
 import { LogList, LogModal } from "./dialogs/LogDialog";
 import { Waiting } from "./waiting/Waiting";
-import { TableSettings } from "./waiting/TableSettings";
+// Only needed before a game starts / after it ends (and Base UI tabs are heavy): fetched on demand.
+const TableSettings = lazy(() => import("./waiting/TableSettings").then((m) => ({ default: m.TableSettings })));
 
 export { money, pieceOfSeat, TOKENS } from "./shared";
 export { TyPhuRules } from "./dialogs/RulesDialog";
@@ -482,7 +483,9 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
           {(!g || g.status === "ended") && (
             <div className="hidden rounded-2xl bg-[#f4efe1] p-3 text-sm text-emerald-950 shadow-xl max-sm:block short:block short:p-2">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-900/60">⚙️ Luật bàn</p>
-              <TableSettings view={view} isHost={!!me?.isHost && view.role === "player"} act={act} />
+              <Suspense fallback={null}>
+                <TableSettings view={view} isHost={!!me?.isHost && view.role === "player"} act={act} />
+              </Suspense>
             </div>
           )}
           <GamePanel title="Người chơi" className="p-3 sm:p-3 max-lg:hidden short:block short:p-2">
