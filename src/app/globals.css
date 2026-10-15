@@ -341,3 +341,124 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/*
+ * Game UI tokens (docs/superpowers/specs/2026-10-14-game-ui-foundation-design.md §3). Every element carrying
+ * `data-game` (GameThemeScope, and GameDialog's portalled popup) recomputes the derived colours from its own accent.
+ */
+:where(.game-shell, [data-game]) {
+  --game-accent: oklch(0.7 0.2 300);
+  --game-accent-strong: color-mix(in oklch, var(--game-accent), black 32%);
+  --game-accent-soft: color-mix(in oklch, var(--game-accent) 18%, transparent);
+  --game-accent-fg: oklch(0.2 0.02 270);
+  --game-depth: 4px;
+}
+@media (max-width: 639px) {
+  :where(.game-shell, [data-game]) {
+    --game-depth: 3px;
+  }
+}
+[data-game="tienlen"] { --game-accent: oklch(0.72 0.17 160); }
+[data-game="meono"] { --game-accent: oklch(0.74 0.18 55); }
+[data-game="typhu"] { --game-accent: oklch(0.8 0.16 85); }
+[data-game="splendor"] { --game-accent: oklch(0.66 0.2 295); }
+[data-game="bang"] { --game-accent: oklch(0.64 0.17 35); }
+[data-game="oanquan"] { --game-accent: oklch(0.68 0.1 70); }
+[data-game="cangua"] { --game-accent: oklch(0.68 0.16 245); }
+
+@theme inline {
+  --color-game-accent: var(--game-accent);
+  --color-game-accent-strong: var(--game-accent-strong);
+  --color-game-accent-soft: var(--game-accent-soft);
+  --color-game-accent-fg: var(--game-accent-fg);
+  --radius-game-card: 1.25rem;
+}
+
+/*
+ * Colour of a raised element's base. Not inherited: a panel or dialog setting its own base must not repaint the
+ * base of the buttons inside it (they fall back to their own --game-accent-strong).
+ */
+@property --game-raise-color {
+  syntax: "*";
+  inherits: false;
+}
+/*
+ * A chunky "raised" block: a solid darker base under the element plus a soft drop shadow. Written into Tailwind's
+ * shadow stack (--tw-shadow), so ring-* and focus rings on the same element add to it instead of replacing it.
+ */
+@utility game-raised {
+  --tw-shadow:
+    0 var(--game-depth) 0 var(--game-raise-color, var(--game-accent-strong)),
+    0 calc(var(--game-depth) + 4px) 12px -4px oklch(0 0 0 / 45%);
+  box-shadow:
+    var(--tw-inset-shadow, 0 0 transparent), var(--tw-inset-ring-shadow, 0 0 transparent),
+    var(--tw-ring-offset-shadow, 0 0 transparent), var(--tw-ring-shadow, 0 0 transparent), var(--tw-shadow);
+}
+/* Pressed: sinks onto its base. */
+@utility game-pressed {
+  transform: translateY(var(--game-depth));
+  --tw-shadow:
+    0 0 0 var(--game-raise-color, var(--game-accent-strong)),
+    0 2px 6px -2px oklch(0 0 0 / 45%);
+  box-shadow:
+    var(--tw-inset-shadow, 0 0 transparent), var(--tw-inset-ring-shadow, 0 0 transparent),
+    var(--tw-ring-offset-shadow, 0 0 transparent), var(--tw-ring-shadow, 0 0 transparent), var(--tw-shadow);
+}
+
+/* Light running around a rounded element (its parent must be `relative`): marks whose turn it is. */
+@property --game-beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.game-beam {
+  position: absolute;
+  inset: -2px;
+  padding: 2px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(from var(--game-beam-angle), transparent 0 62%, var(--game-accent) 82%, white 90%, transparent 100%);
+  -webkit-mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(black 0 0) content-box exclude, linear-gradient(black 0 0);
+  animation: game-beam 2.4s linear infinite;
+}
+@keyframes game-beam {
+  to { --game-beam-angle: 360deg; }
+}
+
+/* A highlight sweeping across a primary button every few seconds. */
+.game-shine {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.game-shine::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  bottom: -50%;
+  left: -60%;
+  width: 40%;
+  transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 35%), transparent);
+  animation: game-shine 3.2s ease-in-out infinite;
+}
+@keyframes game-shine {
+  0%, 60% { left: -60%; }
+  100% { left: 130%; }
+}
+
+/* The global reduced-motion rule skips .game-shell, so these effects stop themselves. */
+@media (prefers-reduced-motion: reduce) {
+  .game-beam {
+    animation: none;
+    background: var(--game-accent);
+  }
+  .game-shine::after {
+    animation: none;
+    opacity: 0;
+  }
+}
