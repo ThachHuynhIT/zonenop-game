@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchApi } from "./gameClient";
+import { basesToTry, fetchApi } from "./gameClient";
 
 describe("fetchApi", () => {
   const fetchMock = vi.fn();
@@ -37,5 +37,20 @@ describe("fetchApi", () => {
     await expect(fetchApi(path)).rejects.toThrow("HTTP 503");
     await expect(fetchApi(path)).resolves.toEqual({ rooms: [1] });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("basesToTry", () => {
+  const A = "https://play-api.example";
+  const B = "https://backup.example";
+  it("tries every candidate in order when the room's backend is unknown", () => {
+    expect(basesToTry(null, [A, B])).toEqual([A, B]);
+  });
+  it("tries the pinned backend first, then the others (so a dead backend falls through)", () => {
+    expect(basesToTry(B, [A, B])).toEqual([B, A]);
+    expect(basesToTry(A, [A, B])).toEqual([A, B]);
+  });
+  it("keeps a pinned backend that is no longer configured out of the list", () => {
+    expect(basesToTry("https://old.example", [A, B])).toEqual([A, B]);
   });
 });

@@ -92,6 +92,16 @@ async function candidateBases(): Promise<string[]> {
   return [first, ...SERVER_BASES.filter((b) => b !== first)];
 }
 
+/**
+ * Backends to try for a room: the one it was joined on first, then the others. With a store shared by both backends a
+ * room survives its backend going down, so a dead pinned backend falls through to the next; with separate stores the
+ * other backend answers "Không tìm thấy phòng" and the loop goes back to waiting for the pinned one.
+ */
+export function basesToTry(roomBase: string | null, candidates: readonly string[]): string[] {
+  if (!roomBase || !candidates.includes(roomBase)) return [...candidates];
+  return [roomBase, ...candidates.filter((b) => b !== roomBase)];
+}
+
 /** Which backend each room lives on (per tab), so reconnects never jump to a backend without the room. */
 const ROOM_SERVERS_KEY = "games:roomServers";
 let memoryRoomServers: Record<string, string> = {};
@@ -407,7 +417,7 @@ export function useGameRoom<V>(
      */
     const open = async () => {
       if (disposed) return;
-      const bases = roomBase ? [roomBase] : await candidateBases();
+      const bases = basesToTry(roomBase, roomBase ? SERVER_BASES : await candidateBases());
       let unreachable = false;
       for (const base of bases) {
         const outcome = await tryJoin(base);
