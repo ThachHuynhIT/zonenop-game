@@ -5,6 +5,7 @@ import { AIR_RENT, GROUP_COLORS, JAIL_FINE, type Ownable, UTIL_MULT, isOwnable }
 import { type TPGameView, type TPPlayerView, type TPRoomView } from "@/lib/typhu/protocol";
 import { cn } from "@/lib/utils";
 import { Countdown } from "@/components/game-ui/Countdown";
+import { BorderTimer } from "./BorderTimer";
 import { GameBadge } from "@/components/game-ui/GameBadge";
 import { boardRef, groupPositions } from "../board-ref";
 import { CBtn, GROUP_NAMES, buildableGroups, money, type Act } from "../shared";
@@ -73,22 +74,28 @@ export function ActionBar({
     return () => ro.disconnect();
   }, [onHeight, bottom]);
 
-  // My turn: a light runs around my controls; in the board centre "Lượt của bạn" and my clock sit on that border.
+  // My turn: a light runs around my controls. In the board centre the border itself is my clock: "Lượt của bạn" on its
+  // top-left corner, the seconds on the top-right, and a line along it that shortens as the time runs out.
   const onBorder = myTurn && !bottom;
+  const turnMs = g.phase === "debt" ? DEBT_MS : stepMs;
   const content = (
-    <div className={cn("relative flex w-full flex-col items-center gap-2 rounded-2xl", myTurn && (bottom ? "p-1.5" : "mt-5 bg-rose-50/40 p-2 pt-6 short:mt-4 short:p-1.5 short:pt-5"))}>
+    <div className={cn("relative flex w-full flex-col items-center gap-2 rounded-2xl", myTurn && (bottom ? "p-1.5" : "mt-3 bg-rose-50/40 p-2 pt-5 short:mt-3 short:p-1.5 short:pt-4"))}>
       {myTurn && <span aria-hidden className="game-beam" />}
-      <p
-        className={cn(
-          "flex max-w-full items-center gap-2 text-xs sm:text-sm",
-          onBorder && "absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#e8f5ec] py-0.5 pl-1 pr-0.5 shadow-md",
-        )}
-      >
-        {myTurn ? <GameBadge tone="accent" role="status">Lượt của bạn</GameBadge> : <span>Lượt của <b>{turnName}</b></span>}
-        {/* The bar's Mua button only has room for the price: the square's name goes on the turn line instead. */}
-        {bottom && myTurn && g.phase === "buy" && here && isOwnable(here) && <span className="min-w-0 truncate font-semibold text-white/90">{here.name}</span>}
-        {g.deadline && <Countdown deadline={g.deadline} total={g.phase === "debt" ? DEBT_MS : stepMs} size={36} className={bottom ? undefined : COUNTDOWN_ON_CREAM} />}
-      </p>
+      {onBorder ? (
+        <>
+          <GameBadge tone="accent" role="status" className="absolute left-3 top-0 z-10 -translate-y-1/2 shadow-md">
+            Lượt của bạn
+          </GameBadge>
+          {g.deadline && <BorderTimer deadline={g.deadline} total={turnMs} />}
+        </>
+      ) : (
+        <p className="flex max-w-full items-center gap-2 text-xs sm:text-sm">
+          {myTurn ? <GameBadge tone="accent" role="status">Lượt của bạn</GameBadge> : <span>Lượt của <b>{turnName}</b></span>}
+          {/* The bar's Mua button only has room for the price: the square's name goes on the turn line instead. */}
+          {bottom && myTurn && g.phase === "buy" && here && isOwnable(here) && <span className="min-w-0 truncate font-semibold text-white/90">{here.name}</span>}
+          {g.deadline && <Countdown deadline={g.deadline} total={turnMs} size={36} className={bottom ? undefined : COUNTDOWN_ON_CREAM} />}
+        </p>
+      )}
 
       {myTurn && mine && (
         <div className="flex flex-wrap justify-center gap-2">
