@@ -108,7 +108,14 @@ export function ActionBar({
           {g.phase === "buy" && here && isOwnable(here) && (
             <>
               {/* A long square name wraps instead of running out of the panel / bar. */}
-              <CBtn primary hotkey="B" onClick={() => void run({ type: "buy" })} disabled={busy || mine.cash < here.price} className="h-auto min-h-11 max-w-full whitespace-normal py-1.5">
+              <CBtn
+                primary
+                hotkey="B"
+                onClick={() => void run({ type: "buy" })}
+                disabled={busy || mine.cash < here.price}
+                // The bar shows the price only: the screen-reader name still says which square.
+                aria-label={bottom ? `Mua ${here.name} · ${money(here.price)}` : undefined}
+                className="h-auto min-h-11 max-w-full whitespace-normal py-1.5">
                 🏷️ Mua {!bottom && here.name} · {money(here.price)}
               </CBtn>
               <CBtn hotkey="S" onClick={() => void run({ type: "skip" })} disabled={busy}>

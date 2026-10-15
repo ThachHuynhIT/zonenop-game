@@ -6,7 +6,7 @@ import { m as motion } from "motion/react";
 import { GROUP_COLORS, MAX_HOUSES, type Square, isOwnable } from "@/lib/typhu/board";
 import { type Deed } from "@/lib/typhu/protocol";
 import { cn } from "@/lib/utils";
-import { tokenSlots } from "./layout";
+import { tokenMinPx, tokenSlots } from "./layout";
 import { ArtIcon, Building, money, squareImg } from "../shared";
 
 /** Grid cell (1-based row/col) of a board position, Khởi hành bottom-right; the ring has `side` squares per edge. */
@@ -192,9 +192,9 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
       )}
       {band && <BuildBurst count={houses} />}
       {compact ? (
-        <span className="pointer-events-none flex flex-col items-center px-[2px]">
+        <span className="pointer-events-none flex flex-col items-center">
           {sq.kind !== "prop" && squareImg(sq) ? <ArtIcon name={squareImg(sq)!} className={side === "corner" ? "size-5" : "size-4"} /> : null}
-          {label !== "" && <span className="text-[10px] font-extrabold leading-none tabular-nums">{label}</span>}
+          {label !== "" && <span className="whitespace-nowrap text-[10px] font-extrabold leading-none tracking-tighter tabular-nums">{label}</span>}
           {sq.kind === "parking" && !!pot && <span className="rounded bg-amber-300 px-1 text-[10px] font-bold leading-none text-amber-950">💰 {money(pot)}</span>}
         </span>
       ) : (
@@ -243,7 +243,7 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
                   p.turn && "z-10 ring-2 ring-amber-400",
                 )}
                 // Height in percent of the square (aspect-square gives the width) so slots never overlap.
-                style={{ left: `${slot.x}%`, top: `${slot.y}%`, height: `${42 * slot.scale}%`, minHeight: 12, background: p.color }}
+                style={{ left: `${slot.x}%`, top: `${slot.y}%`, height: `${42 * slot.scale}%`, minHeight: tokenMinPx(here.length), background: p.color }}
               >
                 {p.emoji}
               </motion.span>

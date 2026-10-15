@@ -29,7 +29,7 @@ export function PlayerStrip({
   }, [turn]);
 
   return (
-    <ul ref={listRef} aria-label="Người chơi" className="flex snap-x gap-2 overflow-x-auto pb-1 lg:hidden short:hidden">
+    <ul ref={listRef} aria-label="Người chơi" className="relative flex snap-x gap-2 overflow-x-auto pb-1 lg:hidden short:hidden">
       {seats
         .filter((s): s is TPSeatView => !!s)
         .map((seat) => {

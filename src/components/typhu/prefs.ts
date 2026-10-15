@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 
 export type ActionsPlacement = "center" | "bottom";
 export interface TyPhuPrefs {
@@ -39,19 +39,18 @@ export function usePhonePortrait(): boolean {
   return useSyncExternalStore(subscribeViewport, phonePortraitNow, () => false);
 }
 
-/** This viewer's display prefs, read after mount (the server render always uses the defaults). */
+/** Saved prefs of this browser (the defaults when storage is missing or blocked). */
+export function readPrefs(): TyPhuPrefs {
+  try {
+    return parsePrefs(localStorage.getItem(PREFS_KEY));
+  } catch {
+    return DEFAULT_PREFS;
+  }
+}
+
+/** This viewer's display prefs. The table route is client-only (`ssr: false`), so storage is read on the first render: no flash of the defaults. */
 export function useTyPhuPrefs(): [TyPhuPrefs, (next: TyPhuPrefs) => void] {
-  const [prefs, setPrefs] = useState<TyPhuPrefs>(DEFAULT_PREFS);
-  useEffect(() => {
-    const t = setTimeout(() => {
-      try {
-        setPrefs(parsePrefs(localStorage.getItem(PREFS_KEY)));
-      } catch {
-        // storage blocked: keep the defaults
-      }
-    }, 0);
-    return () => clearTimeout(t);
-  }, []);
+  const [prefs, setPrefs] = useState<TyPhuPrefs>(readPrefs);
   const save = useCallback((next: TyPhuPrefs) => {
     setPrefs(next);
     try {

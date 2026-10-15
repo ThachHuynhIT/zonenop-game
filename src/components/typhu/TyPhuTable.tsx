@@ -278,7 +278,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const live = useLiveReactions(view.reactions);
   const reactionsFor = (id: string): Reaction[] => live.filter((r) => r.playerId === id);
 
-  // The Kích button asks for a second tap itself (ConfirmButton) — window.confirm is blocked in some in-app browsers.
+  // The Kích button asks for a second tap itself (GameButton confirm) — window.confirm is blocked in some in-app browsers.
   const kick = async (s: TPSeatView) => {
     await act({ type: "kick", playerId: s.id });
   };
@@ -468,7 +468,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
         {/* Bottom padding below lg: lets the log scroll clear of the floating chat / emoji buttons. */}
         <aside className="flex flex-col gap-3 max-lg:pb-14 short:max-h-[calc(100dvh-3.75rem)] short:gap-2 short:overflow-y-auto">
           {assetsOpen && g && mine && (
-            <div ref={assetsRef} className="scroll-mt-2">
+            <div ref={assetsRef} className="scroll-mt-2" style={showBar ? { scrollMarginBottom: barHeight + 8 } : undefined}>
               <AssetPanel
                 g={g}
                 mine={mine}

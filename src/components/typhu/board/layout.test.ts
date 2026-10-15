@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BOARD, type Square } from "@/lib/typhu/board";
 import type { Deed } from "@/lib/typhu/protocol";
-import { COMPACT_CELL_PX, cellLabel, isCompact, rentAmount, shortNum, sideCellPx, tokenSlots } from "./layout";
+import { COMPACT_CELL_PX, cellLabel, isCompact, rentAmount, shortNum, sideCellPx, tokenMinPx, tokenSlots } from "./layout";
 
 const prop = BOARD.find((s) => s.kind === "prop") as Extract<Square, { kind: "prop" }>;
 const air = BOARD.find((s) => s.kind === "air")!;
@@ -40,10 +40,10 @@ describe("cellLabel", () => {
     expect(cellLabel(prop, undefined, null)).toBe(shortNum(prop.price));
     expect(cellLabel(prop, deed(), 26)).toBe("26");
   });
-  it("marks mortgaged squares, dice-based rent and taxes", () => {
+  it("marks mortgaged squares, dice-based rent and taxes (the amount only: \"Thuế 150\" does not fit a 20 px square, the icon says it is a tax)", () => {
     expect(cellLabel(prop, deed({ mortgaged: true }), 0)).toBe("TC");
     expect(cellLabel(util, deed(), null)).toBe("🎲");
-    expect(cellLabel(tax, undefined, null)).toBe(`Thuế ${shortNum(tax.amount)}`);
+    expect(cellLabel(tax, undefined, null)).toBe(shortNum(tax.amount));
   });
   it("is empty for squares that only show an icon", () => {
     expect(cellLabel(chance, undefined, null)).toBe("");
@@ -79,5 +79,30 @@ describe("compact cells", () => {
     expect(COMPACT_CELL_PX).toBe(64);
     expect(isCompact(63.9)).toBe(true);
     expect(isCompact(64)).toBe(false);
+  });
+});
+
+describe("tokens on the narrowest squares", () => {
+  // Worst case on the huge map at 375 px: a 20 x 20 px square. A token is a circle of max(tokenMinPx, 42% x scale of the height).
+  const overlap = (n: number, size: number) => {
+    const slots = tokenSlots(n);
+    const rects = slots.map((s) => {
+      const d = Math.max(tokenMinPx(n), 0.42 * s.scale * size);
+      return { x: (s.x / 100) * size - d / 2, y: (s.y / 100) * size - d / 2, d };
+    });
+    let worst = 0;
+    for (let i = 0; i < n; i++)
+      for (let j = i + 1; j < n; j++) {
+        const w = Math.min(rects[i].x + rects[i].d, rects[j].x + rects[j].d) - Math.max(rects[i].x, rects[j].x);
+        const h = Math.min(rects[i].y + rects[i].d, rects[j].y + rects[j].d) - Math.max(rects[i].y, rects[j].y);
+        if (w > 0 && h > 0) worst = Math.max(worst, (w * h) / Math.min(rects[i].d ** 2, rects[j].d ** 2));
+      }
+    return worst;
+  };
+  it("keeps tokens sharing a 20 px square under 30% overlap, 1 to 6 of them", () => {
+    for (let n = 1; n <= 6; n++) expect(overlap(n, 20), `${n} tokens`).toBeLessThanOrEqual(0.3);
+  });
+  it("never goes below 8 px", () => {
+    for (let n = 1; n <= 6; n++) expect(tokenMinPx(n)).toBeGreaterThanOrEqual(8);
   });
 });

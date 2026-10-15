@@ -20,9 +20,9 @@ export function rentAmount(sq: Square, deed: Deed | undefined, ownerCount: numbe
   return null; // utilities: dice total × multiplier
 }
 
-/** The one number a compact square shows: price when free, rent when owned; "" for icon-only squares. */
+/** The one number a compact square shows: price when free, rent when owned, the amount for a tax; "" for icon-only squares. */
 export function cellLabel(sq: Square, deed: Deed | undefined, rent: number | null): string {
-  if (sq.kind === "tax") return `Thuế ${shortNum(sq.amount)}`;
+  if (sq.kind === "tax") return shortNum(sq.amount);
   if (!isOwnable(sq)) return "";
   if (!deed) return shortNum(sq.price);
   if (deed.mortgaged) return "TC";
@@ -44,6 +44,11 @@ const SCALE = [0, 1, 0.8, 0.7, 0.65, 0.5, 0.5];
 export function tokenSlots(n: number): { x: number; y: number; scale: number }[] {
   const k = Math.max(0, Math.min(6, Math.floor(n)));
   return SLOTS[k].map((s) => ({ ...s, scale: SCALE[k] }));
+}
+
+/** Smallest token (px) on a square shared by `n` tokens: smaller as more crowd a 20 px square, so no two overlap by more than 30%. */
+export function tokenMinPx(n: number): number {
+  return n <= 1 ? 12 : n <= 4 ? 11 : 8;
 }
 
 /** Width of a side square: the grid is `1.6fr repeat(edge - 1, 1fr) 1.6fr`. */

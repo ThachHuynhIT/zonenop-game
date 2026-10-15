@@ -86,6 +86,7 @@ export function CBtn({
   title,
   hotkey,
   className,
+  "aria-label": ariaLabel,
 }: {
   children: React.ReactNode;
   onClick: () => void;
@@ -98,6 +99,7 @@ export function CBtn({
   build?: boolean;
   title?: string;
   className?: string;
+  "aria-label"?: string;
 }) {
   return (
     <GameButton
@@ -107,6 +109,7 @@ export function CBtn({
       onClick={onClick}
       disabled={disabled}
       title={title}
+      aria-label={ariaLabel}
       // The centre panel is pale: the translucent-white secondary style would be unreadable on it.
       className={cn(!primary && !danger && !build && "bg-emerald-900/80 text-white hover:bg-emerald-800/90", className)}
     >
