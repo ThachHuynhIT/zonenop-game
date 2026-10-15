@@ -40,6 +40,7 @@ import { LoanModal } from "./dialogs/LoanDialog";
 import { TradeModal } from "./dialogs/TradeDialog";
 import { RulesModal } from "./dialogs/RulesDialog";
 import { LogList, LogModal } from "./dialogs/LogDialog";
+import { LookDialog } from "./dialogs/LookDialog";
 import { Waiting } from "./waiting/Waiting";
 // Only needed before a game starts / after it ends (and Base UI tabs are heavy): fetched on demand.
 const TableSettings = lazy(() => import("./waiting/TableSettings").then((m) => ({ default: m.TableSettings })));
@@ -142,6 +143,10 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const seated = view.seats.filter((s): s is TPSeatView => !!s);
   const tokens = seatTokens(seated, looks, (id) => pieceOfSeat(seated.find((s) => s.id === id)!));
   const tokenOf = (id: string) => tokens.get(id) ?? TOKENS[(g?.players.findIndex((p) => p.id === id) ?? 0) % TOKENS.length];
+  const [editingLook, setEditingLook] = useState(false);
+  // Colours of the seats before mine: picking one of them gets me a free colour on the board instead.
+  const myIndex = seated.findIndex((s) => s.id === view.meId);
+  const colorsBeforeMe = myIndex < 0 ? [] : seated.slice(0, myIndex).map((s) => tokenOf(s.id).color);
 
   const shownPos = useWalkingTokens(g);
   // Who stands on each square right now (walking animation included): the cells only get what they draw.
@@ -503,6 +508,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                       isTurn={g?.turn === s.id && playing}
                       reactions={reactionsFor(s.id)}
                       onOpen={setOpenSquare}
+                      onEditLook={s.id === view.meId ? () => setEditingLook(true) : undefined}
                       onKick={me?.isHost && !s.connected && !s.kicked ? () => void kick(s) : undefined}
                     />
                   );
@@ -577,6 +583,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                 setViewPlayer(null);
                 setOpenSquare(pos);
               }}
+              onEditLook={viewPlayer === view.meId ? () => { setViewPlayer(null); setEditingLook(true); } : undefined}
               onKick={me?.isHost && !seatOf(viewPlayer)!.connected && !seatOf(viewPlayer)!.kicked ? () => { setViewPlayer(null); void kick(seatOf(viewPlayer)!); } : undefined}
             />
           </ul>
@@ -587,6 +594,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
         <ActionBar placement="bottom" g={g} view={view} myTurn={myTurn} mine={mine} busy={busy} run={run} nameOf={nameOf} assetsOpen={assetsOpen} onOpenAssets={openAssets} onBuild={() => setShowBuild(true)} onHeight={setBarHeight} />
       )}
 
+
+      {editingLook && me && <LookDialog name={me.name} takenColors={colorsBeforeMe} onClose={() => setEditingLook(false)} />}
 
       {openSquare !== null && (
         <SquareModal
