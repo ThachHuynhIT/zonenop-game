@@ -59,10 +59,10 @@ describe("failedJoinOutcome", () => {
   it("maps not found, and a request timeout counts as unreachable", () => {
     expect(failedJoinOutcome("Không tìm thấy phòng")).toEqual({ kind: "not-found" });
     expect(failedJoinOutcome("Máy chủ không phản hồi")).toEqual({ kind: "unreachable" });
+    expect(failedJoinOutcome("Mất kết nối máy chủ")).toEqual({ kind: "unreachable" });
   });
   it("keeps every other server error terminal", () => {
     expect(failedJoinOutcome("Phòng đã đủ người")).toEqual({ kind: "error", error: "Phòng đã đủ người" });
-    expect(failedJoinOutcome("Mất kết nối máy chủ")).toEqual({ kind: "error", error: "Mất kết nối máy chủ" });
   });
 });
 

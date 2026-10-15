@@ -33,6 +33,7 @@ export const SERVER_BASES: readonly string[] =
 const ROOM_NOT_FOUND = "Không tìm thấy phòng";
 /** Ack error Channel.request resolves with when the server does not answer in time. */
 const REQUEST_TIMEOUT_ERROR = "Máy chủ không phản hồi";
+const DISCONNECTED_ERROR = "Mất kết nối máy chủ";
 const PROBE_TIMEOUT_MS = 3000;
 /** How long a backend choice is reused before the main backend is asked again. */
 const ACTIVE_TTL_MS = 60_000;
@@ -127,7 +128,8 @@ export type JoinStep<C> =
  */
 export function failedJoinOutcome(error: string): JoinOutcome<never> {
   if (error === ROOM_NOT_FOUND) return { kind: "not-found" };
-  if (error === REQUEST_TIMEOUT_ERROR) return { kind: "unreachable" };
+  // No answer, or the socket dropped mid-join (backend died): try the other backend.
+  if (error === REQUEST_TIMEOUT_ERROR || error === DISCONNECTED_ERROR) return { kind: "unreachable" };
   return { kind: "error", error };
 }
 
@@ -353,7 +355,7 @@ class Channel {
       }
     };
     this.ws.onclose = () => {
-      this.pending.forEach((resolve) => resolve({ ok: false, error: "Mất kết nối máy chủ" }));
+      this.pending.forEach((resolve) => resolve({ ok: false, error: DISCONNECTED_ERROR }));
       this.pending.clear();
       this.onClose();
     };
@@ -369,7 +371,7 @@ class Channel {
   }
 
   request(msg: Record<string, unknown> & { type: string }, timeoutMs = 10_000): Promise<Ack> {
-    if (this.ws.readyState !== WebSocket.OPEN) return Promise.resolve({ ok: false, error: "Mất kết nối máy chủ" });
+    if (this.ws.readyState !== WebSocket.OPEN) return Promise.resolve({ ok: false, error: DISCONNECTED_ERROR });
     const id = this.nextId++;
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
@@ -557,7 +559,7 @@ export function useGameRoom<V>(
 
   const call: Call = useCallback((msg) => {
     const ch = channelRef.current;
-    return ch ? ch.request(msg) : Promise.resolve<Ack>({ ok: false, error: "Mất kết nối máy chủ" });
+    return ch ? ch.request(msg) : Promise.resolve<Ack>({ ok: false, error: DISCONNECTED_ERROR });
   }, []);
 
   // Changing icon/colour at the table reaches everyone at once (the name stays frozen until the next table).
