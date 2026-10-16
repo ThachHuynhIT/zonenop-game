@@ -210,11 +210,11 @@ export function GameLobby({ title, tagline, icons, basePath, wsPath, apiPrefix, 
             <h2 className="mb-3 text-lg font-bold text-amber-300">🏆 Bảng xếp hạng</h2>
             <GameTabs
               tabs={[
-                { id: "current", label: "Mùa này", content: <Board rows={board} me={name ?? ""} /> },
-                { id: "old", label: "Mùa trước", content: <Board rows={oldBoard} me={name ?? ""} /> },
+                { id: "current", label: "Mùa này", content: <Board rows={board} me={name ?? ""} empty="Chưa có ai ghi điểm mùa này." note="Điểm tính theo tài khoản, bắt đầu từ mùa này." /> },
+                { id: "old", label: "Mùa trước", content: <Board rows={oldBoard} me={name ?? ""} empty="Không có dữ liệu mùa trước." note="Điểm được cộng dồn theo tên người chơi qua mọi bàn." /> },
               ]}
+              className="border-0 bg-transparent"
             />
-            <p className="mt-3 text-xs text-white/40">Điểm được cộng dồn theo tên người chơi qua mọi bàn.</p>
           </section>
         </div>
       </div>
@@ -222,10 +222,11 @@ export function GameLobby({ title, tagline, icons, basePath, wsPath, apiPrefix, 
   );
 }
 
-function Board({ rows, me }: { rows: LeaderRow[] | null; me: string }) {
+function Board({ rows, me, empty, note }: { rows: LeaderRow[] | null; me: string; empty: string; note: string }) {
   if (rows === null) return <p className="animate-pulse text-sm text-white/60">Đang tải…</p>;
-  if (rows.length === 0) return <p className="text-sm text-white/60">Chưa có ván nào được ghi điểm.</p>;
+  if (rows.length === 0) return <p className="text-sm text-white/60">{empty}</p>;
   return (
+    <>
     <table className="w-full text-sm">
       <thead className="text-left text-xs text-white/50">
         <tr>
@@ -255,5 +256,7 @@ function Board({ rows, me }: { rows: LeaderRow[] | null; me: string }) {
         ))}
       </tbody>
     </table>
+    <p className="mt-3 text-xs text-white/40">{note}</p>
+    </>
   );
 }
