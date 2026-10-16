@@ -15,6 +15,9 @@ services:
         NEXT_PUBLIC_TIENLEN_FALLBACK_URL: ${NEXT_PUBLIC_TIENLEN_FALLBACK_URL:-}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://${WEB_DOMAIN}}
     image: games_web:local
+    environment:
+      # Commit being deployed (exported by .github/workflows/deploy.yml); /api/health reports it.
+      BUILD_COMMIT: ${BUILD_COMMIT:-}
     restart: unless-stopped
     init: true
     stop_grace_period: 15s

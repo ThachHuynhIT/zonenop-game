@@ -125,6 +125,8 @@ jobs:
           # The rebuild moves the games_web:local tag to the new image, so note the old one's ID first and
           # remove exactly that image afterwards. The host is shared: never a prune.
           old=$(docker image inspect --format '{{.Id}}' games_web:local 2>/dev/null || true)
+          # compose passes it to the container: /api/health reports the commit, checked below.
+          export BUILD_COMMIT="$SHA"
           docker compose -f compose.selfhost.yml up -d --build --remove-orphans
           new=$(docker image inspect --format '{{.Id}}' games_web:local)
           if [ -n "$old" ] && [ "$old" != "$new" ] && docker image inspect "$old" >/dev/null 2>&1; then
@@ -141,9 +143,10 @@ jobs:
             # No published port: ask from inside the container (node:22 has fetch; the image has no curl).
             # Captured, not piped into grep -q: under pipefail an early-exiting grep can fail the check.
             health=$(docker compose -f compose.selfhost.yml exec -T web \
-              node -e "fetch('http://127.0.0.1:3000/robots.txt').then(r=>console.log(r.ok?'HEALTHY':'DOWN'),()=>{})" \
+              node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.text()).then(t=>console.log(t),()=>{})" \
               2>/dev/null || true)
-            if [[ $health == *HEALTHY* ]]; then
+            # Up AND serving this commit (not the previous container still answering).
+            if [[ $health == *'"ok":true'* && $health == *"\"commit\":\"$SHA\""* ]]; then
               echo "healthy at $SHA"
               exit 0
             fi
@@ -159,10 +162,38 @@ jobs:
         if: steps.cfg.outputs.ready == 'true' && vars.WEB_DOMAIN != ''
         run: |
           for i in $(seq 1 20); do
-            if curl -fsS -o /dev/null "https://${{ vars.WEB_DOMAIN }}/robots.txt"; then
-              echo "healthy"; exit 0
+            health=$(curl -fsS "https://${{ vars.WEB_DOMAIN }}/api/health" || true)
+            if [[ $health == *'"ok":true'* && $health == *"\"commit\":\"$SHA\""* ]]; then
+              echo "healthy at $SHA"; exit 0
             fi
             sleep 3
           done
           echo "health check failed" >&2
+          exit 1
+
+  # The Vercel copy of the site deploys main on its own (Vercel Git integration): wait until it serves this commit too, so a
+  # failed or stuck Vercel build turns this run red. Set the repo variable VERCEL_HEALTH_URL to enable it.
+  vercel:
+    if: >-
+      vars.VERCEL_HEALTH_URL != '' && (
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      URL: ${{ vars.VERCEL_HEALTH_URL }}
+    steps:
+      - name: Vercel serves this commit
+        run: |
+          for i in $(seq 1 60); do
+            health=$(curl -fsS "$URL" || true)
+            if [[ $health == *'"ok":true'* && $health == *"\"commit\":\"$SHA\""* ]]; then
+              echo "Vercel healthy at $SHA"; exit 0
+            fi
+            sleep 10
+          done
+          echo "Vercel does not serve $SHA after 10 minutes. Last /api/health: $health" >&2
+          [[ $health == *'"commit":null'* ]] && echo "commit is null: turn on Automatically expose System Environment Variables in the Vercel project." >&2
           exit 1
