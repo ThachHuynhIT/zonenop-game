@@ -14,7 +14,7 @@ export interface GameDialogProps {
   children: ReactNode;
 }
 
-const SURFACE = "border border-white/10 bg-[oklch(0.2_0.03_290)] text-white game-raised [--game-raise-color:oklch(0_0_0/0.5)]";
+const SURFACE = "border border-white/10 bg-game-surface text-white game-raised [--game-raise-color:oklch(0_0_0/0.5)]";
 // Cream variant for content written for pale backgrounds (Cờ Tỷ Phú's square details).
 const SURFACE_LIGHT = "border border-emerald-900/15 bg-[#f4efe1] text-emerald-950 game-raised [--game-raise-color:oklch(0_0_0/0.35)]";
 

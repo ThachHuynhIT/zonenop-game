@@ -4,8 +4,10 @@ import { useEffect, useId, useState } from "react";
 import { KeyRound, Lock, LockOpen, Search, Shield, ShieldOff } from "lucide-react";
 import { GameBadge, GameButton, GameDialog, gameToast } from "@/components/game-ui";
 import { AuthField } from "@/components/auth/fields";
+import { PASSWORD_MAX, passwordLength, passwordProblem } from "@/components/auth/password";
 import { authRequest } from "@/components/auth/session";
 import { cn } from "@/lib/utils";
+import { Forbidden } from "./Forbidden";
 import { formatDateTime, formatNumber, pageCount } from "./format";
 import type { AdminUser, AdminUsersPage } from "./types";
 
@@ -42,6 +44,7 @@ export function UsersTable({
 }) {
   const searchId = useId();
   const [resetting, setResetting] = useState<AdminUser | null>(null);
+  const [atEnd, setAtEnd] = useState(false);
   const pages = data ? pageCount(data.total, data.pageSize) : 1;
 
   return (
@@ -75,17 +78,25 @@ export function UsersTable({
           <p className="font-bold text-rose-200">Không tải được danh sách người dùng</p>
           <p className="mt-1 text-rose-100/70">{error}</p>
           {onRetry && (
-            <GameButton size="sm" className="mt-3" onClick={onRetry}>
+            <GameButton size="sm" className="mt-3 h-10" onClick={onRetry}>
               Thử lại
             </GameButton>
           )}
         </div>
       ) : (
-        <div className={cn("overflow-x-auto rounded-2xl border border-white/10 bg-[oklch(0.17_0.03_290)] transition-opacity", loading && data && "opacity-60")} aria-busy={loading || undefined}>
+        <div className="relative">
+          <div
+            className={cn("overflow-x-auto rounded-2xl border border-white/10 bg-game-surface-sunken transition-opacity", loading && data && "opacity-60")}
+            aria-busy={loading || undefined}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+            }}
+          >
           <table className="w-full min-w-[52rem] text-sm">
-            <thead className="bg-[oklch(0.2_0.03_290)]">
+            <thead className="bg-game-surface">
               <tr className="border-b border-white/10">
-                <th className={cn(TH, "sticky left-0 z-10 bg-[oklch(0.2_0.03_290)]")}>Tên đăng nhập</th>
+                <th className={cn(TH, "sticky left-0 z-10 bg-game-surface")}>Tên đăng nhập</th>
                 <th className={TH}>Trạng thái</th>
                 <th className={cn(TH, "text-right")}>Số ván</th>
                 <th className={TH}>Tạo lúc</th>
@@ -114,18 +125,27 @@ export function UsersTable({
               ))}
             </tbody>
           </table>
+          </div>
+          {/* Phones: a fade on the right edge says the table scrolls sideways (the actions start off-screen). */}
+          <span
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute inset-y-px right-px w-12 rounded-r-2xl bg-gradient-to-l from-game-surface-sunken to-transparent transition-opacity sm:hidden",
+              atEnd && "opacity-0",
+            )}
+          />
         </div>
       )}
 
       {data && pages > 1 && (
         <nav aria-label="Phân trang" className="flex items-center justify-center gap-3">
-          <GameButton size="sm" disabled={data.page <= 1 || loading} onClick={() => onPage(data.page - 1)}>
+          <GameButton size="sm" className="h-10" disabled={data.page <= 1 || loading} onClick={() => onPage(data.page - 1)}>
             Trang trước
           </GameButton>
           <span className="text-sm tabular-nums text-white/70">
             Trang {data.page}/{pages}
           </span>
-          <GameButton size="sm" disabled={data.page >= pages || loading} onClick={() => onPage(data.page + 1)}>
+          <GameButton size="sm" className="h-10" disabled={data.page >= pages || loading} onClick={() => onPage(data.page + 1)}>
             Trang sau
           </GameButton>
         </nav>
@@ -140,7 +160,7 @@ function UserRow({ user, self, busy, onPatch, onReset }: { user: AdminUser; self
   const admin = user.role === "admin";
   return (
     <tr className={cn("transition-colors hover:bg-white/[0.03]", user.disabled && "text-white/55")}>
-      <td className={cn(TD, "sticky left-0 z-10 bg-[oklch(0.17_0.03_290)] font-bold")}>
+      <td className={cn(TD, "sticky left-0 z-10 bg-game-surface-sunken font-bold")}>
         <span className="flex items-center gap-2">
           <span className="max-w-40 truncate">{user.username}</span>
           {self && <span className="text-xs font-normal text-white/50">(bạn)</span>}
@@ -156,9 +176,10 @@ function UserRow({ user, self, busy, onPatch, onReset }: { user: AdminUser; self
       <td className={cn(TD, "tabular-nums text-white/70")}>{formatDateTime(user.createdAt).slice(0, 10)}</td>
       <td className={cn(TD, "tabular-nums text-white/70")}>{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "Chưa đăng nhập"}</td>
       <td className={cn(TD, "text-right")}>
-        <span className="inline-flex gap-0.5">
+        <span className="inline-flex gap-2">
           <GameButton
             size="sm"
+            className="h-10"
             variant="ghost"
             disabled={self || busy}
             confirm={admin ? "Bỏ quyền?" : "Cấp quyền?"}
@@ -169,13 +190,14 @@ function UserRow({ user, self, busy, onPatch, onReset }: { user: AdminUser; self
             {admin ? "Bỏ quyền" : "Cấp quyền"}
           </GameButton>
           {user.disabled ? (
-            <GameButton size="sm" variant="ghost" disabled={busy} onClick={() => void onPatch(user, { disabled: false })}>
+            <GameButton size="sm" className="h-10" variant="ghost" disabled={busy} onClick={() => void onPatch(user, { disabled: false })}>
               <LockOpen aria-hidden />
               Mở khoá
             </GameButton>
           ) : (
             <GameButton
               size="sm"
+              className="h-10"
               variant="ghost"
               disabled={self || busy}
               confirm="Khoá thật?"
@@ -186,7 +208,7 @@ function UserRow({ user, self, busy, onPatch, onReset }: { user: AdminUser; self
               Khoá
             </GameButton>
           )}
-          <GameButton size="sm" variant="ghost" disabled={busy} title="Đặt lại mật khẩu" onClick={onReset}>
+          <GameButton size="sm" className="h-10" variant="ghost" disabled={busy} title="Đặt lại mật khẩu" onClick={onReset}>
             <KeyRound aria-hidden />
             Mật khẩu
           </GameButton>
@@ -199,13 +221,17 @@ function UserRow({ user, self, busy, onPatch, onReset }: { user: AdminUser; self
 function ResetPasswordDialog({ user, onClose, onPatch }: { user: AdminUser | null; onClose: () => void; onPatch: (u: AdminUser, p: UserPatch) => Promise<boolean> }) {
   // Keep the last user while the dialog animates out.
   const [shown, setShown] = useState<AdminUser | null>(user);
+  const [prev, setPrev] = useState<AdminUser | null>(user);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  if (user && user !== shown) {
-    setShown(user);
+  // Every open and every close starts from an empty field: a typed password never lingers in state.
+  if (user !== prev) {
+    setPrev(user);
     setPassword("");
+    if (user) setShown(user);
   }
-  const ready = password.length >= 8 && password.length <= 72;
+  const problem = password === "" ? null : passwordProblem(password);
+  const ready = password !== "" && problem === null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -224,12 +250,17 @@ function ResetPasswordDialog({ user, onClose, onPatch }: { user: AdminUser | nul
       description={shown ? `Mật khẩu mới cho ${shown.username}. Mọi phiên đăng nhập cũ của tài khoản này sẽ bị đăng xuất.` : undefined}
     >
       <form onSubmit={submit} className="space-y-4">
-        <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} autoComplete="off" maxLength={72} autoFocus hint="8–72 ký tự. Nhớ gửi mật khẩu này cho người dùng." />
+        <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} autoComplete="off" autoFocus hint="8–72 ký tự. Nhớ gửi mật khẩu này cho người dùng." />
+        {problem && passwordLength(password) > PASSWORD_MAX && (
+          <p role="alert" className="text-sm text-rose-300">
+            {problem}
+          </p>
+        )}
         <div className="flex justify-end gap-2">
-          <GameButton type="button" size="sm" onClick={onClose}>
+          <GameButton type="button" size="sm" className="h-10" onClick={onClose}>
             Huỷ
           </GameButton>
-          <GameButton type="submit" size="sm" variant="primary" loading={busy} disabled={!ready}>
+          <GameButton type="submit" size="sm" className="h-10" variant="primary" loading={busy} disabled={!ready}>
             Đặt mật khẩu
           </GameButton>
         </div>
@@ -251,7 +282,7 @@ export function UsersSection({ selfId }: { selfId: string | null }) {
   const [page, setPage] = useState(1);
   const [attempt, setAttempt] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [result, setResult] = useState<{ key: string; data: AdminUsersPage | null; error: string | null } | null>(null);
+  const [result, setResult] = useState<{ key: string; data: AdminUsersPage | null; error: string | null; status: number } | null>(null);
   const key = `${q}|${page}|${attempt}`;
 
   useEffect(() => {
@@ -266,7 +297,7 @@ export function UsersSection({ selfId }: { selfId: string | null }) {
     let live = true;
     void authRequest<AdminUsersPage>("GET", `/api/admin/users?q=${encodeURIComponent(q)}&page=${page}`).then((res) => {
       if (!live) return;
-      setResult((prev) => (res.ok ? { key, data: res.data, error: null } : { key, data: prev?.data ?? null, error: res.error }));
+      setResult((prev) => (res.ok ? { key, data: res.data, error: null, status: 200 } : { key, data: prev?.data ?? null, error: res.error, status: res.status }));
     });
     return () => {
       live = false;
@@ -286,6 +317,9 @@ export function UsersSection({ selfId }: { selfId: string | null }) {
     gameToast.success(PATCH_DONE[Object.keys(body)[0]]?.(updated) ?? "Đã lưu");
     return true;
   }
+
+  // Lost admin rights since the page loaded (401 is handled by the dashboard, which sends the visitor to sign in).
+  if (result?.status === 403) return <Forbidden />;
 
   return (
     <UsersTable

@@ -7,6 +7,7 @@ import { GameButton, GameDialog, gameToast } from "@/components/game-ui";
 import { ProfilePicker } from "@/components/games/PlayerAvatar";
 import type { PlayerProfile } from "@/components/games/gameClient";
 import { AuthField } from "./fields";
+import { PASSWORD_MIN, passwordLength, passwordProblem } from "./password";
 import { authRequest, clearSession, saveSession, updateLook, useSession, type PublicUser } from "./session";
 
 type MeData = { user: PublicUser; session?: string };
@@ -92,11 +93,13 @@ function PasswordSection() {
   const [again, setAgain] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const ready = oldPassword !== "" && password.length >= 8 && again !== "";
+  const ready = oldPassword !== "" && passwordLength(password) >= PASSWORD_MIN && again !== "";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!ready || busy) return;
+    const problem = passwordProblem(password);
+    if (problem) return setMessage({ ok: false, text: problem });
     if (password !== again) return setMessage({ ok: false, text: "Hai mật khẩu mới chưa giống nhau" });
     setBusy(true);
     setMessage(null);
@@ -116,9 +119,9 @@ function PasswordSection() {
       <h3 id="account-password" className="font-heading text-base font-extrabold">
         Đổi mật khẩu
       </h3>
-      <AuthField label="Mật khẩu hiện tại" value={oldPassword} onChange={setOld} type="password" autoComplete="current-password" maxLength={72} />
-      <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} type="password" autoComplete="new-password" maxLength={72} hint="Ít nhất 8 ký tự." />
-      <AuthField label="Nhập lại mật khẩu mới" value={again} onChange={setAgain} type="password" autoComplete="new-password" maxLength={72} />
+      <AuthField label="Mật khẩu hiện tại" value={oldPassword} onChange={setOld} type="password" autoComplete="current-password" />
+      <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} type="password" autoComplete="new-password" hint="8–72 ký tự." />
+      <AuthField label="Nhập lại mật khẩu mới" value={again} onChange={setAgain} type="password" autoComplete="new-password" />
       <Feedback message={message} />
       <GameButton type="submit" size="sm" variant="secondary" loading={busy} disabled={!ready}>
         Đổi mật khẩu

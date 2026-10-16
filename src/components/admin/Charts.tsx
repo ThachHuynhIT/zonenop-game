@@ -16,7 +16,7 @@ const axisTick = { fill: AXIS, fontSize: 12 };
 function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="min-w-40 rounded-xl border border-white/15 bg-[oklch(0.2_0.03_290)] px-3 py-2 text-sm text-white shadow-lg shadow-black/40">
+    <div className="min-w-40 rounded-xl border border-white/15 bg-game-surface px-3 py-2 text-sm text-white shadow-lg shadow-black/40">
       <p className="mb-1 font-bold text-white/80">{formatDayLong(String(label))}</p>
       <ul className="space-y-0.5">
         {payload.map((p) => (

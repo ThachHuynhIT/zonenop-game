@@ -7,6 +7,7 @@ import { DEFAULT_PROFILE, type PlayerProfile } from "@/components/games/gameClie
 import { ProfilePicker } from "@/components/games/PlayerAvatar";
 import { AuthField } from "./fields";
 import { safeNext } from "./next";
+import { PASSWORD_MIN, passwordLength, passwordProblem } from "./password";
 import { authRequest, saveSession, useSession, type PublicUser } from "./session";
 
 type AuthData = { session: string; user: PublicUser };
@@ -70,7 +71,7 @@ function LoginTab() {
       }}
     >
       <AuthField label="Tên đăng nhập" value={username} onChange={setUsername} autoComplete="username" autoFocus maxLength={20} />
-      <AuthField label="Mật khẩu" value={password} onChange={setPassword} type="password" autoComplete="current-password" maxLength={72} />
+      <AuthField label="Mật khẩu" value={password} onChange={setPassword} type="password" autoComplete="current-password" />
       {error && (
         <p role="alert" className="text-sm text-rose-300">
           {error}
@@ -90,7 +91,7 @@ function RegisterTab() {
   const [look, setLook] = useState<PlayerProfile>(DEFAULT_PROFILE);
   const [local, setLocal] = useState<string | null>(null);
   const { busy, error, run } = useSubmit();
-  const ready = username.trim().length >= 3 && password.length >= 8 && again !== "";
+  const ready = username.trim().length >= 3 && passwordLength(password) >= PASSWORD_MIN && again !== "";
   const message = local ?? error;
   return (
     <form
@@ -98,6 +99,11 @@ function RegisterTab() {
       onSubmit={(e) => {
         e.preventDefault();
         if (!ready || busy) return;
+        const problem = passwordProblem(password);
+        if (problem) {
+          setLocal(problem);
+          return;
+        }
         if (password !== again) {
           setLocal("Hai mật khẩu chưa giống nhau");
           return;
@@ -107,8 +113,8 @@ function RegisterTab() {
       }}
     >
       <AuthField label="Tên đăng nhập" value={username} onChange={setUsername} autoComplete="username" maxLength={20} hint="3–20 ký tự: chữ, số, dấu _ và dấu chấm. Cũng là tên hiện ở bàn chơi." />
-      <AuthField label="Mật khẩu" value={password} onChange={setPassword} type="password" autoComplete="new-password" maxLength={72} hint="Ít nhất 8 ký tự." />
-      <AuthField label="Nhập lại mật khẩu" value={again} onChange={setAgain} type="password" autoComplete="new-password" maxLength={72} />
+      <AuthField label="Mật khẩu" value={password} onChange={setPassword} type="password" autoComplete="new-password" hint="8–72 ký tự." />
+      <AuthField label="Nhập lại mật khẩu" value={again} onChange={setAgain} type="password" autoComplete="new-password" />
       <ProfilePicker name={username.trim()} value={look} onChange={setLook} />
       {message && (
         <p role="alert" className="text-sm text-rose-300">

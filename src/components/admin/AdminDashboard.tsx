@@ -9,6 +9,7 @@ import { Toaster } from "sonner";
 import { GameButton, GamePanel, GameTabs } from "@/components/game-ui";
 import { authRequest, useSession, type AuthResult } from "@/components/auth/session";
 import { cn } from "@/lib/utils";
+import { Forbidden } from "./Forbidden";
 import { ByGameTable, TopPagesTable, TopPlayersTable } from "./RankTables";
 import { StatCards } from "./StatCards";
 import { UsersSection } from "./UsersTable";
@@ -60,14 +61,7 @@ export function AdminDashboard() {
   if (status === 403) {
     return (
       <Shell>
-        <GamePanel className="mx-auto mt-10 max-w-md text-center">
-          <p aria-hidden className="text-4xl">🔒</p>
-          <h2 className="mt-2 text-2xl font-black">Bạn không có quyền xem trang này</h2>
-          <p className="mt-2 text-sm text-white/65">Trang quản trị chỉ dành cho tài khoản quản trị. Đăng nhập bằng tài khoản khác nếu bạn có.</p>
-          <Link href="/" className="mt-4 inline-flex h-11 items-center rounded-full bg-white/12 px-5 font-bold ring-1 ring-inset ring-white/15 hover:bg-white/18">
-            Về sảnh game
-          </Link>
-        </GamePanel>
+        <Forbidden />
       </Shell>
     );
   }
@@ -108,7 +102,7 @@ function Shell({ user, children }: { user?: string; children: React.ReactNode })
       <Toaster theme="dark" position="top-center" richColors visibleToasts={3} toastOptions={{ duration: 2800 }} />
       <header className="mb-5 flex flex-wrap items-end gap-x-4 gap-y-2 sm:mb-7">
         <div className="min-w-0">
-          <Link href="/" className="-ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-sm font-bold text-white/65 hover:bg-white/10 hover:text-white">
+          <Link href="/" className="-ml-3 inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-bold text-white/65 hover:bg-white/10 hover:text-white">
             <ArrowLeft aria-hidden className="size-4" />
             Sảnh game
           </Link>
@@ -152,7 +146,7 @@ export function StatsView({
               aria-pressed={days === p}
               onClick={() => onDays(p)}
               className={cn(
-                "h-9 rounded-full px-4 text-sm font-extrabold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/70",
+                "h-10 rounded-full px-4 text-sm font-extrabold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/70",
                 days === p ? "bg-game-accent text-game-accent-fg" : "text-white/65 hover:text-white",
               )}
             >
