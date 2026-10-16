@@ -98,7 +98,8 @@ Toàn bộ phần kết nối nằm trong `src/components/games/gameClient.ts`.
 Cách hook hoạt động:
 - **Chỉ kết nối khi `name` khác rỗng.** Effect phụ thuộc `[wsPath, code, name, mode]`. Vì vậy trang bàn đóng băng tên lúc mount (xem §9).
 - **Join.** Mở socket, chờ `open` (tối đa 10 giây), rồi gửi `{type: mode === "watch" ? "watch" : "join", code, name, token}`.
-- **Token ghế.** Lấy từ `getToken()`, lưu ở **`sessionStorage["tienlen:token"]`** chứ không phải localStorage. Nhờ vậy reload vẫn giữ ghế, còn mỗi tab là một người chơi khác nhau. Nếu storage bị chặn, token chỉ nằm trong bộ nhớ.
+- **Token ghế.** Lấy từ `getToken()`, lưu ở **`localStorage["tienlen:token"]`**, dùng chung mọi tab của trình duyệt (token cũ trong `sessionStorage` được chuyển sang). Reload, đóng tab rồi mở lại link mời đều về đúng ghế cũ; hai tab cùng phòng là cùng một người, muốn chơi thêm người thì dùng trình duyệt khác hoặc cửa sổ ẩn danh. Nếu storage bị chặn, token chỉ nằm trong bộ nhớ.
+- **Vào lại phòng (server).** be_game gắn lại ghế theo token; token khác (máy/trình duyệt khác) thì nhận lại ghế **đang offline** trùng tên, và ghế đã bị giải phóng lúc vắng (offline > 60 s giữa các ván) được nhớ 3 giờ để quay lại với cùng điểm (be_game `docs/GUIDE.md` → "Vào lại phòng").
 - **Ping.** Gửi `{type:"ping"}` mỗi 10 giây (`PING_INTERVAL_MS`). Ping cũng là heartbeat báo người chơi còn online; server trả `pong`.
 - **Reconnect.** Khi socket đóng, `status` thành `"reconnecting"` và hook thử lại với backoff `min(500·2^n, 8000)` ms. Tab được focus lại (`visibilitychange`) hoặc mạng có lại (`online`) thì nó thử ngay.
 - **Chuyển kết nối theo kế hoạch.** Server gửi `{type:"reconnect"}` trước khi Vercel function hết thời gian. Hook mở kênh mới và join xong rồi mới đóng kênh cũ, nên người chơi không thấy mất kết nối.
@@ -1227,7 +1228,7 @@ for (const vp of VIEWPORTS) {
 await browser.close();
 ```
 
-Mỗi `newContext` có `sessionStorage` riêng, tức một token và một người chơi mới. Muốn xem bàn mà không chiếm ghế thì thêm `?watch=1`.
+Mỗi `newContext` có `localStorage` riêng, tức một token và một người chơi mới (hai page trong cùng context là cùng một người). Muốn xem bàn mà không chiếm ghế thì thêm `?watch=1`.
 
 ---
 

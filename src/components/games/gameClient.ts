@@ -177,16 +177,18 @@ const randomToken = () =>
     : Array.from({ length: 4 }, () => Math.random().toString(36).slice(2)).join("");
 
 /**
- * Secret reconnect token. Kept in sessionStorage so a reload keeps the seat,
- * while separate tabs act as separate players.
+ * Secret reconnect token, shared by every tab of this browser (localStorage): a reload, closing the
+ * tab or opening the invite link again all come back to the same seat. A second tab in the same room
+ * is the same player; another browser or a private window plays as someone else. A token from the
+ * older per-tab storage (sessionStorage) is carried over so seats taken before keep working.
  */
 let memoryToken: string | null = null;
 export function getToken(): string {
   try {
-    let t = sessionStorage.getItem(TOKEN_KEY);
+    let t = localStorage.getItem(TOKEN_KEY);
     if (!t) {
-      t = randomToken();
-      sessionStorage.setItem(TOKEN_KEY, t);
+      t = sessionStorage.getItem(TOKEN_KEY) || randomToken();
+      localStorage.setItem(TOKEN_KEY, t);
     }
     return t;
   } catch {
