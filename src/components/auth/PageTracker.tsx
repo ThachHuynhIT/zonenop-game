@@ -14,7 +14,8 @@ async function send(pathname: string): Promise<void> {
   const session = getSession()?.session;
   // sendBeacon cannot carry an Authorization header, so signed-in views go through fetch.
   if (!session && typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
-    if (navigator.sendBeacon(url, new Blob([body], { type: "application/json" }))) return;
+    // text/plain is CORS-safelisted: a beacon cannot do a preflight, and the backend parses the JSON body anyway.
+    if (navigator.sendBeacon(url, new Blob([body], { type: "text/plain;charset=UTF-8" }))) return;
   }
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (session) headers.Authorization = `Bearer ${session}`;
