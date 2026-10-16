@@ -185,6 +185,7 @@ Every push to `main` that passes CI is deployed by `.github/workflows/deploy.yml
 - `DEPLOY_PATH` must be an absolute path under the deploy user's `$HOME` (the script refuses anything else). Set path secrets from Git Bash with `MSYS_NO_PATHCONV=1`, or `/home/...` is rewritten into `C:/Program Files/Git/home/...`.
 - The image is built in this app's own BuildKit builder (`zonenop-game`, driver `docker-container`), never the host's shared `default` one. After each deploy its cache is pruned to 2 GB and the builder is stopped; never prune anything without `--builder zonenop-game`.
 - A full build takes about 10 minutes on the phone; the variable `WEB_DOMAIN` of the `self-hosted` environment enables the public health check.
+- `/api/health` returns `{ ok, commit }` (`BUILD_COMMIT` exported by the deploy and passed by compose; `VERCEL_GIT_COMMIT_SHA` on Vercel). The container and public checks wait for the commit just shipped, and the `vercel` job (repo variable `VERCEL_HEALTH_URL`) waits up to 10 minutes for the Vercel copy to serve it too, so a stale container or a failed Vercel build turns the run red.
 
 Run the production image locally:
 
