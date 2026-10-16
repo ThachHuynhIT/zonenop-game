@@ -302,6 +302,9 @@ function loadName(): string {
 
 /** The player's name for every game ("" when none has been chosen yet). */
 export function getSavedName(): string {
+  // Signed in: the account's username is the name at every table.
+  const account = getSession()?.user.username;
+  if (account) return account;
   return (cachedName ??= loadName());
 }
 
@@ -324,7 +327,9 @@ function subscribeName(listener: () => void) {
     listener();
   };
   window.addEventListener("storage", onStorage);
+  const offSession = subscribeSession(listener); // signing in/out changes the name
   return () => {
+    offSession();
     nameListeners.delete(listener);
     window.removeEventListener("storage", onStorage);
   };
@@ -481,19 +486,20 @@ export function useGameRoom<V>(
         ch.close();
         return { kind: "unreachable" };
       }
+      const sentSession = getSession()?.session;
       const res = await ch.request({
         type: mode === "watch" ? "watch" : "join",
         code,
         name,
         token,
         look: getSavedProfile(),
-        session: getSession()?.session,
+        session: sentSession,
         device: getDeviceId(),
       });
       if (res.ok) return { kind: "joined", channel: ch };
       ch.close();
       if (res.error === NEED_LOGIN) {
-        clearSession();
+        if (sentSession && getSession()?.session === sentSession) clearSession();
         signedOutRef.current?.();
       }
       return failedJoinOutcome(res.error);

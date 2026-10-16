@@ -90,7 +90,7 @@ export function subscribeSession(listener: () => void) {
 
 /** Live session; null during SSR. */
 export function useSession(): StoredSession | null {
-  return useSyncExternalStore(subscribeSession,getSession, () => null);
+  return useSyncExternalStore(subscribeSession, getSession, () => null);
 }
 
 export type AuthResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
@@ -136,5 +136,14 @@ export async function refreshMe(): Promise<void> {
   const current = getSession();
   if (!current) return;
   const res = await authRequest<{ user: PublicUser }>("GET", "/api/auth/me");
-  if (res.ok) saveSession({ session: current.session, user: res.data.user });
+  // Skip when the user signed out or in as someone else while the request was in flight.
+  if (res.ok && getSession()?.session === current.session) saveSession({ session: current.session, user: res.data.user });
+}
+
+/** Save my icon and colour on the account and refresh the stored user (the table hears it on the next join). */
+export async function updateLook(look: { icon: string; color: string }): Promise<AuthResult<{ user: PublicUser }>> {
+  const sent = getSession();
+  const res = await authRequest<{ user: PublicUser }>("PATCH", "/api/auth/me", { icon: look.icon, color: look.color });
+  if (res.ok && sent && getSession()?.session === sent.session) saveSession({ session: sent.session, user: res.data.user });
+  return res;
 }

@@ -104,7 +104,7 @@ export function GameLobby({ title, tagline, icons, basePath, wsPath, apiPrefix, 
               Bạn chơi với tên
               <b className="max-w-[12rem] truncate text-base text-amber-200">{name || "…"}</b>
               <button type="button" onClick={openRename} className="-my-1 rounded px-1 py-1 text-xs text-white/50 underline-offset-2 hover:text-white hover:underline max-sm:min-h-9 max-sm:px-2">
-                ✎ Đổi tên
+                Tài khoản
               </button>
             </p>
             <button
