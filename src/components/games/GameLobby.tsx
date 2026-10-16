@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { GameTabs } from "@/components/game-ui";
 import { DeltaBadge } from "@/components/tienlen/Scoreboard";
 import { cn } from "@/lib/utils";
 import { createGameRoom, fetchApi, pollWhileVisible, usePlayerName } from "./gameClient";
 import { useGamesShell } from "./GamesShell";
+import { toLeaderRows, type LeaderRow } from "./leaderboard";
+import { PlayerAvatar } from "./PlayerAvatar";
 
 const ROOMS_REFRESH_MS = 10_000;
 
@@ -15,13 +18,6 @@ interface LobbyRoom {
   status: "waiting" | "playing";
   players: { name: string; connected: boolean; points: number }[];
   spectators: number;
-}
-
-interface LeaderRow {
-  name: string;
-  points: number;
-  games: number;
-  wins: number;
 }
 
 export interface GameLobbyProps {
@@ -54,6 +50,7 @@ export function GameLobby({ title, tagline, icons, basePath, wsPath, apiPrefix, 
   const [rooms, setRooms] = useState<LobbyRoom[] | null>(null);
   const [roomsError, setRoomsError] = useState(false);
   const [board, setBoard] = useState<LeaderRow[] | null>(null);
+  const [oldBoard, setOldBoard] = useState<LeaderRow[] | null>(null);
 
   const loadRooms = useCallback(async () => {
     try {
@@ -67,9 +64,12 @@ export function GameLobby({ title, tagline, icons, basePath, wsPath, apiPrefix, 
 
   useEffect(() => {
     const stop = pollWhileVisible(() => void loadRooms(), ROOMS_REFRESH_MS);
-    fetchApi<{ players: LeaderRow[] }>(`/api${apiPrefix}/leaderboard?limit=20`)
-      .then((r) => setBoard(r.players))
+    fetchApi<unknown>(`/api${apiPrefix}/leaderboard?limit=20`)
+      .then((r) => setBoard(toLeaderRows(r)))
       .catch(() => setBoard([]));
+    fetchApi<unknown>(`/api${apiPrefix}/leaderboard?season=old&limit=20`)
+      .then((r) => setOldBoard(toLeaderRows(r)))
+      .catch(() => setOldBoard([]));
     return stop;
   }, [loadRooms, apiPrefix]);
 
@@ -208,40 +208,52 @@ export function GameLobby({ title, tagline, icons, basePath, wsPath, apiPrefix, 
 
           <section className="rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur">
             <h2 className="mb-3 text-lg font-bold text-amber-300">🏆 Bảng xếp hạng</h2>
-            {board === null ? (
-              <p className="animate-pulse text-sm text-white/60">Đang tải…</p>
-            ) : board.length === 0 ? (
-              <p className="text-sm text-white/60">Chưa có ván nào được ghi điểm.</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="text-left text-xs text-white/50">
-                  <tr>
-                    <th className="pb-1">#</th>
-                    <th className="pb-1">Người chơi</th>
-                    <th className="pb-1 text-right">Ván</th>
-                    <th className="pb-1 text-right">Nhất</th>
-                    <th className="pb-1 text-right">Điểm</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {board.map((p, i) => (
-                    <tr key={p.name + i} className={cn("border-t border-white/5", name && p.name.toLowerCase() === name.toLowerCase() && "text-amber-200")}>
-                      <td className="py-1.5 text-white/50">{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</td>
-                      <td className="max-w-[10rem] truncate py-1.5">{p.name}</td>
-                      <td className="py-1.5 text-right">{p.games}</td>
-                      <td className="py-1.5 text-right">{p.wins}</td>
-                      <td className="py-1.5 text-right">
-                        <DeltaBadge delta={p.points} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            <GameTabs
+              tabs={[
+                { id: "current", label: "Mùa này", content: <Board rows={board} me={name ?? ""} /> },
+                { id: "old", label: "Mùa trước", content: <Board rows={oldBoard} me={name ?? ""} /> },
+              ]}
+            />
             <p className="mt-3 text-xs text-white/40">Điểm được cộng dồn theo tên người chơi qua mọi bàn.</p>
           </section>
         </div>
       </div>
     </main>
+  );
+}
+
+function Board({ rows, me }: { rows: LeaderRow[] | null; me: string }) {
+  if (rows === null) return <p className="animate-pulse text-sm text-white/60">Đang tải…</p>;
+  if (rows.length === 0) return <p className="text-sm text-white/60">Chưa có ván nào được ghi điểm.</p>;
+  return (
+    <table className="w-full text-sm">
+      <thead className="text-left text-xs text-white/50">
+        <tr>
+          <th className="pb-1">#</th>
+          <th className="pb-1">Người chơi</th>
+          <th className="pb-1 text-right">Ván</th>
+          <th className="pb-1 text-right">Nhất</th>
+          <th className="pb-1 text-right">Điểm</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((p, i) => (
+          <tr key={p.name + i} className={cn("border-t border-white/5", me && p.name.toLowerCase() === me.toLowerCase() && "text-amber-200")}>
+            <td className="py-1.5 text-white/50">{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</td>
+            <td className="max-w-[10rem] py-1.5">
+              <span className="flex items-center gap-2">
+                <PlayerAvatar name={p.name} profile={{ icon: p.icon, color: p.color || "#fbbf24" }} className="size-6 text-xs" />
+                <span className="truncate">{p.name}</span>
+              </span>
+            </td>
+            <td className="py-1.5 text-right">{p.games}</td>
+            <td className="py-1.5 text-right">{p.wins}</td>
+            <td className="py-1.5 text-right">
+              <DeltaBadge delta={p.points} />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
