@@ -352,6 +352,11 @@
   --game-accent-soft: color-mix(in oklch, var(--game-accent) 18%, transparent);
   --game-accent-fg: oklch(0.2 0.02 270);
   --game-depth: 4px;
+  /* Admin charts (dark surfaces): first series follows the accent, the second is the hub's gold. */
+  --game-chart-1: var(--game-accent);
+  --game-chart-2: oklch(0.84 0.14 85);
+  --game-chart-grid: oklch(1 0 0 / 0.08);
+  --game-chart-axis: oklch(1 0 0 / 0.55);
 }
 @media (max-width: 639px) {
   :where(.game-shell, [data-game]) {
