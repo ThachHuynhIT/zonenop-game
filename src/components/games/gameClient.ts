@@ -211,7 +211,10 @@ function rememberRoomServer(wsPath: string, code: string, base: string) {
 const SHARED_GET_MS = 4_000;
 const sharedGets = new Map<string, { at: number; promise: Promise<unknown> }>();
 
-/** GET a JSON endpoint (rooms list, leaderboard) of the active backend. */
+/**
+ * GET a public JSON endpoint (rooms list, leaderboard) of the active backend. Sends no Authorization header on
+ * purpose: a header would force a CORS preflight on every poll, and an older backend would fail it.
+ */
 export function fetchApi<T>(path: string): Promise<T> {
   const now = Date.now();
   const sess = getSession()?.session;
@@ -222,7 +225,7 @@ export function fetchApi<T>(path: string): Promise<T> {
     const base = await activeServerBase();
     let res: Response;
     try {
-      res = await fetch(base + path, { cache: "no-store", headers: sess ? { Authorization: `Bearer ${sess}` } : undefined });
+      res = await fetch(base + path, { cache: "no-store" });
     } catch (err) {
       markUnreachable(base);
       throw err;

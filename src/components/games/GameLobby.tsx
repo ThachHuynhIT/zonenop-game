@@ -211,7 +211,7 @@ export function GameLobby({ title, tagline, icons, basePath, wsPath, apiPrefix, 
             <GameTabs
               tabs={[
                 { id: "current", label: "Mùa này", content: <Board rows={board} me={name ?? ""} empty="Chưa có ai ghi điểm mùa này." note="Điểm tính theo tài khoản, bắt đầu từ mùa này." /> },
-                { id: "old", label: "Mùa trước", content: <Board rows={oldBoard} me={name ?? ""} empty="Không có dữ liệu mùa trước." note="Điểm được cộng dồn theo tên người chơi qua mọi bàn." /> },
+                { id: "old", label: "Mùa trước (theo tên)", content: <Board rows={oldBoard} me={name ?? ""} empty="Không có dữ liệu mùa trước." note="Bảng cũ tính theo tên người chơi." /> },
               ]}
               className="border-0 bg-transparent"
             />

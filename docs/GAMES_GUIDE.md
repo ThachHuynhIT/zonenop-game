@@ -1387,10 +1387,12 @@ Từ nhánh `feature/accounts` (cùng nhánh bên be_game) phải đăng nhập 
 
 ### 10.2. Chặn và chuyển trang
 - `GamesShell` chuyển người chưa đăng nhập tới `/dang-nhap?next=<trang đang xem>` (`next.ts` chỉ nhận đường dẫn nội bộ). `/dang-nhap` (`AuthForm.tsx`) có hai tab Đăng nhập / Đăng ký; xong thì về `next`.
-- Đổi mật khẩu hoặc bị quản trị khoá thì phiên cũ bị từ chối ở lần gọi kế tiếp (HTTP hoặc `join`); client xoá phiên và về `/dang-nhap`.
+- Đổi mật khẩu hoặc bị quản trị khoá thì phiên cũ bị từ chối ở lần gọi HTTP kế tiếp hoặc ở lần `join` kế tiếp; client xoá phiên và về `/dang-nhap`. Người chơi đã ngồi sẵn ở bàn vẫn giữ kết nối hiện tại cho tới khi kết nối lại (khi đó `join` bị từ chối).
+- Phiên phải hợp lệ trên cả hai backend (chính và dự phòng): hai bên dùng chung `SESSION_SECRET` và cùng một Neon (`DATABASE_URL`). Phát hành frontend trước khi cả hai backend chạy bản có tài khoản thì người dùng thấy "Không kết nối được máy chủ".
+- Các GET công khai (danh sách phòng, bảng điểm) không gửi `Authorization`, để tránh preflight CORS ở mỗi lần poll.
 
 ### 10.3. Bảng điểm mùa
-- Sảnh (`GameLobby.tsx`) có hai tab: "Mùa này" (`GET /api<prefix>/leaderboard` trả `{ season: "current", rows: LeaderRow[] }`, tính theo tài khoản: `name, points, games, wins, icon, color`) và "Mùa trước" (`?season=old`, định dạng cũ cộng dồn theo tên). Phần chuẩn hoá nằm ở `leaderboard.ts`.
+- Sảnh (`GameLobby.tsx`) có hai tab: "Mùa này" (`GET /api<prefix>/leaderboard` trả `{ season: "current", rows: LeaderRow[] }`, tính theo tài khoản: `name, points, games, wins, icon, color`) và "Mùa trước (theo tên)" (`?season=old`, bảng cũ cộng dồn theo tên; be_game vẫn ghi vào bảng này, chưa đóng băng). Phần chuẩn hoá nằm ở `leaderboard.ts`.
 - Mỗi người chơi xong một ván được ghi một dòng kết quả; be_game ghi, frontend không gửi gì thêm.
 
 ### 10.4. Thống kê lượt xem
