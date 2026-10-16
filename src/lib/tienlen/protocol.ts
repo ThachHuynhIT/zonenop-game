@@ -19,7 +19,7 @@ export interface LastPlay {
   choppedPlayer?: string;
 }
 
-export const MAX_NAME_LENGTH = 16;
+export const MAX_NAME_LENGTH = 20;
 export const TURN_SECONDS = 30;
 /** Path of the WebSocket endpoint (Vercel function `api/ws.ts`, and the local dev server). */
 export const WS_PATH = "/api/ws";
