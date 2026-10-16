@@ -16,10 +16,10 @@ import { ONLINE_GAMES, gameOfPath, gamesPageKind } from "./gamesRegistry";
 
 interface GamesShellContext {
   /** Opens the account dialog of the games top bar. */
-  openRename: () => void;
+  openAccount: () => void;
 }
 
-const ShellContext = createContext<GamesShellContext>({ openRename: () => {} });
+const ShellContext = createContext<GamesShellContext>({ openAccount: () => {} });
 
 export const useGamesShell = () => useContext(ShellContext);
 
@@ -48,7 +48,8 @@ export function GamesShell({ children }: { children: React.ReactNode }) {
   // Signed in: re-read the account once (role / look may have changed elsewhere).
   const refreshed = useRef(false);
   useEffect(() => {
-    if (signedIn && !refreshed.current) {
+    if (!signedIn) refreshed.current = false;
+    else if (!refreshed.current) {
       refreshed.current = true;
       void refreshMe();
     }
@@ -77,7 +78,7 @@ export function GamesShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ShellContext.Provider value={{ openRename: () => setRenaming(true) }}>
+    <ShellContext.Provider value={{ openAccount: () => setRenaming(true) }}>
       <Toaster theme="dark" position="top-center" richColors visibleToasts={3} toastOptions={{ duration: 2800 }} />
       <div className={cn("flex min-h-[100dvh] flex-col [&_h1]:[font-family:var(--font-game)] [&_h2]:[font-family:var(--font-game)] [&_h3]:[font-family:var(--font-game)]", gameFont.variable, table && "games-shell-table")}>
         <GamesTopBar compact={table} name={signedIn ? name : null} onRename={() => setRenaming(true)} />

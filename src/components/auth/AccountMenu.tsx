@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { GameButton, GameDialog } from "@/components/game-ui";
+import { GameButton, GameDialog, gameToast } from "@/components/game-ui";
 import { ProfilePicker } from "@/components/games/PlayerAvatar";
 import type { PlayerProfile } from "@/components/games/gameClient";
 import { AuthField } from "./fields";
@@ -21,7 +21,8 @@ export function AccountMenu({ onClose }: { onClose: () => void }) {
 
   async function signOut() {
     setSigningOut(true);
-    await authRequest("POST", "/api/auth/logout");
+    const res = await authRequest("POST", "/api/auth/logout");
+    if (!res.ok) gameToast.info("Đã đăng xuất trên máy này; phiên trên máy chủ sẽ tự hết hạn");
     clearSession();
     onClose();
     router.replace("/dang-nhap");

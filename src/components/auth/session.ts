@@ -137,7 +137,8 @@ export async function refreshMe(): Promise<void> {
   if (!current) return;
   const res = await authRequest<{ user: PublicUser }>("GET", "/api/auth/me");
   // Skip when the user signed out or in as someone else while the request was in flight.
-  if (res.ok && getSession()?.session === current.session) saveSession({ session: current.session, user: res.data.user });
+  const now = getSession();
+  if (res.ok && now?.session === current.session && now.user === current.user) saveSession({ session: current.session, user: res.data.user });
 }
 
 /** Save my icon and colour on the account and refresh the stored user (the table hears it on the next join). */
