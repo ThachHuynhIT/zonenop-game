@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { getDeviceId } from "../auth/device";
+import { clearSession, getSession, subscribeSession } from "../auth/session";
 
 /**
  * Shared WebSocket client for the be_game backend (Tiến Lên, Mèo Nổ, …).
@@ -29,6 +31,8 @@ const FALLBACK_BASE = cleanBase(process.env.NEXT_PUBLIC_TIENLEN_FALLBACK_URL);
 export const SERVER_BASES: readonly string[] =
   FALLBACK_BASE && FALLBACK_BASE !== PRIMARY_BASE ? [PRIMARY_BASE, FALLBACK_BASE] : [PRIMARY_BASE];
 
+/** Ack error be_game sends when the session is missing or no longer valid. */
+const NEED_LOGIN = "Cần đăng nhập";
 /** Error be_game sends when a room code does not exist on that backend. */
 const ROOM_NOT_FOUND = "Không tìm thấy phòng";
 /** Ack error Channel.request resolves with when the server does not answer in time. */
@@ -210,13 +214,15 @@ const sharedGets = new Map<string, { at: number; promise: Promise<unknown> }>();
 /** GET a JSON endpoint (rooms list, leaderboard) of the active backend. */
 export function fetchApi<T>(path: string): Promise<T> {
   const now = Date.now();
-  const hit = sharedGets.get(path);
+  const sess = getSession()?.session;
+  const key = sess ? `${path}\n${sess}` : path;
+  const hit = sharedGets.get(key);
   if (hit && now - hit.at < SHARED_GET_MS) return hit.promise as Promise<T>;
   const promise = (async () => {
     const base = await activeServerBase();
     let res: Response;
     try {
-      res = await fetch(base + path, { cache: "no-store" });
+      res = await fetch(base + path, { cache: "no-store", headers: sess ? { Authorization: `Bearer ${sess}` } : undefined });
     } catch (err) {
       markUnreachable(base);
       throw err;
@@ -224,10 +230,10 @@ export function fetchApi<T>(path: string): Promise<T> {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return (await res.json()) as T;
   })();
-  sharedGets.set(path, { at: now, promise });
+  sharedGets.set(key, { at: now, promise });
   // A failed request is not shared: the next caller retries.
   promise.catch(() => {
-    if (sharedGets.get(path)?.promise === promise) sharedGets.delete(path);
+    if (sharedGets.get(key)?.promise === promise) sharedGets.delete(key);
   });
   return promise;
 }
@@ -434,6 +440,7 @@ export function useGameRoom<V>(
   name: string | null,
   mode: "play" | "watch" = "play",
   localize: (view: V) => V = (v) => v,
+  onSignedOut?: () => void,
 ) {
   const [view, setView] = useState<V | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
@@ -441,6 +448,8 @@ export function useGameRoom<V>(
   const channelRef = useRef<Channel | null>(null);
   const localizeRef = useRef(localize);
   localizeRef.current = localize;
+  const signedOutRef = useRef(onSignedOut);
+  signedOutRef.current = onSignedOut;
 
   useEffect(() => {
     if (!name) return;
@@ -472,9 +481,21 @@ export function useGameRoom<V>(
         ch.close();
         return { kind: "unreachable" };
       }
-      const res = await ch.request({ type: mode === "watch" ? "watch" : "join", code, name, token, look: getSavedProfile() });
+      const res = await ch.request({
+        type: mode === "watch" ? "watch" : "join",
+        code,
+        name,
+        token,
+        look: getSavedProfile(),
+        session: getSession()?.session,
+        device: getDeviceId(),
+      });
       if (res.ok) return { kind: "joined", channel: ch };
       ch.close();
+      if (res.error === NEED_LOGIN) {
+        clearSession();
+        signedOutRef.current?.();
+      }
       return failedJoinOutcome(res.error);
     };
 
@@ -594,7 +615,15 @@ const validProfile = (p: Partial<PlayerProfile> | null): PlayerProfile => ({
   color: p && typeof p.color === "string" && PROFILE_COLORS.includes(p.color) ? p.color : DEFAULT_PROFILE.color,
 });
 
+let userProfile: { user: object; profile: PlayerProfile } | null = null;
+
 export function getSavedProfile(): PlayerProfile {
+  const user = getSession()?.user;
+  if (user) {
+    // Signed in: the account's look wins (memoised so useSyncExternalStore sees a stable value).
+    if (userProfile?.user !== user) userProfile = { user, profile: { icon: user.icon, color: user.color } };
+    return userProfile.profile;
+  }
   if (cachedProfile) return cachedProfile;
   let raw: Partial<PlayerProfile> | null = null;
   try {
@@ -623,7 +652,9 @@ function subscribeProfile(listener: () => void) {
     listener();
   };
   window.addEventListener("storage", onStorage);
+  const offSession = subscribeSession(listener); // the account's look replaces the saved one on sign-in/out
   return () => {
+    offSession();
     profileListeners.delete(listener);
     window.removeEventListener("storage", onStorage);
   };
