@@ -79,7 +79,7 @@ flowchart LR
   end
 ```
 
-- **This repo is frontend only** — no database, no auth. Rooms, game state, timers and WebSockets live in the separate **be_game** repo, reached via `NEXT_PUBLIC_TIENLEN_SERVER_URL`.
+- **This repo is frontend only** — no database. Rooms, game state, timers, WebSockets, **accounts, sessions, leaderboards and admin stats** live in the separate **be_game** repo, reached via `NEXT_PUBLIC_TIENLEN_SERVER_URL`. Players must sign in (`/dang-nhap`) to play; the session is kept in `localStorage["games:session"]` and sent as `Authorization: Bearer`. Lobbies show a per-account "Mùa này" leaderboard next to the old per-name one, and `/admin` (admins only) shows traffic, games played and a user table. The first admin is set on the backend with `ADMIN_USERNAMES`. See `docs/GAMES_GUIDE.md` §10.
 - The server is authoritative: the client sends commands, the server answers with a per-player **view** of the state (your hand, never anyone else's).
 - `src/lib/<game>/` holds client copies of be_game's rules and protocol, used to validate moves and render state. **Keep them in sync** with be_game when either side changes.
 - The hub (`/`) and every game route share one shell (`GamesShell`): top bar with game tabs, player profile, open-tables panel and footer.
