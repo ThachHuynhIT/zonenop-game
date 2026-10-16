@@ -112,8 +112,8 @@ function RegisterTab() {
         void run("/api/auth/register", { username, password, icon: look.icon, color: look.color });
       }}
     >
-      <AuthField label="Tên đăng nhập" value={username} onChange={setUsername} autoComplete="username" maxLength={20} hint="3–20 ký tự: chữ, số, dấu _ và dấu chấm. Cũng là tên hiện ở bàn chơi." />
-      <AuthField label="Mật khẩu" value={password} onChange={setPassword} type="password" autoComplete="new-password" hint="8–72 ký tự." />
+      <AuthField label="Tên đăng nhập" value={username} onChange={setUsername} autoComplete="username" maxLength={20} hint="3–20 ký tự: chữ, số, dấu _, dấu chấm và dấu cách đơn. Cũng là tên hiện ở bàn chơi." />
+      <AuthField label="Mật khẩu" value={password} onChange={setPassword} type="password" autoComplete="new-password" hint="Tối đa 72 ký tự." />
       <AuthField label="Nhập lại mật khẩu" value={again} onChange={setAgain} type="password" autoComplete="new-password" />
       <ProfilePicker name={username.trim()} value={look} onChange={setLook} />
       {message && (

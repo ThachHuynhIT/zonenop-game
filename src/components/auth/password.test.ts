@@ -9,12 +9,12 @@ describe("passwordLength", () => {
 });
 
 describe("passwordProblem", () => {
-  it("accepts 8–72 characters", () => {
-    expect(passwordProblem("12345678")).toBeNull();
+  it("accepts 1–72 characters", () => {
+    expect(passwordProblem("a")).toBeNull();
     expect(passwordProblem("😼".repeat(72))).toBeNull(); // 144 UTF-16 units
   });
-  it("rejects too short and too long", () => {
-    expect(passwordProblem("😼".repeat(7))).toBe("Mật khẩu cần ít nhất 8 ký tự");
+  it("rejects empty and too long", () => {
+    expect(passwordProblem("")).toBe("Mật khẩu không được để trống");
     expect(passwordProblem("a".repeat(73))).toBe("Mật khẩu dài tối đa 72 ký tự");
   });
 });

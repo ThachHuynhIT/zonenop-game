@@ -1384,6 +1384,8 @@ Từ nhánh `feature/accounts` (cùng nhánh bên be_game) phải đăng nhập 
 - `authRequest(method, path, body)` gọi be_game kèm `Authorization: Bearer <session>`. Token ghế (`tienlen:token`, vào lại bàn) vẫn tách riêng, không đổi.
 - `join` / `watch` qua WebSocket gửi thêm `session` và `device` (id máy ngẫu nhiên, `device.ts`). Ack `"Cần đăng nhập"` thì `gameClient.ts` xoá phiên và người chơi bị đưa về `/dang-nhap`.
 - Tên hiển thị = username (tối đa 20 ký tự Unicode; `MAX_NAME_LENGTH` trong `src/lib/tienlen/protocol.ts` khớp be_game). Icon và màu lấy từ tài khoản, chọn lúc đăng ký và đổi ở menu tài khoản (`AccountMenu.tsx`).
+- Menu tài khoản (bấm tên/avatar ở thanh trên, `AccountMenu.tsx`) có hai tab. **Hồ sơ**: đổi tên đăng nhập, biểu tượng và màu bằng một nút "Lưu" chỉ gửi trường đã đổi (`PATCH /api/auth/me { username?, icon?, color? }` → `{ ok, user }`, `updateProfile` trong `session.ts`). Tên kiểm tra phía client như lúc đăng ký (`username.ts`: 3–20 ký tự Unicode, chữ/số/`_`/`.`/dấu cách đơn); lỗi máy chủ hiện ngay dưới form (400 tên không hợp lệ hoặc "Tên này đã được giữ", 409 "Tên đăng nhập đã có người dùng"). Tên mới chỉ áp dụng từ bàn tiếp theo (`join` kế tiếp), nên đổi sau khi ván kết thúc. **Mật khẩu**: mật khẩu hiện tại, mật khẩu mới, nhập lại; thành công thì lưu phiên mới do máy chủ trả.
+- Mật khẩu dài 1–72 ký tự Unicode (`password.ts`, `PASSWORD_MIN = 1`; trước đây 8–72) ở đăng ký, đổi mật khẩu và hộp "Đặt lại mật khẩu" của quản trị. Đăng nhập không kiểm tra độ dài.
 
 ### 10.2. Chặn và chuyển trang
 - `GamesShell` chuyển người chưa đăng nhập tới `/dang-nhap?next=<trang đang xem>` (`next.ts` chỉ nhận đường dẫn nội bộ). `/dang-nhap` (`AuthForm.tsx`) có hai tab Đăng nhập / Đăng ký; xong thì về `next`.

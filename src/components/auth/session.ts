@@ -141,10 +141,13 @@ export async function refreshMe(): Promise<void> {
   if (res.ok && now?.session === current.session && now.user === current.user) saveSession({ session: current.session, user: res.data.user });
 }
 
-/** Save my icon and colour on the account and refresh the stored user (the table hears it on the next join). */
-export async function updateLook(look: { icon: string; color: string }): Promise<AuthResult<{ user: PublicUser }>> {
+/** Save any of my username, icon and colour on the account and refresh the stored user (the table hears it on the next join). */
+export async function updateProfile(patch: { username?: string; icon?: string; color?: string }): Promise<AuthResult<{ user: PublicUser }>> {
   const sent = getSession();
-  const res = await authRequest<{ user: PublicUser }>("PATCH", "/api/auth/me", { icon: look.icon, color: look.color });
+  const res = await authRequest<{ user: PublicUser }>("PATCH", "/api/auth/me", patch);
   if (res.ok && sent && getSession()?.session === sent.session) saveSession({ session: sent.session, user: res.data.user });
   return res;
 }
+
+/** Save my icon and colour only. */
+export const updateLook = (look: { icon: string; color: string }) => updateProfile({ icon: look.icon, color: look.color });

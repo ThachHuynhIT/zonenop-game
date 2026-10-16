@@ -250,7 +250,7 @@ function ResetPasswordDialog({ user, onClose, onPatch }: { user: AdminUser | nul
       description={shown ? `Mật khẩu mới cho ${shown.username}. Mọi phiên đăng nhập cũ của tài khoản này sẽ bị đăng xuất.` : undefined}
     >
       <form onSubmit={submit} className="space-y-4">
-        <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} autoComplete="off" autoFocus hint="8–72 ký tự. Nhớ gửi mật khẩu này cho người dùng." />
+        <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} autoComplete="off" autoFocus hint="Tối đa 72 ký tự. Nhớ gửi mật khẩu này cho người dùng." />
         {problem && passwordLength(password) > PASSWORD_MAX && (
           <p role="alert" className="text-sm text-rose-300">
             {problem}

@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { GameButton, GameDialog, gameToast } from "@/components/game-ui";
+import { GameButton, GameDialog, GameTabs, gameToast } from "@/components/game-ui";
 import { ProfilePicker } from "@/components/games/PlayerAvatar";
 import type { PlayerProfile } from "@/components/games/gameClient";
 import { AuthField } from "./fields";
 import { PASSWORD_MIN, passwordLength, passwordProblem } from "./password";
-import { authRequest, clearSession, saveSession, updateLook, useSession, type PublicUser } from "./session";
+import { usernameProblem } from "./username";
+import { authRequest, clearSession, saveSession, updateProfile, useSession, type PublicUser } from "./session";
 
 type MeData = { user: PublicUser; session?: string };
 
@@ -38,52 +39,73 @@ export function AccountMenu({ onClose }: { onClose: () => void }) {
       footer={
         <>
           {user.role === "admin" && (
-            <Link href="/admin" onClick={onClose} className="mr-auto inline-flex h-9 items-center rounded-full px-3 text-sm font-bold text-game-accent hover:bg-white/10">
+            <Link href="/admin" onClick={onClose} className="mr-auto inline-flex h-11 items-center rounded-full px-3 text-sm font-bold text-game-accent hover:bg-white/10">
               Quản trị
             </Link>
           )}
-          <GameButton size="sm" onClick={onClose}>
+          <GameButton onClick={onClose}>
             Đóng
           </GameButton>
-          <GameButton size="sm" variant="danger" loading={signingOut} onClick={() => void signOut()}>
+          <GameButton variant="danger" loading={signingOut} onClick={() => void signOut()}>
             Đăng xuất
           </GameButton>
         </>
       }
     >
-      <div className="space-y-6">
-        <LookSection user={user} />
-        <PasswordSection />
-      </div>
+      <GameTabs
+        tabs={[
+          { id: "profile", label: "Hồ sơ", content: <ProfileSection user={user} /> },
+          { id: "password", label: "Mật khẩu", content: <PasswordSection /> },
+        ]}
+      />
     </GameDialog>
   );
 }
 
-function LookSection({ user }: { user: PublicUser }) {
+function ProfileSection({ user }: { user: PublicUser }) {
+  const [username, setUsername] = useState(user.username);
   const [look, setLook] = useState<PlayerProfile>({ icon: user.icon, color: user.color });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const changed = look.icon !== user.icon || look.color !== user.color;
+  const name = username.trim();
+  const patch = {
+    ...(name !== user.username ? { username: name } : {}),
+    ...(look.icon !== user.icon ? { icon: look.icon } : {}),
+    ...(look.color !== user.color ? { color: look.color } : {}),
+  };
+  const changed = Object.keys(patch).length > 0;
 
-  async function save() {
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!changed || busy) return;
+    if (patch.username !== undefined) {
+      const problem = usernameProblem(patch.username);
+      if (problem) return setMessage({ ok: false, text: problem });
+    }
     setBusy(true);
     setMessage(null);
-    const res = await updateLook(look);
+    const res = await updateProfile(patch);
     setBusy(false);
-    setMessage(res.ok ? { ok: true, text: "Đã lưu biểu tượng và màu." } : { ok: false, text: res.error });
+    setMessage(res.ok ? { ok: true, text: "Đã lưu hồ sơ." } : { ok: false, text: res.error });
   }
 
   return (
-    <section aria-labelledby="account-look">
-      <h3 id="account-look" className="font-heading text-base font-extrabold">
-        Biểu tượng &amp; màu
-      </h3>
-      <ProfilePicker name={user.username} value={look} onChange={setLook} />
+    <form onSubmit={save} className="space-y-3" aria-label="Hồ sơ">
+      <AuthField
+        label="Tên đăng nhập"
+        value={username}
+        onChange={setUsername}
+        autoComplete="username"
+        maxLength={20}
+        hint="3–20 ký tự: chữ, số, dấu _, dấu chấm và dấu cách đơn. Cũng là tên hiện ở bàn chơi."
+      />
+      <p className="text-xs text-white/60">Tên mới áp dụng từ bàn tiếp theo — nếu đang trong một ván, hãy đổi sau khi ván kết thúc.</p>
+      <ProfilePicker name={name} value={look} onChange={setLook} />
       <Feedback message={message} />
-      <GameButton size="sm" variant="primary" className="mt-3" loading={busy} disabled={!changed} onClick={() => void save()}>
+      <GameButton type="submit" variant="primary" loading={busy} disabled={!changed}>
         Lưu
       </GameButton>
-    </section>
+    </form>
   );
 }
 
@@ -115,15 +137,12 @@ function PasswordSection() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3 border-t border-white/10 pt-4" aria-labelledby="account-password">
-      <h3 id="account-password" className="font-heading text-base font-extrabold">
-        Đổi mật khẩu
-      </h3>
+    <form onSubmit={submit} className="space-y-3" aria-label="Đổi mật khẩu">
       <AuthField label="Mật khẩu hiện tại" value={oldPassword} onChange={setOld} type="password" autoComplete="current-password" />
-      <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} type="password" autoComplete="new-password" hint="8–72 ký tự." />
+      <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} type="password" autoComplete="new-password" hint="Tối đa 72 ký tự." />
       <AuthField label="Nhập lại mật khẩu mới" value={again} onChange={setAgain} type="password" autoComplete="new-password" />
       <Feedback message={message} />
-      <GameButton type="submit" size="sm" variant="secondary" loading={busy} disabled={!ready}>
+      <GameButton type="submit" variant="secondary" loading={busy} disabled={!ready}>
         Đổi mật khẩu
       </GameButton>
     </form>
