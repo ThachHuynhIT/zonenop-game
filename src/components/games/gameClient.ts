@@ -31,6 +31,9 @@ export const SERVER_BASES: readonly string[] =
 
 /** Error be_game sends when a room code does not exist on that backend. */
 const ROOM_NOT_FOUND = "Không tìm thấy phòng";
+/** Ack error Channel.request resolves with when the server does not answer in time. */
+const REQUEST_TIMEOUT_ERROR = "Máy chủ không phản hồi";
+const DISCONNECTED_ERROR = "Mất kết nối máy chủ";
 const PROBE_TIMEOUT_MS = 3000;
 /** How long a backend choice is reused before the main backend is asked again. */
 const ACTIVE_TTL_MS = 60_000;
@@ -90,6 +93,80 @@ function markUnreachable(base: string) {
 async function candidateBases(): Promise<string[]> {
   const first = await activeServerBase();
   return [first, ...SERVER_BASES.filter((b) => b !== first)];
+}
+
+/**
+ * Backends to try for a room: the one it was joined on first, then the others. With a store shared by both backends a
+ * room survives its backend going down, so a dead pinned backend falls through to the next; with separate stores the
+ * other backend answers "Không tìm thấy phòng" and the loop goes back to waiting for the pinned one.
+ */
+export function basesToTry(roomBase: string | null, candidates: readonly string[]): string[] {
+  if (!roomBase || !candidates.includes(roomBase)) return [...candidates];
+  return [roomBase, ...candidates.filter((b) => b !== roomBase)];
+}
+
+/** What one attempt to join a room on one backend came to. */
+export type JoinOutcome<C> =
+  | { kind: "joined"; channel: C }
+  | { kind: "unreachable" }
+  | { kind: "not-found" }
+  | { kind: "error"; error: string }
+  | { kind: "cancelled" };
+
+/** What open() does once the backends have been tried. */
+export type JoinStep<C> =
+  | { kind: "join"; base: string; channel: C }
+  | { kind: "retry" }
+  | { kind: "error"; error: string }
+  | { kind: "keep" }
+  | { kind: "cancelled" };
+
+/**
+ * Outcome of a failed join/watch ack. A request that times out counts as unreachable: a backend that accepts the
+ * socket but cannot reach its store hangs, and the player should move on to the other backend. Every other server
+ * error (room full, wrong name, …) is terminal.
+ */
+export function failedJoinOutcome(error: string): JoinOutcome<never> {
+  if (error === ROOM_NOT_FOUND) return { kind: "not-found" };
+  // No answer, or the socket dropped mid-join (backend died): try the other backend.
+  if (error === REQUEST_TIMEOUT_ERROR || error === DISCONNECTED_ERROR) return { kind: "unreachable" };
+  return { kind: "error", error };
+}
+
+/**
+ * Try `bases` in order until one settles the join, then say what to do:
+ * - joined: join on that backend (the others are not tried);
+ * - the room's own backend (`roomBase`) says not found: the room is gone, so an error (the others are not tried);
+ * - any other server error: show it;
+ * - nothing joinable but a backend was unreachable: the room may live there, so retry. When `hasChannel()` is true
+ *   (a planned hand-over still has its old channel) the old channel stays and no retry is needed;
+ * - every backend answered "not found": the room does not exist.
+ */
+export async function resolveJoin<C>(
+  bases: readonly string[],
+  roomBase: string | null,
+  hasChannel: () => boolean,
+  attempt: (base: string) => Promise<JoinOutcome<C>>,
+): Promise<JoinStep<C>> {
+  let unreachable = false;
+  for (const base of bases) {
+    const outcome = await attempt(base);
+    switch (outcome.kind) {
+      case "joined":
+        return { kind: "join", base, channel: outcome.channel };
+      case "cancelled":
+      case "error":
+        return outcome;
+      case "unreachable":
+        unreachable = true;
+        break;
+      case "not-found":
+        if (base === roomBase) return { kind: "error", error: ROOM_NOT_FOUND };
+        break;
+    }
+  }
+  if (unreachable) return hasChannel() ? { kind: "keep" } : { kind: "retry" };
+  return { kind: "error", error: ROOM_NOT_FOUND };
 }
 
 /** Which backend each room lives on (per tab), so reconnects never jump to a backend without the room. */
@@ -177,16 +254,18 @@ const randomToken = () =>
     : Array.from({ length: 4 }, () => Math.random().toString(36).slice(2)).join("");
 
 /**
- * Secret reconnect token. Kept in sessionStorage so a reload keeps the seat,
- * while separate tabs act as separate players.
+ * Secret reconnect token, shared by every tab of this browser (localStorage): a reload, closing the
+ * tab or opening the invite link again all come back to the same seat. A second tab in the same room
+ * is the same player; another browser or a private window plays as someone else. A token from the
+ * older per-tab storage (sessionStorage) is carried over so seats taken before keep working.
  */
 let memoryToken: string | null = null;
 export function getToken(): string {
   try {
-    let t = sessionStorage.getItem(TOKEN_KEY);
+    let t = localStorage.getItem(TOKEN_KEY);
     if (!t) {
-      t = randomToken();
-      sessionStorage.setItem(TOKEN_KEY, t);
+      t = sessionStorage.getItem(TOKEN_KEY) || randomToken();
+      localStorage.setItem(TOKEN_KEY, t);
     }
     return t;
   } catch {
@@ -278,7 +357,7 @@ class Channel {
       }
     };
     this.ws.onclose = () => {
-      this.pending.forEach((resolve) => resolve({ ok: false, error: "Mất kết nối máy chủ" }));
+      this.pending.forEach((resolve) => resolve({ ok: false, error: DISCONNECTED_ERROR }));
       this.pending.clear();
       this.onClose();
     };
@@ -294,12 +373,12 @@ class Channel {
   }
 
   request(msg: Record<string, unknown> & { type: string }, timeoutMs = 10_000): Promise<Ack> {
-    if (this.ws.readyState !== WebSocket.OPEN) return Promise.resolve({ ok: false, error: "Mất kết nối máy chủ" });
+    if (this.ws.readyState !== WebSocket.OPEN) return Promise.resolve({ ok: false, error: DISCONNECTED_ERROR });
     const id = this.nextId++;
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        resolve({ ok: false, error: "Máy chủ không phản hồi" });
+        resolve({ ok: false, error: REQUEST_TIMEOUT_ERROR });
       }, timeoutMs);
       this.pending.set(id, (res) => {
         clearTimeout(timer);
@@ -369,11 +448,11 @@ export function useGameRoom<V>(
     let retry = 0;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     const token = getToken();
-    /** Backend this room lives on once known. Reconnects stay on it: the other backend has no such room. */
+    /** Backend this room lives on once known. Reconnects try it first, then the others (see basesToTry). */
     let roomBase = knownRoomServer(wsPath, code);
 
     /** Connect to one backend and join (or watch) the room there. */
-    const tryJoin = async (base: string): Promise<Channel | "unreachable" | "not-found" | { error: string }> => {
+    const tryJoin = async (base: string): Promise<JoinOutcome<Channel>> => {
       const ch = new Channel(wsUrl(base, wsPath));
       ch.onMessage = (msg) => {
         if (msg.type === "state") {
@@ -391,61 +470,62 @@ export function useGameRoom<V>(
 
       if (!(await ch.opened(CONNECT_TIMEOUT_MS))) {
         ch.close();
-        return "unreachable";
+        return { kind: "unreachable" };
       }
       const res = await ch.request({ type: mode === "watch" ? "watch" : "join", code, name, token, look: getSavedProfile() });
-      if (res.ok) return ch;
+      if (res.ok) return { kind: "joined", channel: ch };
       ch.close();
-      return res.error === ROOM_NOT_FOUND ? "not-found" : { error: res.error };
+      return failedJoinOutcome(res.error);
     };
 
     /**
      * Open a channel and join. Used for the first connection, after drops, and
      * for a planned hand-over (`reconnect` from the server before the platform
      * cuts the connection): the new channel joins before the old one closes.
-     * While the room's backend is unknown (a shared link), each backend is tried in turn.
+     * Each backend is tried in turn, the room's own first once it is known.
      */
     const open = async () => {
       if (disposed) return;
-      const bases = roomBase ? [roomBase] : await candidateBases();
-      let unreachable = false;
-      for (const base of bases) {
-        const outcome = await tryJoin(base);
-        if (disposed) {
-          if (outcome instanceof Channel) outcome.close();
+      const bases = basesToTry(roomBase, roomBase ? SERVER_BASES : await candidateBases());
+      const step = await resolveJoin(
+        bases,
+        roomBase,
+        () => channelRef.current !== null,
+        async (base) => {
+          const outcome = await tryJoin(base);
+          if (disposed) {
+            if (outcome.kind === "joined") outcome.channel.close();
+            return { kind: "cancelled" };
+          }
+          if (outcome.kind === "unreachable" && !roomBase) markUnreachable(base);
+          return outcome;
+        },
+      );
+      switch (step.kind) {
+        case "join": {
+          roomBase = step.base;
+          rememberRoomServer(wsPath, code, step.base);
+          const previous = channelRef.current;
+          channelRef.current = step.channel;
+          previous?.close();
+          retry = 0;
+          setStatus("joined");
+          setError(null);
           return;
         }
-        if (outcome === "unreachable") {
-          unreachable = true;
-          if (!roomBase) markUnreachable(base);
-          continue;
-        }
-        if (outcome === "not-found") continue;
-        if (!(outcome instanceof Channel)) {
+        case "error":
           setStatus("error");
-          setError(outcome.error);
+          setError(step.error);
           return;
-        }
-        roomBase = base;
-        rememberRoomServer(wsPath, code, base);
-        const previous = channelRef.current;
-        channelRef.current = outcome;
-        previous?.close();
-        retry = 0;
-        setStatus("joined");
-        setError(null);
-        return;
-      }
-      if (unreachable) {
-        // The room may live on the backend that is down: keep retrying.
-        if (!channelRef.current) {
+        case "retry":
+          // The room may live on the backend that is down: keep retrying.
           setStatus((s) => (s === "joined" ? "reconnecting" : s));
           scheduleRetry();
-        }
-        return;
+          return;
+        case "keep": // planned hand-over found nothing joinable: the old channel stays
+        case "cancelled":
+          return;
       }
-      setStatus("error");
-      setError(ROOM_NOT_FOUND);
     };
 
     const scheduleRetry = () => {
@@ -481,7 +561,7 @@ export function useGameRoom<V>(
 
   const call: Call = useCallback((msg) => {
     const ch = channelRef.current;
-    return ch ? ch.request(msg) : Promise.resolve<Ack>({ ok: false, error: "Mất kết nối máy chủ" });
+    return ch ? ch.request(msg) : Promise.resolve<Ack>({ ok: false, error: DISCONNECTED_ERROR });
   }, []);
 
   // Changing icon/colour at the table reaches everyone at once (the name stays frozen until the next table).
