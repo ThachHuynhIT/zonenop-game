@@ -60,8 +60,8 @@ const MeoTable = dynamic(() => import("@/components/meono/MeoTable"), {
 });
 
 /** The games layout (GamesShell) only renders this once the player has a name. */
-export default function MeoNoRoomPage({ params }: { params: { room: string } }) {
-  const code = decodeURIComponent(params.room).toUpperCase();
+export default function MeoNoRoomPage({ params }: { params: Promise<{ room: string }> }) {
+  const code = decodeURIComponent(use(params).room).toUpperCase();
   const watch = useSearchParams().get("watch") === "1";
   // Frozen for this table: renaming in the top bar must not re-join the room mid-game.
   const [name] = useState(getSavedName);
@@ -76,13 +76,19 @@ Toàn bộ phần kết nối nằm trong `src/components/games/gameClient.ts`.
 **Server URL và máy chủ dự phòng.** `SERVER_BASES` = `NEXT_PUBLIC_TIENLEN_SERVER_URL` (máy chủ chính; không đặt thì `http://localhost:4000`), rồi `NEXT_PUBLIC_TIENLEN_FALLBACK_URL` nếu có đặt và khác máy chủ chính. Dấu `/` cuối bị bỏ. URL WebSocket là URL đó với `http` đổi thành `ws`, rồi nối thêm path. Hai biến là `NEXT_PUBLIC_`, nên giá trị được gắn vào bundle lúc build. Đổi biến thì phải build lại. Xem `.env.example`.
 
 - `activeServerBase()` chọn máy chủ cho **sảnh và bàn mới**: thử `GET <base>/api/rooms` (timeout 3 giây) theo thứ tự, lấy máy đầu tiên trả lời; không máy nào trả lời thì vẫn dùng máy chính để lỗi hiện ra. Kết quả nhớ 60 giây, nên máy chính sống lại thì khoảng một phút sau bàn mới quay về đó. Thử `/api/rooms` chứ không phải `/api`, vì trên Vercel `/api` không phải function và trả 404.
-- **Mặc định mỗi máy chủ có Redis riêng**: phòng, sảnh và bảng điểm của máy này không có ở máy kia. Vì vậy mỗi phòng được **ghim** vào máy chủ của nó (`sessionStorage["games:roomServers"]`, khoá `"<wsPath> <CODE>"`), ghi lúc tạo hoặc lúc vào được bàn. Lần kết nối lại thử máy đã ghim trước; máy đó đang chết thì client thử máy còn lại, nên phòng không bị khoá vào một máy khi máy đó sập. Máy còn lại chỉ tìm thấy phòng khi hai backend **dùng chung một kho** (xem be_game `docs/SELF_HOSTING.md`); với kho riêng nó trả "Không tìm thấy phòng" và client quay lại chờ máy đã ghim. Máy chủ nhận kết nối nhưng không trả lời lệnh vào bàn trong 10 giây (thường vì không tới được kho) cũng được coi như không kết nối được, nên client sang máy còn lại; socket bị đứt giữa lúc vào bàn (máy chủ vừa sập) cũng vậy; các lỗi khác của server (ví dụ phòng đã đủ người) thì hiện ngay.
-- Phòng chưa biết máy (mở link mời): thử máy đang dùng trước; máy đó trả `"Không tìm thấy phòng"` hoặc không kết nối được thì thử máy còn lại. Mọi máy đều trả "không có phòng" thì báo lỗi; có máy không kết nối được thì tiếp tục thử lại (phòng có thể nằm trên máy đang chết).
+- **Hiện tại hai backend CHƯA dùng chung kho** (mỗi máy có Redis riêng; việc chuyển sang một Upstash dùng chung đang chờ làm): phòng, sảnh và bảng điểm của máy này không có ở máy kia. Vì vậy mỗi phòng được **ghim** vào máy chủ của nó (`sessionStorage["games:roomServers"]`, theo tab, khoá `"<wsPath> <CODE>"`, giữ 30 phòng gần nhất), ghi lúc tạo hoặc lúc vào được bàn. Lần kết nối lại thử máy đã ghim trước (`basesToTry`), rồi mới tới máy còn lại. Máy còn lại chỉ tìm thấy phòng khi hai backend **dùng chung một kho** (xem be_game `docs/SELF_HOSTING.md`), nên **chỉ sau khi chuyển sang kho chung thì failover sang máy dự phòng mới tiếp tục được ván đang chơi**; với kho riêng nó trả "Không tìm thấy phòng".
+- Mỗi lần thử vào một máy (`resolveJoin` trong `gameClient.ts`, kết quả ack lỗi qua `failedJoinOutcome`) cho ra một trong các kết quả:
+  - **Không kết nối được** (`unreachable`): không mở được socket trong 8 giây (`CONNECT_TIMEOUT_MS`), lệnh `join`/`watch` không có ack trong 10 giây (`"Máy chủ không phản hồi"`, thường vì máy chủ không tới được kho), hoặc socket đứt giữa lúc vào bàn (`"Mất kết nối máy chủ"`, máy chủ vừa sập). Client thử máy kế tiếp.
+  - **`"Không tìm thấy phòng"`**: nếu đó là máy chứa phòng (đã ghim) thì **kết luận cuối**: hiện lỗi, không thử máy khác; nếu không thì thử máy kế tiếp.
+  - Lỗi khác của server (ví dụ phòng đã đủ người): hiện ngay.
+  - Hết các máy mà chưa vào được: có máy không kết nối được thì **thử lại** với backoff (phòng có thể nằm trên máy đang chết; nếu đang chuyển kết nối theo kế hoạch thì giữ kênh cũ); mọi máy đều trả "Không tìm thấy phòng" thì báo lỗi.
+- Phòng chưa biết máy (mở link mời): thử máy đang dùng trước, rồi các máy còn lại theo các kết quả trên.
 - Trong lúc dùng máy dự phòng, sảnh chỉ hiện bàn và bảng điểm của máy dự phòng.
 
 **REST.** `fetchApi<T>(path)` gửi `GET <activeServerBase()>+path` với `cache: "no-store"` (lỗi mạng thì bỏ máy đang nhớ để lần sau thử lại); các GET giống nhau bắt đầu trong 4 giây dùng chung một request (`SHARED_GET_MS`). Hai nơi dùng nó:
-- `GameLobby` lấy `/api${apiPrefix}/rooms` (5 giây một lần) và `/api${apiPrefix}/leaderboard?limit=20`.
-- `AllRoomsPanel` lấy `roomsPath` của mọi game (10 giây một lần).
+- `GameLobby` lấy `/api${apiPrefix}/rooms` (10 giây một lần) và `/api${apiPrefix}/leaderboard?limit=20`.
+- `AllRoomsPanel` lấy `roomsPath` của mọi game (20 giây một lần).
+Cả hai poll qua `pollWhileVisible()`: tạm dừng khi tab ẩn và tải lại ngay khi tab hiện lại.
 
 **Tạo phòng.** `createGameRoom(wsPath)` mở một kết nối ngắn tới máy đang dùng (không kết nối được thì sang máy kế tiếp), gửi `{type:"create"}`, nhận `ack.code`, ghim phòng vào máy đó, rồi đóng kết nối. `GameLobby` sau đó `router.push(`${basePath}/${code}`)`.
 
@@ -97,7 +103,7 @@ Toàn bộ phần kết nối nằm trong `src/components/games/gameClient.ts`.
 
 Cách hook hoạt động:
 - **Chỉ kết nối khi `name` khác rỗng.** Effect phụ thuộc `[wsPath, code, name, mode]`. Vì vậy trang bàn đóng băng tên lúc mount (xem §9).
-- **Join.** Mở socket, chờ `open` (tối đa 10 giây), rồi gửi `{type: mode === "watch" ? "watch" : "join", code, name, token}`.
+- **Join.** Mở socket, chờ `open` (tối đa 8 giây), rồi gửi `{type: mode === "watch" ? "watch" : "join", code, name, token, look}`.
 - **Token ghế.** Lấy từ `getToken()`, lưu ở **`localStorage["tienlen:token"]`**, dùng chung mọi tab của trình duyệt (token cũ trong `sessionStorage` được chuyển sang). Reload, đóng tab rồi mở lại link mời đều về đúng ghế cũ; hai tab cùng phòng là cùng một người, muốn chơi thêm người thì dùng trình duyệt khác hoặc cửa sổ ẩn danh. Nếu storage bị chặn, token chỉ nằm trong bộ nhớ.
 - **Vào lại phòng (server).** be_game gắn lại ghế theo token; token khác (máy/trình duyệt khác) thì nhận lại ghế **đang offline** trùng tên, và ghế đã bị giải phóng lúc vắng (offline > 60 s giữa các ván) được nhớ 3 giờ để quay lại với cùng điểm (be_game `docs/GUIDE.md` → "Vào lại phòng").
 - **Ping.** Gửi `{type:"ping"}` mỗi 10 giây (`PING_INTERVAL_MS`). Ping cũng là heartbeat báo người chơi còn online; server trả `pong`.
@@ -115,7 +121,7 @@ Cách hook hoạt động:
   }
   ```
   Mỗi game dời những trường khác nhau:
-  - Tỷ Phú: `deadline`, `endsAt`, `trade.deadline`
+  - Tỷ Phú: `deadline`, `endsAt`, `trade.deadline`, `loan.deadline`
   - Mèo Nổ: `turnDeadline`, `pending.deadline`, `choice.deadline`
   - Bang dùng `makeLocalize()`. Hàm này giữ skew cố định và chỉ đo lại khi lệch quá 1500 ms, để `promptKey` không dao động làm mất lựa chọn đang chọn.
 
@@ -141,7 +147,7 @@ Cấu hình preview nằm trong `D:\WorkSpace\.claude\launch.json` (ở thư m�
 | `"be_game"` | `npm --prefix D:/WorkSpace/be_game run dev` (`tsx watch src/local.ts`) | 4000 |
 
 - be_game chạy local **không cần Redis**. Không có `REDIS_URL` thì nó dùng store trong bộ nhớ, và log báo `rooms: memory`.
-- Portfolio mặc định kết nối `http://localhost:4000`.
+- Frontend mặc định kết nối `http://localhost:4000` (không đặt `NEXT_PUBLIC_TIENLEN_SERVER_URL`).
 - Để test trên điện thoại cùng mạng Wi-Fi, đặt `NEXT_PUBLIC_TIENLEN_SERVER_URL=http://<ip-máy>:4000` rồi khởi động lại `npm run dev`. be_game nghe ở `0.0.0.0`.
 
 ---
@@ -501,11 +507,11 @@ Mỗi người chọn một icon (16 lựa chọn, hoặc chữ cái đầu củ
 - **`SeatAvatar({name, className, fallbackClassName, out?})`**: chip ở ghế của một game. Có `look` thì dùng icon + màu của người đó; chưa có (server cũ, hoặc `out`) thì giữ nguyên kiểu cũ của game qua `fallbackClassName`. Game mới nên dùng nó cho mọi chip avatar ở ghế.
 - `ProfilePicker({name, value, onChange})`: lưới icon + hàng màu, dùng ở `NameGate` và `RenameDialog`.
 
-Đã gắn `SeatAvatar` ở: Tiến Lên, Mèo Nổ, Ô Ăn Quan, Đá Quý (ghế và danh sách), Đấu Súng và Ô Ăn Quan (danh sách ghế chờ), Cờ Tỷ Phú và Cờ Cá Ngựa (cạnh tên; quân cờ của hai game này là thứ nhận ra người chơi trên bàn nên giữ nguyên). **Cờ Tỷ Phú có riêng** quân cờ + màu nhà chọn trong bàn (`pick`, không được trùng nhau, xem §4.3).
+Đã gắn `SeatAvatar` ở: Tiến Lên, Mèo Nổ, Ô Ăn Quan, Đá Quý (ghế và danh sách), Đấu Súng và Ô Ăn Quan (danh sách ghế chờ), Cờ Tỷ Phú và Cờ Cá Ngựa (cạnh tên; quân cờ Cá Ngựa là thứ nhận ra người chơi trên bàn nên giữ nguyên). **Cờ Tỷ Phú** không còn chọn quân riêng: quân trên bàn chính là look trên web của người chơi (`seatTokens`, trùng màu thì ghế sau được màu khác còn trống; bấm quân của mình để sửa hồ sơ qua `LookDialog`, xem §4.3).
 
 ### 3.11b. Hiệu ứng chiến thắng (`WinCelebration.tsx`)
 
-`<WinCelebration show playing won title? />`: lớp phủ `fixed inset-0 z-40 pointer-events-none` (dưới modal), pháo giấy canvas + banner "🏆 Bạn thắng!" cho người thắng; người thua/khán giả chỉ thấy banner nhỏ `title` ("🏆 <tên> thắng"). Chạy ~4 giây rồi mờ dần. `prefers-reduced-motion`: chỉ banner, không canvas. `show` = ván đã kết thúc, `playing` = đang có ván chưa kết thúc; hiệu ứng **chỉ chạy khi component đang mount thấy `playing` chuyển sang `show`**, nên tải lại / vào lại phòng đã có ván kết thúc không chạy lại. Đặt nó trong `Table` của mỗi game (đã gắn ở cả 7 game). Người thắng: Tiến Lên `instantWin.playerId ?? finished[0]`, Mèo Nổ / Cờ Tỷ Phú / Đá Quý / Cờ Cá Ngựa `finished[0]`, Đấu Súng `winners.includes(meId)`, Ô Ăn Quan `rank === 0` và có `winner` (hoà thì chỉ banner "Hoà").
+`<WinCelebration show playing won title? />`: lớp phủ `fixed inset-0 z-40 pointer-events-none` (dưới modal), pháo giấy canvas + banner "🏆 Bạn thắng!" cho người thắng; người thua/khán giả chỉ thấy banner nhỏ `title` ("🏆 <tên> thắng"). Chạy ~4 giây rồi mờ dần. `prefers-reduced-motion`: chỉ banner, không canvas. `show` = ván đã kết thúc, `playing` = đang có ván chưa kết thúc; hiệu ứng **chỉ chạy khi component đang mount thấy `playing` chuyển sang `show`**, nên tải lại / vào lại phòng đã có ván kết thúc không chạy lại. Đặt nó trong `Table` của mỗi game (đã gắn ở cả 7 game; Cờ Tỷ Phú dùng `Celebration` của `game-ui` — cùng props, cùng quy tắc chỉ chạy khi `playing` chuyển sang `show`, màu pháo theo game). Người thắng: Tiến Lên `instantWin.playerId ?? finished[0]`, Mèo Nổ / Cờ Tỷ Phú / Đá Quý / Cờ Cá Ngựa `finished[0]`, Đấu Súng `winners.includes(meId)`, Ô Ăn Quan `rank === 0` và có `winner` (hoà thì chỉ banner "Hoà").
 
 ### 3.12. Phím tắt trên máy tính (`useHotkeys.ts`)
 
@@ -697,7 +703,7 @@ typhu/
 
 | Component / hàm | Vai trò |
 |---|---|
-| `TyPhuTable` (default), `Table`, `TableBody` | `Table` chỉ bọc `NowProvider` quanh `TableBody` (gốc bàn). State của `TableBody`: `openSquare`, `viewPlayer`, `picking`, `showLog`, `showTrade`, `showLoan`, `showScores`, `showRules`, `showAssets`, `showBuild`, `busy`, `narrow`, `barHeight`, `cardFx`, `buildFx`, `bankruptFx`. `run()` bọc `act` và bật `busy` trong lúc chờ. Đầu hàm đặt `boardRef.current = boardOf(g?.map ?? settings.map)` (xem "Bản đồ" bên dưới). Bàn bọc trong `GameThemeScope game="typhu"` (màu nhấn vàng). |
+| `TyPhuTable` (default), `Table`, `TableBody` | `Table` chỉ bọc `NowProvider` quanh `TableBody` (gốc bàn). State của `TableBody`: `openSquare`, `viewPlayer`, `editingLook`, `showLog`, `showTrade`, `showLoan`, `showScores`, `showRules`, `showAssets`, `showBuild`, `busy`, `narrow`, `barHeight`, `cardFx`, `buildFx`, `bankruptFx`. `run()` bọc `act` và bật `busy` trong lúc chờ. Đầu hàm đặt `boardRef.current = boardOf(g?.map ?? settings.map)` (xem "Bản đồ" bên dưới). Bàn bọc trong `GameThemeScope game="typhu"` (màu nhấn vàng). |
 | **`NowProvider`** + `NowContext`, `useSecondsLeft()`, `NowClock` (`now.tsx`) | Đồng hồ 500 ms nằm trong **context**, không phải state của `TableBody`: chỉ các chỗ hiện đếm ngược (`ActionBar`, `AssetPanel`, `TradeCard`, đồng hồ ván) render lại mỗi nhịp; cả bàn (ô cờ, dòng người chơi…) không còn render lại 2 lần/giây. Provider render `children` là prop nên React bỏ qua cây con khi chỉ giá trị context đổi. Cần đếm ngược ở chỗ mới → `useSecondsLeft()(deadline)`. |
 | **`seatTokens(seats, looks, fallback)`** (`tokens.ts`, thuần, có test) | Quân của mỗi người trên bàn = **look trên web** (biểu tượng + màu chọn khi vào web, `useRoomLooks()`; không có biểu tượng thì chữ cái đầu của tên), nên avatar và quân là một, không có hai biểu tượng cho một người. Duyệt ghế theo thứ tự: màu đã có ghế trước dùng thì ghế sau đổi sang một màu `PROFILE_COLORS` còn trống, chọn theo hash của id ghế (mọi máy ra cùng màu). Ghế không có look (client cũ) giữ `pieceOfSeat`. `TableBody.tokenOf` dùng kết quả này cho quân trên ô, huy hiệu chủ đất, `PlayerRow`, `PlayerStrip`. Hộp chọn quân cũ (`PiecePicker`) đã bỏ. Đổi trong bàn: bấm quân tròn của chính mình ở `PlayerRow` (`onEditLook`, cả trong dialog người chơi) mở **`LookDialog`** (`dialogs/LookDialog.tsx`): `ProfilePicker` + "Lưu" → `saveProfile`, tức là sửa luôn hồ sơ trên web; `useGameRoom` nghe thay đổi và gửi `look` nên cả bàn thấy ngay. Chọn màu của một ghế đứng trước mình thì dialog báo trước là trên bàn sẽ được đổi sang màu khác còn trống. |
 | `TOKENS`, `pieceOfSeat(seat)`, `money(n)` (`shared.tsx`) | 6 quân khởi đầu (🛵 🐃 🚲 🚤 🐉 🎩). `pieceOfSeat` = `seat.piece` do server gửi, thiếu (server cũ) thì rơi về `TOKENS[seat.color]` — **đừng đọc `seat.piece` trực tiếp**, nó từng làm bàn crash trên server cũ. `money` định dạng `"1.500tr"`. |
@@ -714,8 +720,8 @@ typhu/
 | **`DebtControls`** (`panels/DebtControls.tsx`) | Trong `ActionBar` khi đang nợ: dòng nợ, Trả nợ, nút "💰 Bán / thế chấp ↓" (`lg:hidden short:hidden`, cuộn tới `AssetPanel`) và Phá sản (`GameButton confirm`). |
 | **`AssetPanel`** (`panels/AssetPanel.tsx`) | `<section>` trong cột bên, **không phải modal**. Liệt kê các ô mình sở hữu theo nhóm, rồi "Sân bay & công ty", với các nút Bán nhà / Thế chấp / Chuộc / Bán đất. Khi đang nợ, panel có thêm Trả nợ, Phá sản, đồng hồ, và không có nút ✕. Panel mở khi `mine && myTurn && (showAssets \|\| inDebt)`. `mortgageBlocker()` cho biết vì sao một ô chưa thế chấp được. |
 | `BankruptOverlay`, `BuildOverlay`, `CardOverlay` (`fx/Overlays.tsx`) | "PHÁ SẢN!" toàn màn hình (`createPortal` vào `document.body`, tiền bay xuống `MONEY_BITS`). Banner khi xây nhà (log bắt đầu bằng "🏠"). Lá Cơ hội / Khí vận lật ra, bấm để đóng, `pointerEvents:"none"` khi đang thoát. |
-| `PlayerRow` (`players/PlayerRow.tsx`) | Dòng người chơi (cột bên máy tính và `short:`; trong dialog người chơi trên điện thoại): quân, 👑, tiền, tổng tài sản, tù, thẻ ra tù, điểm, nút Kích, các chip giấy tờ đất (bấm để mở `SquareModal`), `SeatBubble` |
-| **`PlayerStrip`** (`players/PlayerStrip.tsx`) | Điện thoại dọc, chỉ ở giao diện tối giản: một hàng `SeatChip` (tên + tiền + đèn lượt) phía trên bàn, tự cuộn ngang tới chip đang tới lượt. Bấm chip → `GameDialog` chứa `PlayerRow` của người đó; với chính mình, lúc tới lượt, có nút "💰 Tài sản" (mở `AssetPanel`). |
+| `PlayerRow` (`players/PlayerRow.tsx`) | Dòng người chơi (cột bên máy tính và `short:`; panel "Người chơi" của giao diện đầy đủ trên điện thoại; trong dialog người chơi ở giao diện tối giản): quân (👑 chủ bàn nằm đè lên phía trên quân), tiền, tổng tài sản, tù, thẻ ra tù, điểm, nút Kích, các chip giấy tờ đất (bấm để mở `SquareModal`), `SeatBubble` |
+| **`PlayerStrip`** (`players/PlayerStrip.tsx`) | Điện thoại dọc, chỉ ở giao diện tối giản: một hàng `SeatChip` (avatar có 👑 chủ bàn đè lên, tên, tiền, đèn lượt) phía trên bàn, tự cuộn ngang tới chip đang tới lượt. Bấm chip → `GameDialog` chứa `PlayerRow` của người đó; với chính mình, lúc tới lượt, có nút "💰 Tài sản" (mở `AssetPanel`). |
 | **`SquareModal`** + `OwnableInfo` + `SQUARE_TEXT` (`dialogs/SquareDialog.tsx`) | `Modal` nền sáng: thông tin ô (bảng tiền thuê và giá xây), và các nút quản lý khi tới lượt mình. Ô rút gọn không có tên, nên **chạm vào ô luôn mở dialog đầy đủ**. |
 | `LogList`, **`LogModal`** (`dialogs/LogDialog.tsx`) | Danh sách log (mới nhất ở trên, tô màu theo `tone`) dùng ở panel "Diễn biến" và hộp "Toàn bộ diễn biến" (nút 📜 trên thanh trên, phím `L`; trên điện thoại dọc bấm vào 3 dòng log dưới bàn). Server giữ 150 dòng. |
 | `LoanCard` (`centre/OfferCards.tsx`), `LoanModal` (`dialogs/LoanDialog.tsx`) | Vay tiền: thẻ xin vay ở giữa bàn (Cho vay / Từ chối / Rút), modal soạn (người cho vay, số tiền, lãi 10 / 20 %, dòng "sau 5 lượt phải trả …"), cột "🏦 Khoản vay" ở panel bên liệt kê các khoản đang nợ |
@@ -744,7 +750,7 @@ typhu/
 - **`short:`:** grid `[auto_minmax(0,1fr)]`. Bàn cờ bên trái, vuông `calc(100dvh-3.75rem)`. `aside` bên phải tự cuộn, có "Người chơi" và "Diễn biến". Ô đầy đủ (chữ `short:text-[6px]`/`[8px]`), xúc xắc `short:h-8`. Không có ⚙ / thanh dưới.
 - **`lg:`:** grid `[minmax(0,calc(100dvh-5rem))_20rem]` căn giữa. `AssetPanel` cuộn với `lg:max-h-[calc(100dvh-16rem)]`.
 - **`xl:`:** cột bên `22rem`, bỏ `max-w`, tên ô `xl:text-[10px]`.
-- Thứ tự trong `aside`: `AssetPanel` (khi mở), thẻ luật (điện thoại / `short:`), "Người chơi" (`lg:` / `short:`), "Khoản vay", "Diễn biến" (`lg:` / `short:`, `max-h-64`).
+- Thứ tự trong `aside`: `AssetPanel` (khi mở), thẻ luật (điện thoại / `short:`), "Người chơi" (mọi cỡ, trừ giao diện tối giản trên điện thoại dọc), "Khoản vay", "Diễn biến" (`lg:` / `short:`, `max-h-64`).
 
 **Chạy thử bàn với bot** (script nằm ngoài repo, ví dụ `$TEMP/shots/typhu-bots.mjs`). Cần be_game chạy local (`PORT=4123 npx tsx src/local.ts` trong repo be_game) và frontend `NEXT_PUBLIC_TIENLEN_SERVER_URL=http://localhost:4123 NEXT_PUBLIC_TIENLEN_FALLBACK_URL= npx next dev -p 3105`. Rồi `node typhu-bots.mjs 3 4`: tạo phòng, 3 bot ngồi vào và in `CODE xxxxx`; mở `http://localhost:3105/co-ty-phu/xxxxx` để ngồi ghế thứ 4, bàn bắt đầu khi đủ 4 ghế (tham số thứ hai). Bot chỉ tung / mua / kết thúc lượt (nợ thì phá sản ngay), không trả lời lời mời đổi đất / vay. Muốn chơi trọn ván bằng tay thì cho bot trả lời `loananswer` / `tradeanswer` `{accept:true}` và đặt luật dễ qua `{type:"settings", startCash:1000, needGroup:false, …}` từ bot chủ bàn trước `start`.
 
@@ -1353,7 +1359,7 @@ Giả sử game có id `xyz` và route `/xyz`.
 - **Deadline phải qua `localize`.** So `deadline` của server trực tiếp với `Date.now()` của client thì sai khi đồng hồ hai máy lệch nhau. Luôn dời deadline trong `localize`, và khi thêm trường deadline mới, nhớ thêm nó vào đó.
 - **Bản sao lib bị lệch.** Đổi luật hoặc protocol ở be_game mà quên chép sang `src/lib/<game>/` thì UI vẫn compile nhưng hiển thị hoặc cho phép sai. Danh sách lá của script art cũng đọc từ `src/lib/<game>/cards.ts`.
 - **iOS tự zoom khi focus input.** Font của input phải ≥ 16px. Rule `.game-shell input` đã lo việc này; input đặt ngoài `.game-shell` (ví dụ trong portal ra `document.body`) sẽ không được hưởng.
-- **Biến module và `memo`.** `TyPhuTable` giữ `BOARD` (bản đồ hiện tại) ở biến module. Một component `memo` mà cách vẽ phụ thuộc vào nó (vị trí lưới của `Cell`) nhưng không nhận nó qua props sẽ **không vẽ lại khi đổi bản đồ** (từng làm các ô đứng sai chỗ khi đổi 40 → 56 ô). Mọi thứ ảnh hưởng tới hiển thị phải nằm trong props và trong hàm so sánh của `memo`.
+- **Biến module và `memo`.** `TyPhuTable` giữ bản đồ hiện tại ở `boardRef.current` (`typhu/board-ref.ts`, biến module). Một component `memo` mà cách vẽ phụ thuộc vào nó (vị trí lưới của `Cell`) nhưng không nhận nó qua props sẽ **không vẽ lại khi đổi bản đồ** (từng làm các ô đứng sai chỗ khi đổi 40 → 56 ô). Mọi thứ ảnh hưởng tới hiển thị phải nằm trong props và trong hàm so sánh của `memo`.
 - **Đồng hồ trong state của gốc bàn.** Đừng `setState` mỗi 500 ms ở component gốc của một bàn lớn: nó vẽ lại toàn bộ cây. Dùng context như `NowProvider` của Tỷ Phú.
 - **Đọc trường mới của server không phòng thủ.** Frontend và be_game deploy tách rời; client mới có thể nói chuyện với server cũ (và ngược lại). Trường thêm sau (`seat.piece`, `looks`, `current.map`) có thể thiếu: luôn có giá trị dự phòng (`pieceOfSeat`, `?? "std"`), đừng `seat.piece.emoji` trực tiếp.
 - **Phím tắt chạy đôi.** Space / Enter trên nút đang focus đã được trình duyệt xử lý; `useHotkeys` bỏ qua trường hợp này. Nếu file đã có listener `keydown` riêng (Esc của dialog…), đừng thêm một binding trùng — kiểm tra `grep keydown` trước.

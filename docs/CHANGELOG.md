@@ -10,6 +10,26 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Failover per room, Cờ Tỷ Phú part 1, deployed-commit check
+
+- **Date:** 2026-10-16 (PRs #67-#73, released to `main`)
+
+**Changes**
+- Seat token lives in `localStorage` (shared by every tab; #67). Game UI kit `components/game-ui` + dev-only `/ui-kit` (#68).
+- Per-room backend failover (#70): `basesToTry` tries the room's pinned backend first; `resolveJoin` / `failedJoinOutcome`
+  count a join timeout or a socket dropped mid-join as unreachable, while the room's own backend answering "not found" is final.
+- Cờ Tỷ Phú (#69): tokens are the players' site looks (`seatTokens`; `PiecePicker` removed; tap your token to edit the profile),
+  host crown on the avatar, ⚙ display options (`typhu:prefs` `{actions, view}`: full = players panel, minimal = chip strip),
+  names always on squares, smaller action buttons, my turn's clock on the panel border (`BorderTimer`).
+- `/api/health` returns `{ ok, commit }`; the deploy waits for the shipped commit on the phone and on Vercel (#72, repo variable
+  `VERCEL_HEALTH_URL`).
+
+**Not done / follow-ups**
+- The two backends do not share a store yet (shared Upstash cutover pending): failover to the backup only resumes a running game
+  after that cutover.
+
+---
+
 ## Lighter lobby polling
 
 - **Date:** 2026-10-14

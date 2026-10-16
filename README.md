@@ -37,7 +37,7 @@ Create a table, share the invite link, and play Tiến Lên, Mèo Nổ, Cờ T�
 |---|---|---|---|---|
 | 🃏 | **Tiến Lên Miền Nam** | 2–4 | Chặt heo, tới trắng, configurable rank points, spectators & emoji | `/tien-len` |
 | 😼 | **Mèo Nổ** (Exploding Kittens-style) | 2–7 | "Không!" chains, 6 expansion packs, 16 preset combos or custom picks, per-card guide | `/meo-no` |
-| 🎩 | **Cờ Tỷ Phú** (Monopoly-style) | 2–6 | Vietnamese provinces, 3 map sizes, houses & rent, trading, quick rule presets | `/co-ty-phu` |
+| 🎩 | **Cờ Tỷ Phú** (Monopoly-style) | 2–6 | Vietnamese provinces, 3 map sizes, houses & rent, trading, quick rule presets, tokens that wear your site profile, full / minimal phone layout | `/co-ty-phu` |
 | 💎 | **Đá Quý** (Splendor-style) | 2–4 | Illustrated cards, nobles and gem tokens | `/splendor` |
 | 🤠 | **Đấu Súng** (Bang!-style) | 3–8 | Secret roles, 63 characters, 7 expansions | `/bang` |
 | 🐴 | **Cờ Cá Ngựa** (Vietnamese ludo) | 2–4 | Dice, kicking opponents home, 6-step stable climb | `/co-ca-ngua` |
@@ -50,7 +50,7 @@ Every online table lives at `/<game>/<ROOM>`; add `?watch=1` to join as a specta
 
 **Playing together**
 - **Instant tables** — create a room, copy the invite link, friends join with just a name. No accounts.
-- **Real-time play over WebSockets**, with automatic reconnect: a reload or a flaky phone connection keeps your seat (secret per-tab reconnect token).
+- **Real-time play over WebSockets**, with automatic reconnect: a reload or a flaky phone connection keeps your seat (secret reconnect token kept in the browser's `localStorage`, shared by its tabs).
 - **Spectator mode** for every table, plus in-table **chat and emoji reactions**.
 - **Lobby & "open tables" panel** listing waiting and in-progress tables of every game.
 - **All-time leaderboards** per game.
@@ -64,7 +64,7 @@ Every online table lives at `/<game>/<ROOM>`; add `?watch=1` to join as a specta
 
 **Engineering**
 - The UI is a thin, typed client over the **[be_game](https://github.com/ThachHuynhIT/be_game)** backend; rules are validated client-side from shared protocol copies.
-- Light on the backend: lobby polling pauses in background tabs, and identical requests are shared.
+- Light on the backend: lobby polling (10 s per game lobby, 20 s for the all-tables panel) pauses in background tabs, and identical requests are shared.
 - **Card-art pipeline** (`sharp`) that turns source sprite sheets into optimised WebP.
 - Self-hosted with **Docker** (Next.js standalone image) and continuous deployment over Tailscale.
 
@@ -90,7 +90,7 @@ flowchart LR
 |---|---|
 | Framework | [Next.js 16](https://nextjs.org/) (App Router, Turbopack), [React 19](https://react.dev/) |
 | Language | TypeScript 5 (strict) |
-| Styling | Tailwind CSS 4, SCSS Modules, [shadcn/ui](https://ui.shadcn.com/) on [Base UI](https://base-ui.com/) |
+| Styling | Tailwind CSS 4, SCSS Modules, [shadcn/ui](https://ui.shadcn.com/) on [Base UI](https://base-ui.com/); shared casual-game kit in `components/game-ui` (buttons, dialogs/drawers via `vaul`, toasts via `sonner`) |
 | Animation | [`motion`](https://motion.dev/) (`LazyMotion` + `domMax`), `@formkit/auto-animate`, `@number-flow/react`, `canvas-confetti` |
 | Gestures | `@use-gesture/react` (pinch-zoom) |
 | Testing | [Vitest](https://vitest.dev/) |
@@ -104,6 +104,8 @@ src/
 ├── app/
 │   ├── page.tsx                  # Hub at "/" (game cards)
 │   ├── layout.tsx                # Root layout: fonts, theme, LazyMotion
+│   ├── api/health/route.ts       # { ok, commit } for deploy checks
+│   ├── ui-kit/                   # Dev-only gallery of components/game-ui (404 in production)
 │   ├── globals.css               # Theme tokens + shared game-shell CSS
 │   ├── <game>/                   # tien-len, meo-no, co-ty-phu, splendor, bang, o-an-quan, co-ca-ngua
 │   │   ├── layout.tsx            #   metadata + per-game backdrop + <GamesShell>
@@ -114,6 +116,7 @@ src/
 │   ├── games/                    # Shared framework: GamesShell, GameLobby, AllRoomsPanel, ChatBox,
 │   │                             #   gameClient.ts (HTTP + WebSocket client), gamesRegistry.ts, hotkeys…
 │   ├── <game>/                   # Table UI per game (tienlen, meono, typhu, splendor, bang, oanquan, cangua)
+│   ├── game-ui/                  # Shared game UI kit: GameButton, GameDialog, SeatChip, Celebration…
 │   ├── game/ContraGame.tsx       # Contra engine
 │   ├── ui/                       # shadcn/ui primitives
 │   └── motion/                   # Shared animation helpers
@@ -145,9 +148,10 @@ Open <http://localhost:3000>, pick a name, create a table and open the invite li
 | Variable | Required | Description |
 |---|---|---|
 | `NEXT_PUBLIC_TIENLEN_SERVER_URL` | ✅ | be_game base URL, no trailing slash (default `http://localhost:4000`). Inlined at **build time**. |
-| `NEXT_PUBLIC_TIENLEN_FALLBACK_URL` | — | Backup be_game backend. While the main one does not answer (`GET /api/rooms`, 3 s), lobbies and new rooms use it; each room stays on the backend it was created on (separate Redis). Inlined at **build time**. |
+| `NEXT_PUBLIC_TIENLEN_FALLBACK_URL` | — | Backup be_game backend. While the main one does not answer (`GET /api/rooms`, 3 s), lobbies and new rooms use it. A room is pinned to the backend it was joined on and reconnects there first; if that backend is unreachable (no socket, no answer to `join`, or the socket drops mid-join) the other one is tried, but the pinned backend saying "room not found" is final. The two backends do **not** share a store yet (separate Redis), so a running game only resumes on the backup after a shared-store cutover. Inlined at **build time**. |
 | `NEXT_PUBLIC_SITE_URL` | — | Public origin used for metadata (`metadataBase`). |
 | `WEB_DOMAIN` | self-host | Hostname Traefik routes to the container (`compose.selfhost.yml`). |
+| `BUILD_COMMIT` | — | Set by the deploy workflow (not by hand): the commit being served, reported by `/api/health`. On Vercel `VERCEL_GIT_COMMIT_SHA` is used. |
 
 > be_game only accepts browsers from origins listed in its `ALLOWED_ORIGIN`. Add this site's URL there, or rooms and WebSockets will be rejected.
 
@@ -170,7 +174,7 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests and build on every p
 
 The app ships as a Next.js **standalone** image and runs behind the host's Traefik + Cloudflare Tunnel, alongside be_game — no ports are published.
 Live at **https://play.fudio101.com** (server `vsmart-zangyapro`, an arm64 phone shared with its owner), talking to be_game at
-`https://play-api.fudio101.com` with `https://be-game-omega.vercel.app` as backup.
+`https://play-api.fudio101.com` with `https://be-game-omega.vercel.app` as backup. A Vercel copy of the site is at `https://zonenop-game.vercel.app`.
 
 ```bash
 # On the server, next to compose.selfhost.yml, create .env:
@@ -197,7 +201,7 @@ docker compose up --build             # http://localhost:3000
 
 ### Vercel
 
-The repo also deploys to Vercel (`zonenop-game.vercel.app`) from `main`. Set `NEXT_PUBLIC_TIENLEN_SERVER_URL` (and optionally `NEXT_PUBLIC_TIENLEN_FALLBACK_URL`) in the project's environment variables. Standalone output is only enabled for Docker (`NEXT_STANDALONE=1`), because it breaks `next/font` on Vercel.
+The repo also deploys to Vercel (`zonenop-game.vercel.app`) from `main`. Set `NEXT_PUBLIC_TIENLEN_SERVER_URL` (and optionally `NEXT_PUBLIC_TIENLEN_FALLBACK_URL`) in the project's environment variables, and keep "Automatically expose System Environment Variables" on, or `/api/health` reports `commit: null` and the deploy workflow's `vercel` job fails. Standalone output is only enabled for Docker (`NEXT_STANDALONE=1`), because it breaks `next/font` on Vercel.
 
 ## 🧩 Adding a new game
 
@@ -222,6 +226,7 @@ The full checklist (shared components to reuse, responsive rules, hotkeys, testi
 |---|---|
 | [`docs/GAMES_GUIDE.md`](docs/GAMES_GUIDE.md) | Frontend guide (Vietnamese): shell, shared components, per-game file maps, responsive rules, card-art pipeline, UI testing, new-game checklist |
 | [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | Notable changes and the decisions behind them |
+| [`docs/BANG_ART_PROMPTS.md`](docs/BANG_ART_PROMPTS.md), [`docs/MEONO_ART_PROMPTS.md`](docs/MEONO_ART_PROMPTS.md) | Prompts used to generate the Bang! and Mèo Nổ card art |
 | [`CLAUDE.md`](CLAUDE.md) | Repository conventions and workflow |
 | [be_game docs](https://github.com/ThachHuynhIT/be_game/tree/main/docs) | Backend architecture, protocol, game rules, deployment |
 
