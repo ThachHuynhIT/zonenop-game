@@ -8,9 +8,9 @@ at its own route (`/tien-len`, `/meo-no`, …, `/contra`). There is no database 
 auth: rooms, game state and WebSockets live in the separate **be_game** repo,
 reached via `NEXT_PUBLIC_TIENLEN_SERVER_URL`, with an optional backup backend in
 `NEXT_PUBLIC_TIENLEN_FALLBACK_URL` (lobbies and new rooms fail over to it; each room is pinned to the
-backend it lives on, so never make a reconnect switch backends; `docs/GAMES_GUIDE.md` §1.2). It is self-hosted with Docker
+backend it was joined on and reconnects there first, falling through to the other only when the pinned one is unreachable, while the pinned backend saying "not found" is final. The two backends do not share a store yet, so a running game only resumes on the backup after the shared-store cutover; `docs/GAMES_GUIDE.md` §1.2). It is self-hosted with Docker
 (`compose.selfhost.yml`, deployed by `.github/workflows/deploy.yml`), like be_game: live at `https://play.fudio101.com`,
-backend `https://play-api.fudio101.com`. The server is shared with its owner: build only in our own BuildKit builder
+backend `https://play-api.fudio101.com` (backup `https://be-game-omega.vercel.app`); a Vercel copy lives at `https://zonenop-game.vercel.app`. `/api/health` returns `{ ok, commit }` and the deploy waits for the shipped commit on both (repo variable `VERCEL_HEALTH_URL`). The server is shared with its owner: build only in our own BuildKit builder
 `zonenop-game` and never run a global `prune` (README, Deployment).
 
 (History: this repo started as a portfolio with a self-built CMS, abandoned in
@@ -18,6 +18,8 @@ favour of hosting the games; that code was removed in `refactor/repurpose-as-gam
 
 - `src/components/games/`: shared game framework (GamesShell, GameLobby,
   `gameClient.ts` WebSocket client, `gamesRegistry.ts` list of online games).
+- `src/components/game-ui/`: shared casual-game UI kit (GameButton, GameDialog, SeatChip, Celebration…);
+  browse it at `/ui-kit` under `npm run dev` (404 in production). `docs/GAMES_GUIDE.md` §3.13.
 - `src/components/<game>/` + `src/lib/<game>/`: per-game table UI and
   rules/protocol (the protocol mirrors be_game; keep the two in sync).
 - `docs/GAMES_GUIDE.md`: how to add a game. `scripts/card-art.mjs`: card art
@@ -38,14 +40,18 @@ favour of hosting the games; that code was removed in `refactor/repurpose-as-gam
   every state view. Read it with `useLookOf(name)` / `SeatAvatar`
   (`src/components/games/PlayerAvatar.tsx`) — new games should use `SeatAvatar`.
 - Cờ Tỷ Phú: 3 map sizes (`MapSize` 40/48/56, `boardOf(map)` in
-  `src/lib/typhu/board.ts`); `TyPhuTable` sets the module-level `BOARD` from
-  `g.map ?? settings.map` before rendering children. "Luật nhanh"
-  (`RULE_PRESETS`) sends one merged `settings` message.
+  `src/lib/typhu/board.ts`); `TyPhuTable` sets the module-level `boardRef.current`
+  (`typhu/board-ref.ts`) from `g.map ?? settings.map` at the top of each render. "Luật nhanh"
+  (`RULE_PRESETS`) sends one merged `settings` message. Tokens are the players' site looks
+  (`seatTokens` in `typhu/tokens.ts`; a colour clash gives the later seat a free colour; tap your own token
+  to edit the site profile in `LookDialog`). Phone display options (⚙: Giao diện Đầy đủ/Tối giản, Vị trí nút)
+  live in `localStorage["typhu:prefs"]` (`typhu/prefs.ts`): full view = players panel, minimal = chip strip.
 - Keyboard shortcuts: `useHotkeys` (`src/components/games/useHotkeys.ts`);
   each key repeats its button's condition and the button shows a `<kbd>` badge
   (hidden on touch). Per-game tables: `docs/GAMES_GUIDE.md` §3.12 and §4.
-- Win effect: `WinCelebration` inside each game's `Table`, fired only on the
-  playing → finished transition (`docs/GAMES_GUIDE.md` §3.11b).
+- Win effect: `WinCelebration` inside each game's `Table` (Cờ Tỷ Phú uses the `game-ui` `Celebration`, same props),
+  fired only on the playing → finished transition (`docs/GAMES_GUIDE.md` §3.11b).
+- Seat token: `localStorage["tienlen:token"]` (`getToken()`), shared by every tab of the browser.
 
 ## Repository conventions
 
@@ -192,8 +198,8 @@ Always state which STEP is currently active. Do not skip steps for non-trivial t
 - If requirements are ambiguous, ask before implementing.
 - If a better architectural approach is found mid-task, explain it before
   changing direction — don't switch silently.
-- Before committing anything, run `npm run lint`
-  and `npm run build` and make sure both are clean.
+- Before committing anything, run `npm run lint`, `npm run typecheck`, `npm test`
+  and `npm run build` and make sure all are clean (CI runs the same four).
 
 ### Operating modes
 
@@ -206,7 +212,7 @@ end-to-end responsibility (branch → implement → validate → docs → report
 less token/context and less narration, without lowering engineering quality:
 
 - **Read minimally.** Only files/rules/docs relevant to the task. Don't re-read this
-  file's rules or scan all of `docs/CHANGELOG.md`/`docs/LESSONS.md` — jump to the
+  file's rules or scan all of `docs/CHANGELOG.md` — jump to the
   relevant section only.
 - **Execute over explain.** Skip step-by-step narration and the Step-3 stop-and-wait for
   plan approval. Steps 1-2 (check git state, analyze) still happen, just silently.
@@ -225,7 +231,7 @@ less token/context and less narration, without lowering engineering quality:
   - Update `docs/CHANGELOG.md` for every meaningful change (new feature, schema/API
     change, dependency added, architectural decision, breaking change). Skip for
     typos/formatting/pure refactors with no behavior change.
-  - Update `docs/LESSONS.md` only when something has lasting reuse value (a technique, a
+  - Update `docs/LESSONS.md` (create it the first time; it does not exist yet) only when something has lasting reuse value (a technique, a
     bug root-cause worth remembering, a non-obvious decision rationale). Most tasks won't
     need this.
   - Write both so a future session can resume cold after `/clear` from these files alone.
