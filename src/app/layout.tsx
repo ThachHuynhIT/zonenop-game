@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { domMax, LazyMotion, MotionConfig } from "motion/react";
+import PageTracker from "../components/auth/PageTracker";
 import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {/* domMax (not domAnimation): Cờ Tỷ Phú animates tokens with layoutId. */}
           <LazyMotion features={domMax} strict>
             <MotionConfig reducedMotion="user">{children}</MotionConfig>
+            <PageTracker />
           </LazyMotion>
         </ThemeProvider>
       </body>
