@@ -4,8 +4,8 @@
 
 **zonenop-game** (GitHub `ThachHuynhIT/zonenop-game`, formerly `portfolio_with_cms`), the games site: 7 online multiplayer games (Tiến Lên, Mèo Nổ, Cờ Tỷ Phú, Splendor,
 Bang!, Ô Ăn Quan, Cờ Cá Ngựa) plus offline Contra. The hub is `/`, each game lives
-at its own route (`/tien-len`, `/meo-no`, …, `/contra`). There is no database and no
-auth: rooms, game state and WebSockets live in the separate **be_game** repo,
+at its own route (`/tien-len`, `/meo-no`, …, `/contra`). There is no database here:
+rooms, game state, WebSockets, accounts, sessions, leaderboards and admin stats live in the separate **be_game** repo,
 reached via `NEXT_PUBLIC_TIENLEN_SERVER_URL`, with an optional backup backend in
 `NEXT_PUBLIC_TIENLEN_FALLBACK_URL` (lobbies and new rooms fail over to it; each room is pinned to the
 backend it was joined on and reconnects there first, falling through to the other only when the pinned one is unreachable, while the pinned backend saying "not found" is final. The two backends do not share a store yet, so a running game only resumes on the backup after the shared-store cutover; `docs/GAMES_GUIDE.md` §1.2). It is self-hosted with Docker
@@ -18,6 +18,7 @@ favour of hosting the games; that code was removed in `refactor/repurpose-as-gam
 
 - `src/components/games/`: shared game framework (GamesShell, GameLobby,
   `gameClient.ts` WebSocket client, `gamesRegistry.ts` list of online games).
+- `src/components/auth/`: sign-in. Session in `localStorage["games:session"]` (`session.ts`, `useSession()`, `authRequest`), `AuthForm` at `/dang-nhap`, `PageTracker` (`POST /api/track`). `GamesShell` redirects signed-out users to `/dang-nhap?next=…`; be_game rejects `join`/`watch` without a valid `session` (ack "Cần đăng nhập"). `/admin` (`src/components/admin/`) is for `role: "admin"` only. Display name = username (max 20, `MAX_NAME_LENGTH`). `docs/GAMES_GUIDE.md` §10.
 - `src/components/game-ui/`: shared casual-game UI kit (GameButton, GameDialog, SeatChip, Celebration…);
   browse it at `/ui-kit` under `npm run dev` (404 in production). `docs/GAMES_GUIDE.md` §3.13.
 - `src/components/<game>/` + `src/lib/<game>/`: per-game table UI and
