@@ -21,6 +21,7 @@ Tài liệu này dành cho người (hoặc AI) cần **sửa giao diện một 
 7. [Kiểm thử UI](#7-kiểm-thử-ui)
 8. [Thêm một game mới](#8-thêm-một-game-mới-frontend-checklist)
 9. [Bẫy thường gặp](#9-bẫy-thường-gặp)
+10. [Tài khoản, bảng điểm mùa và quản trị](#10-tài-khoản-bảng-điểm-mùa-và-quản-trị)
 
 ---
 
@@ -1371,3 +1372,40 @@ Giả sử game có id `xyz` và route `/xyz`.
 - **Font tiêu đề game**: `gameFont.ts` (Baloo 2, có tiếng Việt) qua `next/font`, đặt biến `--font-game` ở wrapper của `GamesShell`; mọi `h1`/`h2`/`h3` trong các trang game dùng font này, chỗ khác dùng `[font-family:var(--font-game)]`. Chỉ nạp cùng layout games, các trang còn lại của site không bị ảnh hưởng.
 - **Tỷ Phú: tự động chơi (tính năng ẩn).** `Ctrl+Shift+Y` gửi `{ type: "auto", on }` lên be_game; **server** chơi thay như với người mất kết nối (mỗi bước `ABSENT_MS` = 2,5 s, xử lý cả tù và nợ — bán tài sản / trả nợ / phá sản), vẫn chạy khi tab bị ẩn và giữ nguyên sau khi tải lại. Khác người mất kết nối: mua ô nếu giá `< AUTO_BUY_BELOW` (300) **và** tiền sau khi mua `> AUTO_KEEP_CASH` (150), cuối lượt tự xây nhà ở chỗ `buildBlocker` cho phép (đủ nhóm màu, xây đều / chuỗi, không thế chấp) — ô ít nhà nhất rồi rẻ nhất — vẫn giữ > 150tr. Đổi đất, vay, trả lời lời mời vẫn thủ công (lời mời gửi tới mình vẫn chờ tới hạn). Huy hiệu "🤖 Tự động chơi" lấy từ `view.auto` (chỉ có trong view của chính mình). Client chỉ có phím tắt trong `Centre` (`typhu/centre/Centre.tsx`); luật nằm ở be_game `src/typhu/game.ts` (`autoStep`, `autoBuild`).
 - **Tỷ Phú: nền toàn màn hình** — ảnh `public/games/typhu/center.webp` làm mờ (`blur-2xl`), phóng `scale-110` và `bg-cover` để phủ kín màn hình theo cạnh dài nhất, phủ thêm lớp đen 55 %. Nằm ở đầu root của `TableBody` (`fixed inset-0 -z-10`, root có `isolate`).
+
+---
+
+## 10. Tài khoản, bảng điểm mùa và quản trị
+
+Từ nhánh `feature/accounts` (cùng nhánh bên be_game) phải đăng nhập mới chơi được. Backend giữ tài khoản, phiên và thống kê; frontend chỉ lưu phiên và gắn nó vào mọi lời gọi.
+
+### 10.1. Phiên (`src/components/auth/session.ts`)
+- Phiên lưu ở `localStorage["games:session"]` dạng JSON `{ session, user }` (`user` = `PublicUser`: `id, username, role, icon, color`). Hook `useSession()` đọc nó (`useSyncExternalStore`); `saveSession` / `clearSession` ghi và báo mọi tab. Khi localStorage bị chặn, phiên chỉ sống trong bộ nhớ của tab.
+- `authRequest(method, path, body)` gọi be_game kèm `Authorization: Bearer <session>`. Token ghế (`tienlen:token`, vào lại bàn) vẫn tách riêng, không đổi.
+- `join` / `watch` qua WebSocket gửi thêm `session` và `device` (id máy ngẫu nhiên, `device.ts`). Ack `"Cần đăng nhập"` thì `gameClient.ts` xoá phiên và người chơi bị đưa về `/dang-nhap`.
+- Tên hiển thị = username (tối đa 20 ký tự Unicode; `MAX_NAME_LENGTH` trong `src/lib/tienlen/protocol.ts` khớp be_game). Icon và màu lấy từ tài khoản, chọn lúc đăng ký và đổi ở menu tài khoản (`AccountMenu.tsx`).
+- Menu tài khoản (bấm tên/avatar ở thanh trên, `AccountMenu.tsx`) có hai tab. **Hồ sơ**: đổi tên đăng nhập, biểu tượng và màu bằng một nút "Lưu" chỉ gửi trường đã đổi (`PATCH /api/auth/me { username?, icon?, color? }` → `{ ok, user }`, `updateProfile` trong `session.ts`). Tên kiểm tra phía client như lúc đăng ký (`username.ts`: 3–20 ký tự Unicode, chữ/số/`_`/`.`/dấu cách đơn); lỗi máy chủ hiện ngay dưới form (400 tên không hợp lệ hoặc "Tên này đã được giữ", 409 "Tên đăng nhập đã có người dùng"). Tên mới chỉ áp dụng từ bàn tiếp theo (`join` kế tiếp), nên đổi sau khi ván kết thúc. **Mật khẩu**: mật khẩu hiện tại, mật khẩu mới, nhập lại; thành công thì lưu phiên mới do máy chủ trả.
+- Mật khẩu dài 1–72 ký tự Unicode (`password.ts`, `PASSWORD_MIN = 1`; trước đây 8–72) ở đăng ký, đổi mật khẩu và hộp "Đặt lại mật khẩu" của quản trị. Đăng nhập không kiểm tra độ dài.
+
+### 10.2. Chặn và chuyển trang
+- `GamesShell` chuyển người chưa đăng nhập tới `/dang-nhap?next=<trang đang xem>` (`next.ts` chỉ nhận đường dẫn nội bộ). `/dang-nhap` (`AuthForm.tsx`) có hai tab Đăng nhập / Đăng ký; xong thì về `next`.
+- Đổi mật khẩu hoặc bị quản trị khoá thì phiên cũ bị từ chối ở lần gọi HTTP kế tiếp hoặc ở lần `join` kế tiếp; client xoá phiên và về `/dang-nhap`. Người chơi đã ngồi sẵn ở bàn vẫn giữ kết nối hiện tại cho tới khi kết nối lại (khi đó `join` bị từ chối).
+- Phiên phải hợp lệ trên cả hai backend (chính và dự phòng): hai bên dùng chung `SESSION_SECRET` và cùng một Neon (`DATABASE_URL`). Phát hành frontend trước khi cả hai backend chạy bản có tài khoản thì người dùng thấy "Không kết nối được máy chủ".
+- Các GET công khai (danh sách phòng, bảng điểm) không gửi `Authorization`, để tránh preflight CORS ở mỗi lần poll.
+
+### 10.3. Bảng điểm mùa
+- Sảnh (`GameLobby.tsx`) có hai tab: "Mùa này" (`GET /api<prefix>/leaderboard` trả `{ season: "current", rows: LeaderRow[] }`, tính theo tài khoản: `name, points, games, wins, icon, color`) và "Mùa trước (theo tên)" (`?season=old`, bảng cũ cộng dồn theo tên; be_game vẫn ghi vào bảng này, chưa đóng băng). Phần chuẩn hoá nằm ở `leaderboard.ts`.
+- Mỗi người chơi xong một ván được ghi một dòng kết quả; be_game ghi, frontend không gửi gì thêm.
+
+### 10.4. Thống kê lượt xem
+- `PageTracker.tsx` (gắn trong layout) gửi `POST /api/track` `{ path, device }` (kèm Bearer nếu có) mỗi lần đổi trang; be_game trả 204 và giới hạn 60 lần/phút/IP.
+
+### 10.5. Trang quản trị `/admin`
+- Chỉ `role: "admin"` vào được (người khác thấy `Forbidden`). Tab **Thống kê** (`GET /api/admin/stats?days=7|30|90`): thẻ tổng, hai biểu đồ theo ngày, bảng theo game, trang xem nhiều, người chơi nhiều nhất. Tab **Người dùng** (`GET /api/admin/users?q=&page=`): tìm, phân trang 50, đổi quyền, khoá / mở khoá, đặt lại mật khẩu (`PATCH /api/admin/users/<id>`). Không tự hạ quyền hay tự khoá mình.
+- Admin đầu tiên: đặt `ADMIN_USERNAMES=boss` (danh sách phân tách bằng dấu phẩy) bên be_game rồi đăng ký username đó; xem README của be_game.
+
+### 10.6. Chạy thử cục bộ không cần Docker
+- be_game: `PORT=4123 REDIS_URL= DATABASE_URL= ALLOWED_ORIGIN= ADMIN_USERNAMES=boss npx tsx src/local.ts` (tài khoản nằm trong bộ nhớ, mất khi tắt; `/api/health` báo `accounts:"memory"`).
+- Frontend: `NEXT_PUBLIC_TIENLEN_SERVER_URL=http://localhost:4123 NEXT_PUBLIC_TIENLEN_FALLBACK_URL= npx next dev -p 3105`.
+- Script Playwright: đăng ký bằng form `/dang-nhap`, mỗi người chơi một context riêng (phiên nằm ở localStorage). Để chơi nhanh, móc `window.WebSocket` để giữ `state` mới nhất rồi gửi `play` / `pass` qua socket của trang.
+- Hai backend (chính và dự phòng) không chia sẻ tài khoản nếu mỗi bên một store; muốn một tài khoản dùng được ở cả hai thì đặt cùng `SESSION_SECRET` và `DATABASE_URL`.

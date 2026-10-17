@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { GameButton } from "@/components/game-ui/GameButton";
 import { GameDialog } from "@/components/game-ui/GameDialog";
-import { getSavedProfile, saveProfile } from "@/components/games/gameClient";
+import { updateLook } from "@/components/auth/session";
+import { getSavedProfile } from "@/components/games/gameClient";
 import { ProfilePicker } from "@/components/games/PlayerAvatar";
 
 /**
@@ -13,6 +14,8 @@ import { ProfilePicker } from "@/components/games/PlayerAvatar";
 export function LookDialog({ name, takenColors, onClose }: { name: string; takenColors: readonly string[]; onClose: () => void }) {
   const [look, setLook] = useState(getSavedProfile);
   const taken = takenColors.includes(look.color);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   return (
     <GameDialog
       open
@@ -27,9 +30,14 @@ export function LookDialog({ name, takenColors, onClose }: { name: string; taken
           <GameButton
             size="sm"
             variant="primary"
-            onClick={() => {
-              saveProfile(look);
-              onClose();
+            loading={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              const res = await updateLook(look);
+              setBusy(false);
+              if (res.ok) onClose();
+              else setError(res.error);
             }}
           >
             Lưu
@@ -38,6 +46,11 @@ export function LookDialog({ name, takenColors, onClose }: { name: string; taken
       }
     >
       <ProfilePicker name={name} value={look} onChange={setLook} />
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-rose-300">
+          {error}
+        </p>
+      )}
       {taken && <p className="mt-3 text-xs text-amber-200">Màu này đã có người ở bàn dùng: trên bàn cờ bạn sẽ được đổi sang một màu khác còn trống.</p>}
     </GameDialog>
   );

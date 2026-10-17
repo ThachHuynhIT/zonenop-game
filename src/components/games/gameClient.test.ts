@@ -30,6 +30,12 @@ describe("fetchApi", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("sends no Authorization header", async () => {
+    fetchMock.mockResolvedValue(ok({ rooms: [] }));
+    await fetchApi("/api/noauth-test/rooms");
+    expect((fetchMock.mock.calls[0][1] as RequestInit).headers).toBeUndefined();
+  });
+
   it("does not share a failed request", async () => {
     const path = "/api/fail-test/rooms";
     fetchMock.mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) }).mockResolvedValueOnce(ok({ rooms: [1] }));

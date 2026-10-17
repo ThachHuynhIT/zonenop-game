@@ -1,30 +1,31 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { MAX_NAME_LENGTH } from "@/lib/tienlen";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { AllRoomsPanel } from "./AllRoomsPanel";
 import { FullscreenButton, GAME_HEADER_SLOT_ID } from "./GameHeader";
 import { Toaster } from "sonner";
 import { gameFont } from "./gameFont";
-import { getSavedProfile, saveName, saveProfile, usePlayerName, usePlayerProfile, type PlayerProfile } from "./gameClient";
-import { PlayerAvatar, ProfilePicker } from "./PlayerAvatar";
+import { AccountMenu } from "@/components/auth/AccountMenu";
+import { refreshMe, useSession } from "@/components/auth/session";
+import { usePlayerName, usePlayerProfile } from "./gameClient";
+import { PlayerAvatar } from "./PlayerAvatar";
 import { ONLINE_GAMES, gameOfPath, gamesPageKind } from "./gamesRegistry";
 
 interface GamesShellContext {
-  /** Opens the "đổi tên" dialog of the games top bar. */
-  openRename: () => void;
+  /** Opens the account dialog of the games top bar. */
+  openAccount: () => void;
 }
 
-const ShellContext = createContext<GamesShellContext>({ openRename: () => {} });
+const ShellContext = createContext<GamesShellContext>({ openAccount: () => {} });
 
 export const useGamesShell = () => useContext(ShellContext);
 
 /**
  * Layout of every games route (/games, each lobby, each table): games top bar,
- * the player-name gate, the all-rooms panel on hub/lobby pages and a slim footer.
+ * the required sign-in, the all-rooms panel on hub/lobby pages and a slim footer.
  * Replaces the portfolio's Navigation/Footer, which hide themselves on these routes.
  */
 export function GamesShell({ children }: { children: React.ReactNode }) {
@@ -32,15 +33,35 @@ export function GamesShell({ children }: { children: React.ReactNode }) {
   const kind = gamesPageKind(pathname);
   const game = gameOfPath(pathname);
   const name = usePlayerName();
+  const router = useRouter();
+  const session = useSession();
   const [renaming, setRenaming] = useState(false);
+  const signedIn = session !== null;
+
+  // Not signed in: off to the sign-in page, which brings us back here afterwards.
+  useEffect(() => {
+    if (name !== null && !signedIn) {
+      const here = window.location.pathname + window.location.search;
+      router.replace(`/dang-nhap?next=${encodeURIComponent(here)}`);
+    }
+  }, [name, signedIn, router]);
+  // Signed in: re-read the account once (role / look may have changed elsewhere).
+  const refreshed = useRef(false);
+  useEffect(() => {
+    if (!signedIn) refreshed.current = false;
+    else if (!refreshed.current) {
+      refreshed.current = true;
+      void refreshMe();
+    }
+  }, [signedIn]);
   const table = kind === "table";
 
   let body: React.ReactNode;
   if (name === null) {
     // Not read yet (SSR / first paint): keep hub & lobby markup for SSR, tables wait for the name.
     body = table ? null : <div className="invisible">{children}</div>;
-  } else if (!name) {
-    body = <NameGate />;
+  } else if (!signedIn) {
+    body = null; // redirecting to /dang-nhap
   } else if (table) {
     body = children;
   } else {
@@ -57,15 +78,15 @@ export function GamesShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ShellContext.Provider value={{ openRename: () => setRenaming(true) }}>
+    <ShellContext.Provider value={{ openAccount: () => setRenaming(true) }}>
       <Toaster theme="dark" position="top-center" richColors visibleToasts={3} toastOptions={{ duration: 2800 }} />
       <div className={cn("flex min-h-[100dvh] flex-col [&_h1]:[font-family:var(--font-game)] [&_h2]:[font-family:var(--font-game)] [&_h3]:[font-family:var(--font-game)]", gameFont.variable, table && "games-shell-table")}>
-        <GamesTopBar compact={table} name={name} onRename={() => setRenaming(true)} />
+        <GamesTopBar compact={table} name={signedIn ? name : null} onRename={() => setRenaming(true)} />
         {/* The bar is taller on phones (finger-sized buttons): keep the table exactly one screen tall. */}
         <div className={cn("flex-1", table && "games-table max-sm:[--games-bar-h:calc(2.75rem_+_1px)] short:[--games-bar-h:calc(2.75rem_+_1px)]")}>{body}</div>
         {!table && <GamesFooter />}
       </div>
-      {renaming && name && <RenameDialog current={name} inTable={table} onClose={() => setRenaming(false)} />}
+      {renaming && signedIn && <AccountMenu onClose={() => setRenaming(false)} />}
     </ShellContext.Provider>
   );
 }
@@ -131,7 +152,8 @@ function GamesTopBar({ compact, name, onRename }: { compact: boolean; name: stri
         {name && (
           <button
             onClick={onRename}
-            title="Đổi tên"
+            title="Tài khoản"
+            aria-label="Tài khoản"
             className={cn(
               "flex min-w-0 shrink items-center gap-1.5 rounded-full border border-white/15 bg-white/5 pl-1 pr-2.5 transition-colors hover:border-amber-300/50 hover:bg-white/10 max-sm:min-h-9 max-sm:pl-1.5 short:min-h-9",
               compact ? "py-0.5 text-xs" : "py-1 text-sm",
@@ -141,7 +163,7 @@ function GamesTopBar({ compact, name, onRename }: { compact: boolean; name: stri
             {/* Tables: the name only on wide screens, the table header needs the room. */}
             <span className={cn("max-w-[10rem] truncate font-medium max-sm:hidden", compact && "hidden xl:inline")}>{name}</span>
             <span className={cn("text-white/50 max-sm:hidden", compact && "hidden xl:inline")} aria-hidden>
-              ✎
+              ▾
             </span>
           </button>
         )}
@@ -165,111 +187,5 @@ function GamesFooter() {
         </p>
       </div>
     </footer>
-  );
-}
-
-function NameInput({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
-  return (
-    <input
-      id="games-player-name"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      maxLength={MAX_NAME_LENGTH}
-      autoFocus={autoFocus}
-      autoComplete="nickname"
-      enterKeyHint="go"
-      placeholder="VD: Thạch"
-      className="w-full rounded-xl border border-white/15 bg-black/40 px-4 py-3 text-lg text-white outline-none transition-colors placeholder:text-white/30 focus:border-amber-400"
-    />
-  );
-}
-
-/** First stop of the games section: pick the name used at every table. */
-function NameGate() {
-  const [value, setValue] = useState("");
-  const [profile, setProfile] = useState<PlayerProfile>(getSavedProfile);
-  const trimmed = value.trim();
-  return (
-    <main className="flex min-h-[calc(100dvh-3rem)] items-center justify-center px-4 py-10">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!trimmed) return;
-          saveProfile(profile);
-          saveName(trimmed);
-        }}
-        className="w-full max-w-sm rounded-3xl border border-white/10 bg-black/45 p-6 text-white shadow-2xl backdrop-blur-xl sm:p-8"
-      >
-        <p className="mb-4 whitespace-nowrap text-center text-2xl leading-none sm:text-3xl" aria-hidden>
-          🃏 😼 🎩 💎 🤠 🪨 🐴
-        </p>
-        <h1 className="text-center text-2xl font-black tracking-tight text-amber-300">Chào mừng tới Games!</h1>
-        <p className="mb-6 mt-2 text-center text-sm text-white/65">Chọn một cái tên để bạn bè nhận ra bạn — tên này dùng cho mọi game và đổi được bất cứ lúc nào.</p>
-        <label htmlFor="games-player-name" className="mb-1.5 block text-sm text-white/70">
-          Tên của bạn
-        </label>
-        <NameInput value={value} onChange={setValue} autoFocus />
-        <ProfilePicker name={trimmed} value={profile} onChange={setProfile} />
-        <button
-          type="submit"
-          disabled={!trimmed}
-          className="mt-4 w-full rounded-xl bg-gradient-to-r from-amber-400 to-rose-400 px-4 py-3 font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-40"
-        >
-          Vào chơi →
-        </button>
-      </form>
-    </main>
-  );
-}
-
-function RenameDialog({ current, inTable, onClose }: { current: string; inTable: boolean; onClose: () => void }) {
-  const [value, setValue] = useState(current);
-  const saved = usePlayerProfile();
-  const [profile, setProfile] = useState<PlayerProfile>(saved);
-  const trimmed = value.trim();
-  const changed = trimmed !== current || profile.icon !== saved.icon || profile.color !== saved.color;
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
-      <form
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="games-rename-title"
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!trimmed) return;
-          saveProfile(profile);
-          saveName(trimmed);
-          onClose();
-        }}
-        className="w-full max-w-sm rounded-2xl border border-white/15 bg-[#111013] p-5 text-white shadow-2xl"
-      >
-        <h2 id="games-rename-title" className="mb-3 text-lg font-bold text-amber-300">
-          Đổi tên &amp; biểu tượng
-        </h2>
-        <NameInput value={value} onChange={setValue} autoFocus />
-        <ProfilePicker name={trimmed} value={profile} onChange={setProfile} />
-        {inTable && <p className="mt-2 text-xs text-white/50">Bàn hiện tại vẫn giữ tên cũ — tên mới dùng từ bàn tiếp theo. Biểu tượng và màu đổi ngay tại bàn.</p>}
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-white/20 px-4 py-2 text-sm hover:bg-white/10">
-            Huỷ
-          </button>
-          <button
-            type="submit"
-            disabled={!trimmed || !changed}
-            className="rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-black hover:bg-amber-300 disabled:opacity-40"
-          >
-            Lưu
-          </button>
-        </div>
-      </form>
-    </div>
   );
 }
