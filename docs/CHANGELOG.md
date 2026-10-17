@@ -10,6 +10,22 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Accounts and admin go live
+
+- **Date:** 2026-10-17 (PRs #77-#78 released to `main`; backend be_game #14-#20)
+
+**Changes**
+- Sign-in is mandatory (`/dang-nhap`); session in `localStorage["games:session"]`. The account menu has Hồ sơ (username, icon, colour) and Mật khẩu tabs; passwords may be 1 character.
+- `/admin` (admins only): traffic, games, players, devices, user table. The first admin comes from `ADMIN_USERNAMES` on the backend (`Thach`); register that name first.
+- Leaderboard has "Mùa này" (per account) and "Mùa trước (theo tên)".
+- Postgres is a new Neon project used only by be_game; this repo still has no database.
+
+**Traps**
+- Release the frontend only after both backends report `accounts: "postgres"`; the old frontend cannot join once the backend requires a session.
+- The phone's containers need the `docker-begame` bridge to reach the internet (see be_game `docs/SELF_HOSTING.md`).
+
+---
+
 ## Failover per room, Cờ Tỷ Phú part 1, deployed-commit check
 
 - **Date:** 2026-10-16 (PRs #67-#73, released to `main`)

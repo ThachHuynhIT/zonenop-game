@@ -49,7 +49,7 @@ Every online table lives at `/<game>/<ROOM>`; add `?watch=1` to join as a specta
 ## ✨ Features
 
 **Playing together**
-- **Instant tables** — create a room, copy the invite link, friends join with just a name. No accounts.
+- **Instant tables** — create a room, copy the invite link, friends join from the link. Players sign in with a free account (username + password, self-registration) so scores follow the account.
 - **Real-time play over WebSockets**, with automatic reconnect: a reload or a flaky phone connection keeps your seat (secret reconnect token kept in the browser's `localStorage`, shared by its tabs).
 - **Spectator mode** for every table, plus in-table **chat and emoji reactions**.
 - **Lobby & "open tables" panel** listing waiting and in-progress tables of every game.
