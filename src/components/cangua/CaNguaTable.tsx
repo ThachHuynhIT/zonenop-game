@@ -1,7 +1,7 @@
 "use client";
 
 import { SeatAvatar } from "@/components/games/PlayerAvatar";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 // `m` (not `motion`): the root LazyMotion is strict, which throws on the full `motion` component.
 import { AnimatePresence, m as motion } from "motion/react";
@@ -19,6 +19,7 @@ import { CANGUA_WS_PATH, type CNGameView, type CNPlayerView, type CNRoomView, ty
 import type { Reaction } from "@/lib/tienlen";
 import { cn } from "@/lib/utils";
 import { CaNguaBoard, HORSE_COLORS, HorseChip, RollingDie } from "./Board";
+import { toast as showToast } from "sonner";
 import { ConfirmButton } from "@/components/games/ConfirmButton";
 import { WinCelebration } from "@/components/games/WinCelebration";
 
@@ -109,6 +110,27 @@ function Table({ view, reconnecting, act, toast }: { view: CNRoomView; reconnect
     setBusy(false);
     return ok;
   };
+
+  // Hidden auto-play (Ctrl+Shift+Y toggles), like Cờ Tỷ Phú: the server rolls and moves for me (be_game `{ type: "auto", on }`).
+  // The flag lives on the server (`view.auto`, only in my own view), so it survives a reload and keeps playing in a hidden tab.
+  const auto = !!view.auto;
+  const toggleAuto = useRef(() => {});
+  toggleAuto.current = () => {
+    if (view.role !== "player") return;
+    const on = !auto;
+    void act({ type: "auto", on }).then((ok) => {
+      if (ok) showToast(on ? "🤖 Tự động chơi: BẬT" : "🤖 Tự động chơi: TẮT", { duration: 1800 });
+    });
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey && e.shiftKey && !e.altKey && e.code === "KeyY") || e.repeat) return;
+      e.preventDefault();
+      toggleAuto.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const live = useLiveReactions(view.reactions);
   const reactionsFor = (id: string): Reaction[] => live.filter((r) => r.playerId === id);
@@ -294,6 +316,9 @@ function TurnPanel({
     <div className={cn("relative rounded-2xl border border-amber-200/15 bg-black/40 p-3 pt-4", myTurn && "bg-rose-500/10")}>
       <TurnTimerBorder deadline={g.deadline} totalMs={view.settings.turnSeconds * 1000} now={now} />
       <TurnRing active={myTurn} className="inset-0" />
+      {view.auto && (
+        <p className="mb-2 rounded-full bg-fuchsia-700 px-3 py-0.5 text-center text-[11px] font-bold text-white shadow">🤖 Tự động chơi · Ctrl+Shift+Y để tắt</p>
+      )}
       <div className="flex items-center gap-3">
         <RollingDie value={g.roll?.value ?? null} seq={g.roll?.seq ?? 0} color={rollColor} />
         <div className="min-w-0 flex-1 text-sm">
