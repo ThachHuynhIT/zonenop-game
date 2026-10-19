@@ -1377,7 +1377,7 @@ Giả sử game có id `xyz` và route `/xyz`.
 
 ## 10. Tài khoản, bảng điểm mùa và quản trị
 
-Từ nhánh `feature/accounts` (cùng nhánh bên be_game) phải đăng nhập mới chơi được. Backend giữ tài khoản, phiên và thống kê; frontend chỉ lưu phiên và gắn nó vào mọi lời gọi.
+Từ 17/10/2026 (production) phải đăng nhập mới chơi được. Backend giữ tài khoản, phiên và thống kê; frontend chỉ lưu phiên và gắn nó vào mọi lời gọi.
 
 ### 10.1. Phiên (`src/components/auth/session.ts`)
 - Phiên lưu ở `localStorage["games:session"]` dạng JSON `{ session, user }` (`user` = `PublicUser`: `id, username, role, icon, color`). Hook `useSession()` đọc nó (`useSyncExternalStore`); `saveSession` / `clearSession` ghi và báo mọi tab. Khi localStorage bị chặn, phiên chỉ sống trong bộ nhớ của tab.
