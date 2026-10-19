@@ -192,7 +192,10 @@ Always state which STEP is currently active. Do not skip steps for non-trivial t
 
 ### Hard rules
 - Commit and push of task branches are allowed. Never merge without asking,
-  never delete branches without asking, never force-push `develop` or `main`.
+  never force-push `develop` or `main`. Branches: once a PR has been merged (with the maintainer's
+  yes), delete its branch right away, remote and local (`git push origin --delete <branch>`,
+  `git branch -d <branch>`; remove its worktree first if it has one) — no need to ask again. Never
+  delete `main` or `develop`, nor any branch whose PR is not merged, without asking.
 - Never make destructive changes without asking.
 - Never expand scope without asking.
 - Never skip the planning step (3) for a non-trivial task.
@@ -244,6 +247,6 @@ less token/context and less narration, without lowering engineering quality:
   Status: <done | blocked on X | awaiting review>
   ```
 - **Never relaxes:** security, input validation, error handling, logging, or the Hard
-  Rules above (no auto-merge/branch-delete, no scope creep, no destructive action
+  Rules above (no auto-merge, no branch-delete except a merged PR's own branch, no scope creep, no destructive action
   without asking, no skipping lint/build before commit). Full Auto Mode cuts process
   *overhead*, never engineering *rigor*.
