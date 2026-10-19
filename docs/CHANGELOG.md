@@ -10,6 +10,19 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Cờ Cá Ngựa auto-play
+
+- **Date:** 2026-10-19 (branch `feature/cangua-auto-play`; backend be_game `feature/cangua-auto-play`)
+
+**Changes**
+- Hidden `Ctrl+Shift+Y` toggles auto-play for the current player, like Cờ Tỷ Phú. The server rolls and moves (best move) at the offline pace; a "🤖 Tự động chơi" badge shows while on (`view.auto`).
+- Protocol copy `src/lib/cangua/protocol.ts` gained `{ type: "auto", on }` and `view.auto`.
+
+**Traps**
+- Deploy be_game first: an older backend rejects the `auto` command for Cá Ngựa (toast with the error, nothing breaks).
+
+---
+
 ## Accounts and admin go live
 
 - **Date:** 2026-10-17 (PRs #77-#78 released to `main`; backend be_game #14-#20)
