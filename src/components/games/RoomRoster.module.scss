@@ -1,0 +1,76 @@
+.roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.seat {
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem 0.25rem 0.25rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.05);
+}
+
+.me {
+  border-color: rgb(252 211 77 / 0.5);
+  background: rgb(251 191 36 / 0.15);
+}
+
+.offline {
+  opacity: 0.6;
+}
+
+.avatar {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+}
+
+.avatarFallback {
+  background: rgb(255 255 255 / 0.15);
+  font-weight: 700;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.you {
+  font-size: 0.75rem;
+  color: rgb(255 255 255 / 0.6);
+}
+
+.points {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: rgb(255 255 255 / 0.5);
+
+  &.up {
+    color: rgb(110 231 183);
+  }
+
+  &.down {
+    color: rgb(253 164 175);
+  }
+}
+
+.empty {
+  padding: 0.25rem 0.625rem;
+  border: 1px dashed rgb(255 255 255 / 0.2);
+  border-radius: 9999px;
+  color: rgb(255 255 255 / 0.45);
+}
