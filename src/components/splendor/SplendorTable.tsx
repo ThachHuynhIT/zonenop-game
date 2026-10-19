@@ -1,6 +1,7 @@
 "use client";
 
 import { SeatAvatar } from "@/components/games/PlayerAvatar";
+import { RoomRoster } from "@/components/games/RoomRoster";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 // `m` (not `motion`): the root LazyMotion is strict, which throws on the full `motion` component.
@@ -848,23 +849,7 @@ function Waiting({ view, me, act, nameOf }: { view: SPRoomView; me: SPSeatView |
           <p className="mb-3 text-sm text-violet-100/80">{count}/4 người · gửi link mời để bạn bè vào bàn</p>
         </>
       )}
-      {/* Who is at the table (there are no player panels between games). */}
-      <ul className="mb-4 flex flex-wrap gap-1.5 text-sm">
-        {view.seats
-          .filter((x): x is SPSeatView => !!x)
-          .map((x) => (
-            <li key={x.id} className={cn("flex items-center gap-1 rounded-full bg-white/10 py-0.5 pl-0.5 pr-2.5", !x.connected && "opacity-50")}>
-              <SeatAvatar
-                name={x.name}
-                className="flex h-6 w-6 items-center justify-center rounded-full text-xs"
-                fallbackClassName="bg-gradient-to-br from-violet-300 to-fuchsia-600 font-bold text-black"
-              />
-              {x.isHost && <span title="Chủ bàn">👑</span>}
-              <span className="max-w-[9rem] truncate">{x.name}</span>
-              {x.id === view.meId && <span className="text-xs text-white/50">(bạn)</span>}
-            </li>
-          ))}
-      </ul>
+      <RoomRoster seats={view.seats} meId={view.meId} />
       <div className="mb-4 space-y-2 rounded-xl bg-white/5 p-3 text-xs">
         <p className="font-semibold uppercase tracking-wide text-violet-100/60">Luật bàn</p>
         <label className="flex items-center justify-between gap-2">

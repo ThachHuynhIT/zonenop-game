@@ -1,6 +1,7 @@
 "use client";
 
 import { SeatAvatar } from "@/components/games/PlayerAvatar";
+import { RoomRoster } from "@/components/games/RoomRoster";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 // `m` (not `motion`): the root LazyMotion is strict, which throws on the full `motion` component.
@@ -451,9 +452,10 @@ function Waiting({ view, me, act, nameOf }: { view: CNRoomView; me: CNSeatView |
       ) : (
         <>
           <h2 className="mb-1 text-xl font-black text-amber-300">🐴 Cờ Cá Ngựa</h2>
-          <p className="mb-4 text-sm text-amber-100/80">
+          <p className="mb-2 text-sm text-amber-100/80">
             {count}/{MAX_PLAYERS} người · gửi link mời để bạn bè vào bàn
           </p>
+          <RoomRoster seats={view.seats} meId={view.meId} />
         </>
       )}
       <SettingsTabs
