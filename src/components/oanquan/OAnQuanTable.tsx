@@ -1,6 +1,7 @@
 "use client";
 
 import { SeatAvatar } from "@/components/games/PlayerAvatar";
+import { RoomRoster } from "@/components/games/RoomRoster";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 // `m` (not `motion`): the root LazyMotion is strict, which throws on the full `motion` component.
@@ -606,33 +607,7 @@ function Waiting({ view, me, act, nameOf }: { view: OQRoomView; me: OQSeatView |
         <>
           <h2 className="mb-1 text-xl font-black text-amber-300">🪨 Ô Ăn Quan</h2>
           <p className="mb-2 text-sm text-amber-100/80">{count}/{maxSeats} người (2–{maxSeats}) · gửi link mời để bạn bè vào bàn</p>
-          {/* Who is at the table. */}
-          <ul className="mb-3 flex flex-wrap gap-1.5 text-sm">
-            {view.seats.map(
-              (seat) =>
-                seat && (
-                  <li
-                    key={seat.id}
-                    className={cn(
-                      "flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1",
-                      seat.id === view.meId ? "border-amber-300/50 bg-amber-400/15" : "border-white/10 bg-white/5",
-                      !seat.connected && "opacity-60",
-                    )}
-                    title={seat.connected ? undefined : "Mất kết nối"}
-                  >
-                    {seat.isHost && <span title="Chủ bàn">👑</span>}
-                    <SeatAvatar name={seat.name} className="grid size-5 shrink-0 place-items-center rounded-full text-[11px]" fallbackClassName="bg-white/15 font-bold" />
-                    <span className="truncate">{seat.name}</span>
-                    {seat.id === view.meId && <span className="text-xs text-white/60">(bạn)</span>}
-                    {!seat.connected && <span aria-label="Mất kết nối">📴</span>}
-                    {seat.games > 0 && (
-                      <span className={cn("font-mono text-xs", seat.points > 0 ? "text-emerald-300" : seat.points < 0 ? "text-rose-300" : "text-white/50")}>{signed(seat.points)}đ</span>
-                    )}
-                  </li>
-                ),
-            )}
-            {count < 2 && <li className="rounded-full border border-dashed border-white/20 px-2.5 py-1 text-white/45">Đang chờ thêm người…</li>}
-          </ul>
+          <RoomRoster seats={view.seats} meId={view.meId} />
         </>
       )}
       <SettingsTabs
