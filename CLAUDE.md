@@ -52,7 +52,7 @@ favour of hosting the games; that code was removed in `refactor/repurpose-as-gam
   (hidden on touch). Per-game tables: `docs/GAMES_GUIDE.md` §3.12 and §4.
 - Win effect: `WinCelebration` inside each game's `Table` (Cờ Tỷ Phú uses the `game-ui` `Celebration`, same props),
   fired only on the playing → finished transition (`docs/GAMES_GUIDE.md` §3.11b).
-- Seat token: `localStorage["tienlen:token"]` (`getToken()`), shared by every tab of the browser.
+- Seats belong to the account (`uid` in be_game); `localStorage["tienlen:token"]` (`getToken()`) is the fast reconnect key within the same browser.
 
 ## Repository conventions
 

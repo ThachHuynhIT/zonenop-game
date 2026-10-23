@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { GameButton, GamePanel, GameTabs } from "@/components/game-ui";
 import { DEFAULT_PROFILE, type PlayerProfile } from "@/components/games/gameClient";
 import { ProfilePicker } from "@/components/games/PlayerAvatar";
+import styles from "./AuthForm.module.scss";
 import { AuthField } from "./fields";
 import { safeNext } from "./next";
 import { PASSWORD_MIN, passwordLength, passwordProblem } from "./password";
-import { authRequest, saveSession, useSession, type PublicUser } from "./session";
+import { authRequest, saveSession, signOutMessage, takeSignOutReason, useSession, type PublicUser } from "./session";
 
 type AuthData = { session: string; user: PublicUser };
 
@@ -17,6 +18,15 @@ export function AuthForm() {
   const router = useRouter();
   const next = safeNext(useSearchParams().get("next"));
   const session = useSession();
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    const reason = takeSignOutReason();
+    if (reason) {
+      // Read browser storage after hydration; the form notice is an external snapshot.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setNotice(signOutMessage(reason));
+    }
+  }, []);
 
   // Already signed in (or just did): leave the page.
   useEffect(() => {
@@ -30,6 +40,7 @@ export function AuthForm() {
       </p>
       <h1 className="text-center font-heading text-2xl font-black tracking-tight text-game-accent">Chào mừng tới Games!</h1>
       <p className="mb-4 mt-2 text-center text-sm text-white/65">Đăng nhập để chơi, giữ điểm và xếp hạng cùng bạn bè.</p>
+      {notice && <p role="status" className={styles.notice}>{notice}</p>}
       <GameTabs
         tabs={[
           { id: "login", label: "Đăng nhập", content: <LoginTab /> },

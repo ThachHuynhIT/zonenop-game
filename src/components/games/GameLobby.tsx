@@ -8,8 +8,10 @@ import { DeltaBadge } from "@/components/tienlen/Scoreboard";
 import { cn } from "@/lib/utils";
 import { createGameRoom, fetchApi, pollWhileVisible, usePlayerName } from "./gameClient";
 import { useGamesShell } from "./GamesShell";
+import { gameOfPath } from "./gamesRegistry";
 import { toLeaderRows, type LeaderRow } from "./leaderboard";
 import { PlayerAvatar } from "./PlayerAvatar";
+import { ResumeBanner } from "./ResumeBanner";
 
 const ROOMS_REFRESH_MS = 10_000;
 
@@ -154,6 +156,7 @@ export function GameLobby({ title, tagline, icons, basePath, wsPath, apiPrefix, 
         </section>
 
         <div className="flex flex-col gap-6">
+          <ResumeBanner game={gameOfPath(basePath)?.id} />
           <section className="rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-bold text-amber-300">Bàn đang mở</h2>

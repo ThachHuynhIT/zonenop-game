@@ -54,6 +54,19 @@ export function GamesShell({ children }: { children: React.ReactNode }) {
       void refreshMe();
     }
   }, [signedIn]);
+  const lastCheckedAt = useRef(0);
+  useEffect(() => {
+    if (!signedIn) return;
+    lastCheckedAt.current = Date.now();
+    const onVisible = () => {
+      const now = Date.now();
+      if (document.visibilityState !== "visible" || now - lastCheckedAt.current < 30_000) return;
+      lastCheckedAt.current = now;
+      void refreshMe();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [signedIn]);
   const table = kind === "table";
 
   let body: React.ReactNode;
