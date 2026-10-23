@@ -1,0 +1,12 @@
+@use "@styles/variables" as vars;
+
+.notice {
+  margin-bottom: vars.$spacing-md;
+  padding: vars.$spacing-md;
+  border: 1px solid #fbbf2460;
+  border-radius: vars.$radius-lg;
+  color: #fde68a;
+  background: #fbbf2410;
+  font-size: vars.$font-size-sm;
+  line-height: vars.$leading-normal;
+}

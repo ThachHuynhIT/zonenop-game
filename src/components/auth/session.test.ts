@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SESSION_KEY, authRequest, clearSession, getSession, refreshMe, saveSession, type PublicUser } from "./session";
+import { SESSION_KEY, authRequest, clearSession, getSession, refreshMe, saveSession, setSignOutReason, takeSignOutReason, type PublicUser } from "./session";
 import { getDeviceId } from "./device";
 
 const user: PublicUser = { id: "u1", username: "lan", role: "user", icon: "🐱", color: "#fbbf24" };
@@ -71,12 +71,16 @@ describe("authRequest", () => {
     expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
   });
 
-  it("clears the session on 401", async () => {
+  it("clears the session on 401 and remembers why", async () => {
+    const reasons = new Map<string, string>();
+    vi.stubGlobal("sessionStorage", { getItem: (k: string) => reasons.get(k) ?? null, setItem: (k: string, v: string) => reasons.set(k, v), removeItem: (k: string) => reasons.delete(k) });
+    setSignOutReason("replaced");
     saveSession({ session: "tok", user });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonRes(401, { ok: false, error: "Cần đăng nhập" })));
     const res = await authRequest("GET", "/api/auth/me");
     expect(res.ok).toBe(false);
     expect(getSession()).toBeNull();
+    expect(takeSignOutReason()).toBe("revoked");
   });
 
   it("reports a network error", async () => {

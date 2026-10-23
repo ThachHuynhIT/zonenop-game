@@ -10,6 +10,16 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Account seats and resume banner
+
+- **Date:** 2026-10-23 (branch `feature/account-seats`; depends on [be_game #23](https://github.com/ThachHuynhIT/be_game/pull/23), deploy backend first).
+- Seats follow the account across devices. Signing in revokes older sessions; a replaced/revoked table stops reconnecting without leaving its seat and shows the reason on sign-in.
+- Auth HTTP 401 records the revoked reason; returning to a visible tab revalidates the session (30-second throttle).
+- Hub and lobbies show “Ván đang dở” with a “Vào lại” link from `GET /api/auth/rooms`. Refresh on entry/session change/tab visibility, no polling; unknown game ids are ignored.
+- Cross-instance revocation can take about 90 seconds. Both backends must share the account database for revocation to propagate.
+
+---
+
 ## Cờ Cá Ngựa auto-play
 
 - **Date:** 2026-10-19 (branch `feature/cangua-auto-play`; backend be_game `feature/cangua-auto-play`)

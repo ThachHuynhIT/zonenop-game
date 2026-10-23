@@ -1,5 +1,7 @@
 "use client";
 
+import { ResumeBanner } from "./ResumeBanner";
+import { gameOfPath } from "./gamesRegistry";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -154,6 +156,7 @@ export function GameLobby({ title, tagline, icons, basePath, wsPath, apiPrefix, 
         </section>
 
         <div className="flex flex-col gap-6">
+          <ResumeBanner game={gameOfPath(basePath)?.id} />
           <section className="rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-bold text-amber-300">Bàn đang mở</h2>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getDeviceId } from "../auth/device";
-import { clearSession, getSession, subscribeSession } from "../auth/session";
+import { clearSession, getSession, setSignOutReason, signOutMessage, subscribeSession, type SignOutReason } from "../auth/session";
 
 /**
  * Shared WebSocket client for the be_game backend (Tiến Lên, Mèo Nổ, …).
@@ -265,7 +265,7 @@ const randomToken = () =>
 /**
  * Secret reconnect token, shared by every tab of this browser (localStorage): a reload, closing the
  * tab or opening the invite link again all come back to the same seat. A second tab in the same room
- * is the same player; another browser or a private window plays as someone else. A token from the
+ * is the same player; on another device the account takes its seat back. A token from the
  * older per-tab storage (sessionStorage) is carried over so seats taken before keep working.
  */
 let memoryToken: string | null = null;
@@ -343,7 +343,15 @@ export function usePlayerName(): string | null {
   return useSyncExternalStore(subscribeName, getSavedName, () => null);
 }
 
-type ServerMessage = ({ type: "ack"; id: number } & Ack) | { type: "state"; view: unknown } | { type: "reconnect" } | { type: "pong" };
+type ServerMessage = ({ type: "ack"; id: number } & Ack) | { type: "state"; view: unknown } | { type: "reconnect" } | { type: "pong" } | { type: "signedOut"; reason: "replaced" | "revoked" };
+
+/** A delayed room event must never erase a session obtained by a newer sign-in. */
+export function signOutGameSession(session: string | undefined, reason: SignOutReason): boolean {
+  if (!session || getSession()?.session !== session) return false;
+  setSignOutReason(reason);
+  clearSession();
+  return true;
+}
 
 /** One WebSocket with request/ack bookkeeping. */
 class Channel {
@@ -462,6 +470,7 @@ export function useGameRoom<V>(
   useEffect(() => {
     if (!name) return;
     let disposed = false;
+    let stopped = false;
     let retry = 0;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     const token = getToken();
@@ -470,8 +479,19 @@ export function useGameRoom<V>(
 
     /** Connect to one backend and join (or watch) the room there. */
     const tryJoin = async (base: string): Promise<JoinOutcome<Channel>> => {
+      if (disposed || stopped) return { kind: "cancelled" };
       const ch = new Channel(wsUrl(base, wsPath));
+      const sentSession = getSession()?.session;
       ch.onMessage = (msg) => {
+        if (disposed || stopped) return;
+        if (msg.type === "signedOut") {
+          stopped = true;
+          if (retryTimer) clearTimeout(retryTimer);
+          setStatus("error");
+          setError(signOutMessage(msg.reason));
+          if (signOutGameSession(sentSession, msg.reason)) signedOutRef.current?.();
+          return;
+        }
         if (msg.type === "state") {
           setRoomLooks((msg.view as { looks?: Record<string, PlayerProfile> }).looks);
           setView(localizeRef.current(msg.view as V));
@@ -479,7 +499,7 @@ export function useGameRoom<V>(
         else if (msg.type === "reconnect" && channelRef.current === ch) void open();
       };
       ch.onClose = () => {
-        if (disposed || channelRef.current !== ch) return;
+        if (disposed || stopped || channelRef.current !== ch) return;
         channelRef.current = null;
         setStatus((s) => (s === "error" ? s : "reconnecting"));
         scheduleRetry();
@@ -489,7 +509,10 @@ export function useGameRoom<V>(
         ch.close();
         return { kind: "unreachable" };
       }
-      const sentSession = getSession()?.session;
+      if (disposed || stopped) {
+        ch.close();
+        return { kind: "cancelled" };
+      }
       const res = await ch.request({
         type: mode === "watch" ? "watch" : "join",
         code,
@@ -499,10 +522,17 @@ export function useGameRoom<V>(
         session: sentSession,
         device: getDeviceId(),
       });
+      if (disposed || stopped) {
+        ch.close();
+        return { kind: "cancelled" };
+      }
       if (res.ok) return { kind: "joined", channel: ch };
       ch.close();
       if (res.error === NEED_LOGIN) {
-        if (sentSession && getSession()?.session === sentSession) clearSession();
+        if (sentSession && getSession()?.session === sentSession) {
+          setSignOutReason("revoked");
+          clearSession();
+        }
         signedOutRef.current?.();
       }
       return failedJoinOutcome(res.error);
@@ -515,7 +545,7 @@ export function useGameRoom<V>(
      * Each backend is tried in turn, the room's own first once it is known.
      */
     const open = async () => {
-      if (disposed) return;
+      if (disposed || stopped) return;
       const bases = basesToTry(roomBase, roomBase ? SERVER_BASES : await candidateBases());
       const step = await resolveJoin(
         bases,
@@ -523,7 +553,7 @@ export function useGameRoom<V>(
         () => channelRef.current !== null,
         async (base) => {
           const outcome = await tryJoin(base);
-          if (disposed) {
+          if (disposed || stopped) {
             if (outcome.kind === "joined") outcome.channel.close();
             return { kind: "cancelled" };
           }
@@ -559,7 +589,7 @@ export function useGameRoom<V>(
     };
 
     const scheduleRetry = () => {
-      if (disposed || retryTimer) return;
+      if (disposed || stopped || retryTimer) return;
       const delay = Math.min(500 * 2 ** retry++, 8000);
       retryTimer = setTimeout(() => {
         retryTimer = null;
@@ -567,10 +597,10 @@ export function useGameRoom<V>(
       }, delay);
     };
 
-    const pinger = setInterval(() => channelRef.current?.ping(), PING_INTERVAL_MS);
+    const pinger = setInterval(() => { if (!stopped) channelRef.current?.ping(); }, PING_INTERVAL_MS);
     // Come back fast when the tab regains focus or the network returns.
     const wake = () => {
-      if (!channelRef.current && !retryTimer) void open();
+      if (!disposed && !stopped && !channelRef.current && !retryTimer) void open();
     };
     window.addEventListener("online", wake);
     document.addEventListener("visibilitychange", wake);
@@ -585,7 +615,10 @@ export function useGameRoom<V>(
       document.removeEventListener("visibilitychange", wake);
       const ch = channelRef.current;
       channelRef.current = null;
-      if (ch) void ch.request({ type: "leave" }, 1500).finally(() => ch.close());
+      if (ch) {
+        if (stopped) ch.close();
+        else void ch.request({ type: "leave" }, 1500).finally(() => ch.close());
+      }
     };
   }, [wsPath, code, name, mode]);
 
