@@ -1,7 +1,5 @@
 "use client";
 
-import { ResumeBanner } from "./ResumeBanner";
-import { gameOfPath } from "./gamesRegistry";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,8 +8,10 @@ import { DeltaBadge } from "@/components/tienlen/Scoreboard";
 import { cn } from "@/lib/utils";
 import { createGameRoom, fetchApi, pollWhileVisible, usePlayerName } from "./gameClient";
 import { useGamesShell } from "./GamesShell";
+import { gameOfPath } from "./gamesRegistry";
 import { toLeaderRows, type LeaderRow } from "./leaderboard";
 import { PlayerAvatar } from "./PlayerAvatar";
+import { ResumeBanner } from "./ResumeBanner";
 
 const ROOMS_REFRESH_MS = 10_000;
 

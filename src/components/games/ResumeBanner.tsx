@@ -9,6 +9,9 @@ import styles from "./ResumeBanner.module.scss";
 
 type PlayingRoom = { game: GameId; code: string };
 
+/** Each check scans every game's recent rooms on the server, so returning to the tab re-checks at most this often. */
+const RECHECK_MS = 30_000;
+
 /** The account's unfinished games, refreshed on entry and when this tab returns. */
 export function ResumeBanner({ game }: { game?: GameId }) {
   const token = useSession()?.session;
@@ -18,8 +21,10 @@ export function ResumeBanner({ game }: { game?: GameId }) {
     if (!token) return;
     let disposed = false;
     let request = 0;
+    let loadedAt = 0;
     const load = async () => {
       const current = ++request;
+      loadedAt = Date.now();
       try {
         const res = await authRequest<{ rooms: PlayingRoom[] }>("GET", "/api/auth/rooms");
         if (!disposed && current === request && getSession()?.session === token) {
@@ -30,7 +35,7 @@ export function ResumeBanner({ game }: { game?: GameId }) {
       }
     };
     const onVisible = () => {
-      if (document.visibilityState === "visible") void load();
+      if (document.visibilityState === "visible" && Date.now() - loadedAt >= RECHECK_MS) void load();
     };
     void load();
     document.addEventListener("visibilitychange", onVisible);

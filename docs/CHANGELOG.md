@@ -14,8 +14,10 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 - **Date:** 2026-10-23 (branch `feature/account-seats`; depends on [be_game #23](https://github.com/ThachHuynhIT/be_game/pull/23), deploy backend first).
 - Seats follow the account across devices. Signing in revokes older sessions; a replaced/revoked table stops reconnecting without leaving its seat and shows the reason on sign-in.
+- Exception: when this browser already holds a newer session (a password change at the table issues one and revokes the token the socket joined with), `signedOut` re-joins with it instead of stopping (`hasNewerSession`).
 - Auth HTTP 401 records the revoked reason; returning to a visible tab revalidates the session (30-second throttle).
-- Hub and lobbies show “Ván đang dở” with a “Vào lại” link from `GET /api/auth/rooms`. Refresh on entry/session change/tab visibility, no polling; unknown game ids are ignored.
+- Hub and lobbies show “Ván đang dở” with a “Vào lại” link from `GET /api/auth/rooms`. Refresh on entry/session change, and on tab visibility at most every 30 seconds (each check scans every game's recent rooms server-side); no polling; unknown game ids are ignored.
+- Known debt: the banner and sign-in notice SCSS use hard-coded amber hex colours (like the game tables) instead of `_variables.scss` tokens.
 - Cross-instance revocation can take about 90 seconds. Both backends must share the account database for revocation to propagate.
 
 ---

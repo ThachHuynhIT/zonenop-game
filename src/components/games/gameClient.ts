@@ -353,6 +353,12 @@ export function signOutGameSession(session: string | undefined, reason: SignOutR
   return true;
 }
 
+/** This browser holds a session other than the one a socket joined with (it signed in again, or changed the password). */
+export function hasNewerSession(sent: string | undefined): boolean {
+  const current = getSession()?.session;
+  return !!current && current !== sent;
+}
+
 /** One WebSocket with request/ack bookkeeping. */
 class Channel {
   readonly ws: WebSocket;
@@ -485,6 +491,17 @@ export function useGameRoom<V>(
       ch.onMessage = (msg) => {
         if (disposed || stopped) return;
         if (msg.type === "signedOut") {
+          // Revoked by this browser's own newer session (e.g. a password change at the table): join again with it.
+          if (hasNewerSession(sentSession)) {
+            const current = channelRef.current === ch;
+            ch.close();
+            if (current) {
+              channelRef.current = null;
+              setStatus("reconnecting");
+              void open();
+            }
+            return;
+          }
           stopped = true;
           if (retryTimer) clearTimeout(retryTimer);
           setStatus("error");

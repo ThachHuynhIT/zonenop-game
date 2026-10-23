@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GamesShell } from "@/components/games/GamesShell";
-
 import { ResumeBanner } from "@/components/games/ResumeBanner";
 
 export const metadata: Metadata = {
