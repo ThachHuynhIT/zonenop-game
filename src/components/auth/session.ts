@@ -18,6 +18,33 @@ export interface StoredSession {
 /** localStorage: JSON {session, user}. */
 export const SESSION_KEY = "games:session";
 
+export type SignOutReason = "replaced" | "revoked";
+const SIGN_OUT_REASON_KEY = "games:signOutReason";
+
+export function setSignOutReason(reason: SignOutReason): void {
+  try {
+    sessionStorage.setItem(SIGN_OUT_REASON_KEY, reason);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function takeSignOutReason(): SignOutReason | null {
+  try {
+    const reason = sessionStorage.getItem(SIGN_OUT_REASON_KEY);
+    sessionStorage.removeItem(SIGN_OUT_REASON_KEY);
+    return reason === "replaced" || reason === "revoked" ? reason : null;
+  } catch {
+    return null;
+  }
+}
+
+export function signOutMessage(reason: SignOutReason): string {
+  return reason === "replaced"
+    ? "Tài khoản của bạn vừa vào bàn từ thiết bị khác."
+    : "Tài khoản của bạn vừa đăng nhập ở thiết bị khác, phiên này đã kết thúc.";
+}
+
 let cached: { raw: string | null; value: StoredSession | null } | null = null;
 const listeners = new Set<() => void>();
 
@@ -123,7 +150,10 @@ export async function authRequest<T>(method: "GET" | "POST" | "PATCH", path: str
     } catch {
       /* no JSON body */
     }
-    if (res.status === 401 && sent && getSession()?.session === sent.session) clearSession();
+    if (res.status === 401 && sent && getSession()?.session === sent.session) {
+      setSignOutReason("revoked");
+      clearSession();
+    }
     if (res.ok && json && json.ok !== false) return { ok: true, data: json as T };
     const error = json && typeof json.error === "string" ? json.error : `HTTP ${res.status}`;
     return { ok: false, status: res.status, error };

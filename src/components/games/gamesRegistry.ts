@@ -12,6 +12,8 @@ export interface OnlineGame {
   maxPlayers: number;
 }
 
+export type GameId = OnlineGame["id"];
+
 export const ONLINE_GAMES: readonly OnlineGame[] = [
   { id: "tienlen", title: "Tiến Lên Miền Nam", short: "Tiến Lên", emoji: "🃏", href: "/tien-len", roomsPath: "/api/rooms", maxPlayers: 4 },
   { id: "meono", title: "Mèo Nổ", short: "Mèo Nổ", emoji: "😼", href: "/meo-no", roomsPath: "/api/meono/rooms", maxPlayers: 7 },
