@@ -10,6 +10,13 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Cờ Tỷ Phú auto-play no longer builds
+
+- **Date:** 2026-10-26 (branch `fix/typhu-auto-no-build`; backend be_game `fix/typhu-auto-no-build`, deploy it for the change to take effect).
+- Auto-play (`Ctrl+Shift+Y`) still rolls, buys squares under 300tr keeping 150tr, and handles jail/debt, but it no longer builds houses at the end of the turn; building stays a manual choice. be_game dropped `autoBuild`. The client only had comments/docs to update.
+
+---
+
 ## Account seats and resume banner
 
 - **Date:** 2026-10-23 (branch `feature/account-seats`; depends on [be_game #23](https://github.com/ThachHuynhIT/be_game/pull/23), deploy backend first).
