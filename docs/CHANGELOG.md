@@ -10,6 +10,15 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Baloo 2 self-hosted
+
+- **Date:** 2026-10-28 (branch `claude/check-build-error-8dnat2`).
+- Why: a Vercel preview build (`0cb37f0`, docs-only commit) failed with `Can't resolve '@vercel/turbopack-next/internal/font/google/font'` on Baloo 2's generated `@font-face`; a no-cache redeploy of the same commit passed, so it was a flaky `next/font/google` fetch/cache, not the code.
+- `gameFont.ts` now uses `next/font/local` with `components/games/fonts/Baloo2-latin-vietnamese.woff2`: the OFL variable font (wght 400–800) subset to Latin + Vietnamese with `pyftsubset` (56 KB; licence beside it). Same `--font-game` variable, so no call sites changed.
+- Still on `next/font/google`: Bricolage Grotesque, Geist and Geist Mono in `app/layout.tsx`. They built fine in the failed deploy; move them the same way if they ever fail.
+
+---
+
 ## Cờ Tỷ Phú auto-play no longer builds
 
 - **Date:** 2026-10-26 (branch `fix/typhu-auto-no-build`; backend be_game `fix/typhu-auto-no-build`, deploy it for the change to take effect).
