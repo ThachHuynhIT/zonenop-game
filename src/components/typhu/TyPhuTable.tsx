@@ -2,6 +2,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { toast as showToast } from "sonner";
 import { ChatBox } from "@/components/games/ChatBox";
@@ -33,6 +34,8 @@ import { ActionBar } from "./centre/ActionBar";
 import { Centre } from "./centre/Centre";
 import { AssetPanel } from "./panels/AssetPanel";
 import { BankruptOverlay, BuildOverlay, CardOverlay } from "./fx/Overlays";
+import { MoneyFx } from "./fx/MoneyFx";
+import { TurnBanner } from "./fx/TurnBanner";
 import { PlayerRow } from "./players/PlayerRow";
 import { PlayerStrip } from "./players/PlayerStrip";
 import { SquareModal } from "./dialogs/SquareDialog";
@@ -161,6 +164,16 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const [openSquare, setOpenSquare] = useState<number | null>(null);
   const [showTrade, setShowTrade] = useState(false);
   const [showLoan, setShowLoan] = useState(false);
+  // Leaving a running game drops my seat (the table sends "leave" on unmount): ask first.
+  const router = useRouter();
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const inGame = playing && view.role === "player" && !!mine && !mine.bankrupt;
+  useEffect(() => {
+    if (!inGame) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [inGame]);
   const [showScores, setShowScores] = useState(false);
   const [showLog, setShowLog] = useState(false);
   useHotkeys({ l: g ? () => setShowLog((v) => !v) : undefined }, true, ["l"]);
@@ -315,7 +328,15 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
       <GameHeader
         primary={
           <>
-            <Link href="/co-ty-phu" className={headerBtn}>
+            <Link
+              href="/co-ty-phu"
+              className={headerBtn}
+              onClick={(e) => {
+                if (!inGame) return;
+                e.preventDefault();
+                setConfirmLeave(true);
+              }}
+            >
               ← Sảnh
             </Link>
             <span className="font-mono text-sm font-bold tracking-[0.2em] text-amber-300">{view.code}</span>
@@ -403,7 +424,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
               );
             })}
             {/* Centre */}
-            <div className="relative flex flex-col items-center justify-center-safe gap-2 overflow-y-auto overflow-x-hidden bg-[#0b1d3a] bg-cover bg-center p-[2%] text-emerald-950 short:gap-1 short:p-[1.5%]" style={{ gridColumn: `2 / ${boardRef.current.length / 4 + 1}`, gridRow: `2 / ${boardRef.current.length / 4 + 1}`, backgroundImage: "url(/games/typhu/center.webp)" }}>
+            <div data-bank className="relative flex flex-col items-center justify-center-safe gap-2 overflow-y-auto overflow-x-hidden bg-[#0b1d3a] bg-cover bg-center p-[2%] text-emerald-950 short:gap-1 short:p-[1.5%]" style={{ gridColumn: `2 / ${boardRef.current.length / 4 + 1}`, gridRow: `2 / ${boardRef.current.length / 4 + 1}`, backgroundImage: "url(/games/typhu/center.webp)" }}>
               <CardOverlay card={cardFx} nameOf={nameOf} onClose={() => setCardFx(null)} />
               <BuildOverlay fx={buildFx} />
               <BankruptOverlay fx={bankruptFx} />
@@ -614,7 +635,28 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
       {showTrade && g && <TradeModal g={g} meId={view.meId} nameOf={nameOf} run={run} onClose={() => setShowTrade(false)} />}
       {showLog && g && <LogModal log={g.log} onClose={() => setShowLog(false)} />}
       {showScores && <ScoreboardModal view={view} onClose={() => setShowScores(false)} note={SCORE_NOTE} />}
+      <MoneyFx players={g?.players} gameKey={view.history.length} />
+      <TurnBanner turn={g?.turn ?? null} meId={view.meId} name={g?.turn ? nameOf(g.turn) : ""} playing={!!playing} />
       <Celebration show={g?.status === "ended"} playing={!!playing} won={!!view.meId && g?.finished[0] === view.meId} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
+      {confirmLeave && (
+        <GameDialog
+          open
+          onOpenChange={(o) => !o && setConfirmLeave(false)}
+          title="Rời phòng?"
+          footer={
+            <>
+              <GameButton size="sm" onClick={() => setConfirmLeave(false)}>
+                Ở lại
+              </GameButton>
+              <GameButton size="sm" variant="danger" onClick={() => router.push("/co-ty-phu")}>
+                Rời phòng
+              </GameButton>
+            </>
+          }
+        >
+          <p className="text-sm">Ván đang diễn ra. Bạn chắc chắn muốn rời phòng?</p>
+        </GameDialog>
+      )}
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
     </div>
     </GameThemeScope>

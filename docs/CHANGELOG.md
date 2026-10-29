@@ -10,6 +10,17 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Cờ Tỷ Phú table effects
+
+- **Date:** 2026-10-29 (branch `claude/dautri-millionaire-flags-ui-664700`, cut from `origin/develop`). Client only: no be_game or protocol change.
+- Money flying (`typhu/fx/MoneyFx.tsx`): the server sends no "who paid whom" event, so `fx/moneyFlows.ts` infers it from each player's cash between two state updates. Payers are matched with receivers in turn (rent: tenant → owner); what is left over goes to / comes from the bank (the board centre, `data-bank`). Totals per player are exact, only the pairing is a guess when several payments land in one update. It skips the first state of a game (`gameKey` = `view.history.length`, so a new game doesn't replay) and players who just went bankrupt.
+- Positions come from the DOM: `data-token` (board token) falling back to `data-seat` (panel avatar).
+- Turn: `fx/TurnBanner.tsx` (full-width band, loud for me, quiet for others, only on a real turn change) and `fx/turnGlow.module.scss` (pulsing halo on the board token and the panel avatar, still under `prefers-reduced-motion`).
+- Buying land: `OwnerFlag` in `board/Cell.tsx` plants a flag in the owner's colour for about 1.8 s; not replayed for owners already there on load.
+- Leaving: "← Sảnh" asks for confirmation for a seated, non-bankrupt player in a running game, and `beforeunload` warns on closing / refreshing. Browser Back and the site nav are not covered.
+
+---
+
 ## Baloo 2 self-hosted
 
 - **Date:** 2026-10-28 (branch `claude/check-build-error-8dnat2`).

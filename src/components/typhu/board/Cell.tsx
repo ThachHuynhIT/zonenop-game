@@ -6,6 +6,7 @@ import { m as motion } from "motion/react";
 import { GROUP_COLORS, MAX_HOUSES, type Square, isOwnable } from "@/lib/typhu/board";
 import { type Deed } from "@/lib/typhu/protocol";
 import { cn } from "@/lib/utils";
+import glow from "../fx/turnGlow.module.scss";
 import { tokenMinPx, tokenSlots } from "./layout";
 import { ArtIcon, Building, money, squareImg } from "../shared";
 
@@ -69,6 +70,37 @@ function BuildBurst({ count }: { count: number }) {
         );
       })}
     </span>
+  );
+}
+
+/** A flag in the owner's colour planted on a square the moment it is bought (a new owner), then gone again. */
+function OwnerFlag({ owner, color }: { owner: string | undefined; color: string | undefined }) {
+  const prev = useRef(owner);
+  const [flag, setFlag] = useState<{ key: number; color: string } | null>(null);
+  useEffect(() => {
+    const bought = owner !== undefined && owner !== prev.current;
+    prev.current = owner;
+    if (!bought || !color) return;
+    setFlag({ key: Date.now(), color });
+    const t = setTimeout(() => setFlag(null), 1900);
+    return () => clearTimeout(t);
+  }, [owner]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!flag) return null;
+  return (
+    <motion.span
+      key={flag.key}
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 bottom-[30%] z-20 flex justify-center"
+      initial={{ y: -40, scale: 0.4, opacity: 0 }}
+      animate={{ y: [-40, 0, 0, 0, 0], scale: [0.4, 1.15, 1, 1, 1], opacity: [0, 1, 1, 1, 0], rotate: [0, 0, -8, 8, 0] }}
+      transition={{ duration: 1.8, times: [0, 0.2, 0.4, 0.7, 1], ease: "easeOut" }}
+    >
+      <svg viewBox="0 0 24 32" className="h-[70%] min-h-5 w-auto max-w-full drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]">
+        <path d="M5 30V3" stroke="#6b4a2b" strokeWidth="2.5" strokeLinecap="round" />
+        <path d="M6 4h16l-4.5 5.5L22 15H6z" fill={flag.color} stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" />
+        <ellipse cx="5" cy="30" rx="4" ry="1.5" fill="rgba(0,0,0,0.35)" />
+      </svg>
+    </motion.span>
   );
 }
 
@@ -188,6 +220,7 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
         </span>
       )}
       {band && <BuildBurst count={houses} />}
+      <OwnerFlag owner={deed?.owner} color={owner?.color} />
       {compact ? (
         <span className="pointer-events-none flex flex-col items-center">
           {sq.kind !== "prop" && squareImg(sq) ? <ArtIcon name={squareImg(sq)!} className={side === "corner" ? "size-5" : "size-4"} /> : null}
@@ -233,12 +266,13 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
             return (
               <motion.span
                 key={p.id}
+                data-token={p.id}
                 layoutId={`token-${p.id}`}
                 // Short tween per square: the walk itself is the square-by-square steps.
                 transition={{ layout: { type: "tween", ease: "easeOut", duration: 0.16 } }}
                 className={cn(
                   "absolute flex aspect-square -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white text-[8px] shadow-md sm:text-sm short:text-[8px]",
-                  p.turn && "z-10 ring-2 ring-amber-400",
+                  p.turn && cn("z-10", glow.glow),
                 )}
                 // Height in percent of the square (aspect-square gives the width) so slots never overlap.
                 style={{ left: `${slot.x}%`, top: `${slot.y}%`, height: `${42 * slot.scale}%`, minHeight: tokenMinPx(here.length), background: p.color }}
