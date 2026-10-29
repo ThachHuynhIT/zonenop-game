@@ -10,6 +10,16 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Nối Chữ, the eighth game
+
+- **Date:** 2026-10-29 (branch `feature/noi-chu`; backend be_game `feature/noi-chu` ([be_game #25](https://github.com/ThachHuynhIT/be_game/pull/25)), **deploy it first**).
+- New game at `/noi-chu`, 2–8 players: type a two-syllable word whose first syllable is the last syllable of the previous word (tone marks must match, no repeats); running out of time puts you out, the last one standing wins. Rules, settings and commands: `be_game/docs/games/noichu.md`; UI notes: `docs/GAMES_GUIDE.md` §4.8.
+- First table written with the SCSS Module rule (`NoiChuTable.module.scss`) and the `game-ui` kit instead of long Tailwind class strings.
+- Dictionary check lives on the server (be_game ships a 48,425-word list from Viet74K, GPL-2.0, kept as a separate data file there; the licence decision and caveats are in be_game's `src/noichu/dict/README.md`). Known limit: the list is incomplete (e.g. `con mèo` is missing), so the host can turn the check off in the room settings.
+- Verified against a real be_game with two Playwright browsers (register, create room, settings, refused words, 4 valid words, timeout, result, new game, phone width, hub card, lobby). The Playwright script is not in the repo.
+
+---
+
 ## Baloo 2 self-hosted
 
 - **Date:** 2026-10-28 (branch `claude/check-build-error-8dnat2`).

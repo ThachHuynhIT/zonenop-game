@@ -1,0 +1,390 @@
+@use "@styles/variables" as vars;
+
+// Phones held sideways (same query as the `short:` variant in globals.css).
+$short: "(orientation: landscape) and (max-height: 500px)";
+
+.table {
+  position: relative;
+  display: flex;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 72rem;
+  flex-direction: column;
+  gap: vars.$spacing-sm;
+  margin: 0 auto;
+  padding: vars.$spacing-sm vars.$spacing-sm 6rem;
+
+  @media (min-width: vars.$breakpoint-sm) {
+    padding: 0.75rem vars.$spacing-md 6rem;
+  }
+
+  @media (min-width: vars.$breakpoint-lg) {
+    padding-bottom: 0.75rem;
+  }
+
+  @media #{$short} {
+    gap: vars.$spacing-xs;
+    padding-bottom: 4rem;
+  }
+}
+
+.layout {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 0.75rem;
+
+  @media (min-width: vars.$breakpoint-lg) {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+  }
+
+  @media #{$short} {
+    grid-template-columns: minmax(0, 1fr) 15rem;
+    gap: vars.$spacing-sm;
+  }
+}
+
+.main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  @media #{$short} {
+    gap: vars.$spacing-sm;
+  }
+}
+
+.side {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+// ── Players ─────────────────────────────────────────────
+
+.players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.player {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.625rem 0.25rem 0.25rem;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 9999px;
+  background: rgb(0 0 0 / 0.35);
+  font-size: vars.$font-size-sm;
+}
+
+.turn {
+  border-color: rgb(94 234 212 / 0.7);
+  background: rgb(45 212 191 / 0.16);
+  box-shadow: 0 0 0 2px rgb(45 212 191 / 0.25);
+}
+
+.out {
+  opacity: 0.5;
+
+  .name {
+    text-decoration: line-through;
+  }
+}
+
+.offline {
+  opacity: 0.65;
+}
+
+.winner {
+  border-color: rgb(252 211 77 / 0.8);
+  box-shadow: 0 0 0 2px rgb(252 211 77 / 0.3);
+}
+
+.avatar {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 9999px;
+  font-size: 0.9rem;
+}
+
+.avatarFallback {
+  background: rgb(255 255 255 / 0.15);
+  font-weight: 700;
+}
+
+.who {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  font-size: vars.$font-size-xs;
+  color: rgb(255 255 255 / 0.6);
+}
+
+.tag {
+  margin-left: 0.25rem;
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  background: rgb(159 18 57 / 0.6);
+  font-size: 0.6875rem;
+  color: rgb(254 205 211);
+}
+
+.kick {
+  margin-left: 0.25rem;
+}
+
+// ── Chain ───────────────────────────────────────────────
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.prompt {
+  font-size: vars.$font-size-sm;
+  color: rgb(204 251 241 / 0.8);
+}
+
+.last {
+  margin: 0;
+  font-family: vars.$font-family-heading;
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: vars.$tracking-tight;
+  overflow-wrap: anywhere;
+
+  @media #{$short} {
+    font-size: 1.75rem;
+  }
+}
+
+// The syllable the next word must start with.
+.need {
+  padding: 0 0.2em;
+  border-radius: 0.3em;
+  background: rgb(45 212 191 / 0.28);
+  color: rgb(153 246 228);
+}
+
+.chain {
+  display: flex;
+  max-height: 7.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  font-size: vars.$font-size-xs;
+
+  @media #{$short} {
+    max-height: 4rem;
+  }
+}
+
+.chip {
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.08);
+  color: rgb(255 255 255 / 0.8);
+}
+
+.mine {
+  background: rgb(45 212 191 / 0.2);
+  color: rgb(204 251 241);
+}
+
+.form {
+  position: relative;
+  display: flex;
+  width: 100%;
+  max-width: 28rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.input {
+  min-width: 0;
+  flex: 1;
+  height: 2.75rem;
+  padding: 0 1rem;
+  border: 2px solid rgb(255 255 255 / 0.2);
+  border-radius: 9999px;
+  background: rgb(0 0 0 / 0.4);
+  color: white;
+  font-size: vars.$font-size-lg;
+  outline: none;
+
+  &:focus-visible {
+    border-color: rgb(94 234 212);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+
+  &::placeholder {
+    color: rgb(255 255 255 / 0.4);
+  }
+}
+
+.wait {
+  min-height: 2.75rem;
+  font-size: vars.$font-size-sm;
+  color: rgb(204 251 241 / 0.75);
+}
+
+// ── Log ─────────────────────────────────────────────────
+
+.log {
+  display: flex;
+  max-height: 15rem;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  font-size: vars.$font-size-xs;
+
+  @media (min-width: vars.$breakpoint-lg) {
+    max-height: 60vh;
+  }
+
+  @media #{$short} {
+    max-height: 34dvh;
+  }
+}
+
+.logItem {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  color: rgb(255 255 255 / 0.75);
+}
+
+.logOut {
+  background: rgb(159 18 57 / 0.25);
+}
+
+.logWin {
+  background: rgb(245 158 11 / 0.25);
+  color: rgb(254 243 199);
+  font-weight: 600;
+}
+
+.logWord {
+  background: rgb(45 212 191 / 0.1);
+}
+
+// ── Waiting / result card ───────────────────────────────
+
+.card {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  font-size: vars.$font-size-sm;
+}
+
+.rankRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.rankNo {
+  margin-right: 0.25rem;
+  font-family: vars.$font-family-mono;
+  font-size: vars.$font-size-xs;
+  color: rgb(153 246 228);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.select {
+  min-height: 2rem;
+  padding: 0.25rem 0.375rem;
+  border-radius: 0.375rem;
+  background: rgb(0 0 0 / 0.4);
+  color: white;
+
+  &:disabled {
+    opacity: 0.7;
+  }
+}
+
+.hint {
+  margin: 0 0 0.75rem;
+  font-size: vars.$font-size-xs;
+  color: rgb(255 255 255 / 0.5);
+}
+
+.error {
+  display: flex;
+  min-height: 70vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 vars.$spacing-md;
+  text-align: center;
+}
+
+.errorText {
+  font-size: vars.$font-size-lg;
+  color: rgb(253 164 175);
+}
+
+.errorActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: vars.$spacing-md;
+}
+
+.connecting {
+  display: flex;
+  min-height: 70vh;
+  align-items: center;
+  justify-content: center;
+  color: rgb(204 251 241 / 0.8);
+}
