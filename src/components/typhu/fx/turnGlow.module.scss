@@ -1,0 +1,26 @@
+// Soft pulsing halo around the avatar of whoever's turn it is (board token and panel avatar).
+// Still for visitors who prefer reduced motion.
+.glow {
+  box-shadow:
+    0 0 0 2px rgba(253, 224, 71, 0.9),
+    0 0 7px 2px rgba(250, 204, 21, 0.4);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(253, 224, 71, 0.8),
+      0 0 5px 1px rgba(250, 204, 21, 0.3);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(253, 224, 71, 1),
+      0 0 10px 3px rgba(250, 204, 21, 0.5);
+  }
+}

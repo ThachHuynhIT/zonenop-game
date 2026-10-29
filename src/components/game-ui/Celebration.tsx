@@ -12,8 +12,9 @@ const DURATION = 4200;
  * Victory effect for every table: confetti in the game's colours + a banner, only on the playing → ended transition
  * this mounted component saw (a reconnect onto a finished game never replays it). Same props as WinCelebration.
  * Pointer-events-none overlay (z-40, below dialogs), ~4 s. prefers-reduced-motion: banner only.
+ * `intensity` (default 1) scales the fireworks: more particles, more bursts and a second volley from the sides.
  */
-export function Celebration({ show, playing, won, title }: { show: boolean; playing: boolean; won: boolean; title?: string }) {
+export function Celebration({ show, playing, won, title, intensity = 1 }: { show: boolean; playing: boolean; won: boolean; title?: string; intensity?: number }) {
   const [run, setRun] = useState(0);
   const wasPlaying = useRef(false);
   const wasShow = useRef(false);
@@ -26,10 +27,10 @@ export function Celebration({ show, playing, won, title }: { show: boolean; play
   }, [show, playing]);
 
   if (!run) return null;
-  return <Burst key={run} won={won} title={title} />;
+  return <Burst key={run} won={won} title={title} intensity={intensity} />;
 }
 
-function Burst({ won, title }: { won: boolean; title?: string }) {
+function Burst({ won, title, intensity }: { won: boolean; title?: string; intensity: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const game = useGameTheme() ?? "hub";
   const [alive, setAlive] = useState(true);
@@ -54,14 +55,21 @@ function Burst({ won, title }: { won: boolean; title?: string }) {
       if (stop) return;
       const fire = confetti.create(cv, { resize: true, useWorker: false });
       const base = { colors: CONFETTI_COLORS[game], disableForReducedMotion: true, zIndex: 40 };
-      fire({ ...base, particleCount: 90, angle: 60, spread: 70, origin: { x: 0, y: 0.85 }, startVelocity: 55 });
-      fire({ ...base, particleCount: 90, angle: 120, spread: 70, origin: { x: 1, y: 0.85 }, startVelocity: 55 });
-      fire({ ...base, particleCount: 120, spread: 100, origin: { x: 0.5, y: 0.4 }, scalar: 1.1 });
-      for (let i = 0; i < 6; i++) {
+      const n = (count: number) => Math.round(count * intensity);
+      const cannons = () => {
+        fire({ ...base, particleCount: n(90), angle: 60, spread: 70, origin: { x: 0, y: 0.85 }, startVelocity: 55 });
+        fire({ ...base, particleCount: n(90), angle: 120, spread: 70, origin: { x: 1, y: 0.85 }, startVelocity: 55 });
+      };
+      cannons();
+      fire({ ...base, particleCount: n(120), spread: 100, origin: { x: 0.5, y: 0.4 }, scalar: 1.1 });
+      // A second volley from the sides while the first one is still falling.
+      if (intensity > 1) timers.push(setTimeout(cannons, 900));
+      const bursts = Math.round(6 * intensity);
+      for (let i = 0; i < bursts; i++) {
         timers.push(
           setTimeout(() => {
-            fire({ ...base, particleCount: 50, spread: 360, startVelocity: 28, ticks: 70, gravity: 0.8, scalar: 0.9, origin: { x: 0.15 + Math.random() * 0.7, y: 0.15 + Math.random() * 0.35 } });
-          }, 450 + i * 380),
+            fire({ ...base, particleCount: n(50), spread: 360, startVelocity: 28, ticks: 70, gravity: 0.8, scalar: 0.9, origin: { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.4 } });
+          }, 450 + i * (intensity > 1 ? 280 : 380)),
         );
       }
     });
@@ -69,7 +77,7 @@ function Burst({ won, title }: { won: boolean; title?: string }) {
       stop = true;
       timers.forEach(clearTimeout);
     };
-  }, [won, reduced, game]);
+  }, [won, reduced, game, intensity]);
 
   if (!alive) return null;
   const text = won ? "🏆 Bạn thắng!" : title;

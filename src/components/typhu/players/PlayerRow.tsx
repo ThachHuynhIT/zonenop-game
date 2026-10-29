@@ -9,6 +9,7 @@ import { type Reaction } from "@/lib/tienlen";
 import { cn } from "@/lib/utils";
 import { GameButton } from "@/components/game-ui/GameButton";
 import { boardRef } from "../board-ref";
+import glow from "../fx/turnGlow.module.scss";
 
 // ─── Side panel ─────────────────────────────────────────────────────
 
@@ -47,11 +48,13 @@ export function PlayerRow({
             type="button"
             disabled={!onEditLook}
             onClick={onEditLook}
+            data-seat={seat.id}
             title={onEditLook ? "Đổi biểu tượng & màu" : undefined}
             aria-label={onEditLook ? "Đổi biểu tượng & màu" : undefined}
             className={cn(
               "flex size-9 items-center justify-center rounded-full border-2 border-white text-lg font-bold text-black",
               (!seat.connected || seat.kicked) && "grayscale",
+              isTurn && glow.glow,
               onEditLook && "cursor-pointer ring-amber-300 hover:ring-2",
             )}
             style={{ background: token.color }}
