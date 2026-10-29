@@ -87,7 +87,7 @@ export function MoneyFx({ players, gameKey, arrived }: { players: TPPlayerView[]
       setFlights((l) => [...l, ...fresh]);
       const keys = new Set(fresh.map((f) => f.key));
       setTimeout(() => setFlights((l) => l.filter((f) => !keys.has(f.key))), FLIGHT_MS + 200);
-    }, 150);
+    }, 250);
     return () => clearTimeout(t);
   }, [players, arrived]);
 
