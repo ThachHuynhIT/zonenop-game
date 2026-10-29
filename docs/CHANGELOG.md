@@ -10,6 +10,23 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Baloo 2 self-hosted
+
+- **Date:** 2026-10-28 (branch `claude/check-build-error-8dnat2`).
+- Why: a Vercel preview build (`0cb37f0`, docs-only commit) failed with `Can't resolve '@vercel/turbopack-next/internal/font/google/font'` on Baloo 2's generated `@font-face`; a no-cache redeploy of the same commit passed, so it was a flaky `next/font/google` fetch/cache, not the code.
+- `gameFont.ts` now uses `next/font/local` with `components/games/fonts/Baloo2-latin-vietnamese.woff2`: the OFL variable font (wght 400–800) subset to Latin + Vietnamese with `pyftsubset` (56 KB; licence beside it). Same `--font-game` variable, so no call sites changed.
+- It was not a one-off: the next Vercel build of this branch (cache restored) failed the same way on Bricolage Grotesque in `app/layout.tsx`, so the failure follows whichever `next/font/google` font Turbopack resolves first. Bricolage Grotesque, Geist and Geist Mono are now self-hosted too (`app/fonts/`, same CSS variables, same Latin + Vietnamese subset; Bricolage has `wdth` pinned to 100, keeping `opsz` + `wght`, 108 KB). No `next/font/google` is left in the repo. Geist/Bricolage now also cover Vietnamese diacritics (they were `latin` only before).
+- To re-subset or update a font: take the OFL variable TTF from `google/fonts` (`ofl/<family>/`), `pyftsubset --flavor=woff2` with the Latin + Vietnamese ranges (see the Baloo 2 file's glyph set), keep the licence next to it.
+
+---
+
+## Cờ Tỷ Phú auto-play no longer builds
+
+- **Date:** 2026-10-26 (branch `fix/typhu-auto-no-build`; backend be_game `fix/typhu-auto-no-build`, deploy it for the change to take effect).
+- Auto-play (`Ctrl+Shift+Y`) still rolls, buys squares under 300tr keeping 150tr, and handles jail/debt, but it no longer builds houses at the end of the turn; building stays a manual choice. be_game dropped `autoBuild`. The client only had comments/docs to update.
+
+---
+
 ## Account seats and resume banner
 
 - **Date:** 2026-10-23 (branch `feature/account-seats`; depends on [be_game #23](https://github.com/ThachHuynhIT/be_game/pull/23), deploy backend first).

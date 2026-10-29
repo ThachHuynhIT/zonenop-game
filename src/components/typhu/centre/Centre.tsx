@@ -77,8 +77,8 @@ export function Centre({
   );
 
   // Hidden auto-play (Ctrl+Shift+Y toggles): the server plays my turns, one step every 2.5 s like for an offline
-  // player (jail and debts included), but buys squares under 300tr and builds where the table rules allow, always
-  // keeping 150tr (be_game `{ type: "auto", on }`). The flag lives on the server (`view.auto`, only in my own view),
+  // player (jail and debts included), but buys squares under 300tr, always keeping 150tr. It never builds houses:
+  // that stays my own call (be_game `{ type: "auto", on }`). The flag lives on the server (`view.auto`, only in my own view),
   // so it survives a reload and keeps playing while the tab is hidden.
   const auto = !!view.auto;
   const toggleAuto = useRef(() => {});
