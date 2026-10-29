@@ -33,5 +33,6 @@ export const CONFETTI_COLORS: Record<GameId | "hub", string[]> = {
   splendor: ["#a78bfa", "#7c3aed", "#f0abfc", "#ffffff"],
   bang: ["#f87171", "#c2410c", "#fbbf24", "#ffffff"],
   oanquan: ["#d6a75c", "#a16207", "#fde68a", "#ffffff"],
+  noichu: ["#2dd4bf", "#0d9488", "#fde68a", "#ffffff"],
   cangua: ["#60a5fa", "#2563eb", "#fbbf24", "#ffffff"],
 };
