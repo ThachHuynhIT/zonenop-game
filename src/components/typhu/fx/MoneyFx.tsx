@@ -51,11 +51,13 @@ function flightOf(f: MoneyFlow, key: number): Flight | null {
  * Coins flying between players whenever cash changes hands, with the signed amount floating up over
  * each token. What a player pays and nobody receives goes to the bank (the board centre).
  */
-export function MoneyFx({ players, gameKey }: { players: TPPlayerView[] | undefined; gameKey: number }) {
+export function MoneyFx({ players, gameKey, arrived }: { players: TPPlayerView[] | undefined; gameKey: number; arrived: boolean }) {
   const [mounted, setMounted] = useState(false);
   const [flights, setFlights] = useState<Flight[]>([]);
   const seen = useRef<{ game: number; cash: Record<string, number>; out: Set<string> } | null>(null);
   const counter = useRef(0);
+  // Flows wait here until every token has finished walking: the money moves once the player is there.
+  const pending = useRef<MoneyFlow[]>([]);
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
@@ -71,12 +73,23 @@ export function MoneyFx({ players, gameKey }: { players: TPPlayerView[] | undefi
     if (!prev || prev.game !== gameKey) return;
     // A bankruptcy wipes the cash and hands the assets over: the "Phá sản" effect covers that.
     const skip = new Set([...out].filter((id) => !prev.out.has(id)));
-    const fresh = moneyFlows(prev.cash, cash, skip).flatMap((f) => flightOf(f, ++counter.current) ?? []);
-    if (!fresh.length) return;
-    setFlights((l) => [...l, ...fresh]);
-    const keys = new Set(fresh.map((f) => f.key));
-    setTimeout(() => setFlights((l) => l.filter((f) => !keys.has(f.key))), FLIGHT_MS + 200);
+    pending.current.push(...moneyFlows(prev.cash, cash, skip));
   }, [players, gameKey]);
+
+  useEffect(() => {
+    if (!arrived || !pending.current.length) return;
+    // A beat after the last step, so the token is visibly on its square.
+    const t = setTimeout(() => {
+      const flows = pending.current;
+      pending.current = [];
+      const fresh = flows.flatMap((f) => flightOf(f, ++counter.current) ?? []);
+      if (!fresh.length) return;
+      setFlights((l) => [...l, ...fresh]);
+      const keys = new Set(fresh.map((f) => f.key));
+      setTimeout(() => setFlights((l) => l.filter((f) => !keys.has(f.key))), FLIGHT_MS + 200);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [players, arrived]);
 
   if (!mounted) return null;
   return createPortal(

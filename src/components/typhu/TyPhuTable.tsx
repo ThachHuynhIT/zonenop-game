@@ -153,6 +153,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
 
   const shownPos = useWalkingTokens(g);
   // Who stands on each square right now (walking animation included): the cells only get what they draw.
+  // Every token stands on its real square (the walk is over): money effects wait for that.
+  const arrived = (g?.players ?? []).every((p) => p.bankrupt || shownPos(p.id, p.pos) === p.pos);
   const hereByPos = new Map<number, CellToken[]>();
   for (const p of g?.players ?? []) {
     if (p.bankrupt) continue;
@@ -287,7 +289,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
     outRef.current = now;
     if (!prev) return;
     const fresh = [...now].find((id) => !prev.has(id));
-    if (fresh) setBankruptFx({ id: fresh, name: nameOf(fresh), me: fresh === view.meId, at: Date.now() });
+    // The last bankruptcy ends the game: the victory effect takes the screen instead.
+    if (fresh && g?.status !== "ended") setBankruptFx({ id: fresh, name: nameOf(fresh), me: fresh === view.meId, at: Date.now() });
   }, [outKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!bankruptFx) return;
@@ -427,7 +430,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
             <div data-bank className="relative flex flex-col items-center justify-center-safe gap-2 overflow-y-auto overflow-x-hidden bg-[#0b1d3a] bg-cover bg-center p-[2%] text-emerald-950 short:gap-1 short:p-[1.5%]" style={{ gridColumn: `2 / ${boardRef.current.length / 4 + 1}`, gridRow: `2 / ${boardRef.current.length / 4 + 1}`, backgroundImage: "url(/games/typhu/center.webp)" }}>
               <CardOverlay card={cardFx} nameOf={nameOf} onClose={() => setCardFx(null)} />
               <BuildOverlay fx={buildFx} />
-              <BankruptOverlay fx={bankruptFx} />
+              {/* The bankruptcy that ends the game gives way to the victory effect. */}
+              <BankruptOverlay fx={g?.status === "ended" ? null : bankruptFx} />
               <div className="flex max-h-full min-h-0 w-full max-w-md flex-none flex-col items-center justify-center-safe gap-2 overflow-y-auto rounded-[1.5rem] bg-[#dff1e5]/60 p-1.5 shadow-xl ring-1 ring-amber-300/50 backdrop-blur-[2px] sm:p-2.5 short:gap-1 short:p-1">
               {!g || g.status === "ended" ? (
                 <Waiting view={view} me={me} act={act} nameOf={nameOf} />
@@ -635,9 +639,9 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
       {showTrade && g && <TradeModal g={g} meId={view.meId} nameOf={nameOf} run={run} onClose={() => setShowTrade(false)} />}
       {showLog && g && <LogModal log={g.log} onClose={() => setShowLog(false)} />}
       {showScores && <ScoreboardModal view={view} onClose={() => setShowScores(false)} note={SCORE_NOTE} />}
-      <MoneyFx players={g?.players} gameKey={view.history.length} />
+      <MoneyFx players={g?.players} gameKey={view.history.length} arrived={arrived} />
       <TurnBanner turn={g?.turn ?? null} meId={view.meId} name={g?.turn ? nameOf(g.turn) : ""} playing={!!playing} />
-      <Celebration show={g?.status === "ended"} playing={!!playing} won={!!view.meId && g?.finished[0] === view.meId} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
+      <Celebration intensity={2.2} show={g?.status === "ended"} playing={!!playing} won={!!view.meId && g?.finished[0] === view.meId} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
       {confirmLeave && (
         <GameDialog
           open

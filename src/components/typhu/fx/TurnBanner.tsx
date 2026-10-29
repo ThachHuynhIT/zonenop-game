@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 // `m` (not `motion`): the root LazyMotion is strict, which throws on the full `motion` component.
-import { AnimatePresence, m as motion } from "motion/react";
+import { m as motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 /**
- * A band sweeping across the whole screen when the turn passes to somebody: loud for me, a quiet
+ * A band across the whole screen when the turn passes to somebody: loud for me, a quiet
  * strip with the name for the others. Nothing on open, only on a real change of turn.
  */
 export function TurnBanner({ turn, meId, name, playing }: { turn: string | null; meId: string; name: string; playing: boolean }) {
@@ -23,21 +23,21 @@ export function TurnBanner({ turn, meId, name, playing }: { turn: string | null;
   }, [turn]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!fx) return;
-    const t = setTimeout(() => setFx(null), fx.mine ? 1800 : 1200);
+    const t = setTimeout(() => setFx(null), fx.mine ? 1100 : 800);
     return () => clearTimeout(t);
   }, [fx]);
   if (!mounted) return null;
   return createPortal(
-    <AnimatePresence>
+    <>
       {fx && (
         <motion.div
           key={fx.at}
           role="status"
           className="pointer-events-none fixed inset-x-0 top-[34%] z-[55] flex justify-center overflow-hidden"
-          initial={{ opacity: 0, x: "-100%" }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: "100%", transition: { duration: 0.3 } }}
-          transition={{ type: "spring", stiffness: 220, damping: 24 }}
+          // Sharp in, held for a moment, then a gradual fade out.
+          initial={{ opacity: 0, scale: 0.94 }}
+          animate={{ opacity: [0, 1, 1, 0], scale: [0.94, 1, 1, 1] }}
+          transition={{ duration: fx.mine ? 1.1 : 0.8, times: [0, 0.12, 0.4, 1], ease: "easeOut" }}
         >
           <div
             className={cn(
@@ -51,7 +51,7 @@ export function TurnBanner({ turn, meId, name, playing }: { turn: string | null;
           </div>
         </motion.div>
       )}
-    </AnimatePresence>,
+    </>,
     document.body,
   );
 }
