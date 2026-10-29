@@ -19,7 +19,7 @@ import { MyTurnBadge, TurnRing } from "@/components/games/TurnIndicator";
 import { useGameRoom } from "@/components/games/gameClient";
 import { SeatBubble, SpectatorReactions, useLiveReactions } from "@/components/tienlen/Effects";
 import { DeltaBadge, ScoreboardModal, signed } from "@/components/tienlen/Scoreboard";
-import { MAX_WORDS, MIN_PLAYERS, TURN_SECONDS_OPTIONS, syllablesOf } from "@/lib/noichu/board";
+import { DICTIONARY_MODES, type DictionaryMode, MAX_WORDS, MIN_PLAYERS, TURN_SECONDS_OPTIONS, syllablesOf } from "@/lib/noichu/board";
 import { NOICHU_WS_PATH, type NCGameView, type NCPlayerView, type NCRoomView, type NCSeatView } from "@/lib/noichu/protocol";
 import type { Reaction } from "@/lib/tienlen";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,12 @@ type Act = (msg: Record<string, unknown> & { type: string }) => Promise<boolean>
 
 const SCORE_NOTE =
   "Điểm theo thứ hạng: người cuối cùng còn lại nhận điểm Nhất, người bị loại muộn nhất nhận điểm Nhì, những người bị loại sớm nhất bị trừ tương ứng. Hết số từ tối đa thì xếp theo số từ đã nối (bằng nhau thì chung hạng). Chủ bàn chọn điểm Nhất / Nhì.";
+
+/** How words are checked, as the host sees it (the server decides; see be_game docs/games/noichu.md). */
+const DICTIONARY_INFO: Record<DictionaryMode, { label: string; short: string; hint: string }> = {
+  strict: { label: "Có từ điển", short: "Có từ điển", hint: "Từ phải có trong từ điển. Chặt nhất, nhưng từ điển chưa đủ nên đôi khi từ đúng bị báo thiếu." },
+  loose: { label: "Từ điển lỏng", short: "Từ điển lỏng", hint: "Nhận từ có trong từ điển, hoặc từ có cả hai tiếng đều là tiếng Việt thật (đôi mắt, giờ học). Từ rác bị từ chối, nhưng cụm vô nghĩa kiểu “bàn bàn” vẫn lọt." },
+};
 
 const SCOREBOARD_CLASS = "border-teal-200/15 bg-[#06242a] text-teal-50";
 
@@ -139,8 +145,8 @@ function Table({ view, reconnecting, act }: { view: NCRoomView; reconnecting: bo
         status={
           <>
             {g && (
-              <span className="whitespace-nowrap" title={g.dictionary ? "Mỗi từ được kiểm tra với từ điển" : "Không kiểm tra từ điển: gõ từ nào cũng được"}>
-                📚 {g.dictionary ? "Có từ điển" : "Tắt từ điển"}
+              <span className="whitespace-nowrap" title={DICTIONARY_INFO[g.dictionary].hint}>
+                📚 {DICTIONARY_INFO[g.dictionary].short}
               </span>
             )}
             {view.spectators.length > 0 && (
@@ -430,12 +436,18 @@ function Waiting({ view, me, act, nameOf }: { view: NCRoomView; me: NCSeatView |
             id: "rules",
             label: "🔤 Luật",
             content: (
-              <label className={styles.field}>
-                <span>
-                  Kiểm tra từ điển <span className="text-white/50">(tắt thì từ nào cũng được, miễn đúng 2 tiếng và nối đúng)</span>
-                </span>
-                <input type="checkbox" checked={s.dictionary} disabled={!isHost} onChange={(e) => void act({ type: "settings", dictionary: e.target.checked })} className="h-4 w-4 accent-teal-400" />
-              </label>
+              <fieldset className={styles.choices} disabled={!isHost}>
+                <legend className={styles.legend}>Kiểm tra từ</legend>
+                {DICTIONARY_MODES.map((mode) => (
+                  <label key={mode} className={cn(styles.choice, s.dictionary === mode && styles.chosen)}>
+                    <input type="radio" name="dictionary" value={mode} checked={s.dictionary === mode} onChange={() => void act({ type: "settings", dictionary: mode })} className="mt-0.5 h-4 w-4 accent-teal-400" />
+                    <span>
+                      <b>{DICTIONARY_INFO[mode].label}</b>
+                      <span className={styles.choiceHint}>{DICTIONARY_INFO[mode].hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
             ),
           },
           {
@@ -483,13 +495,13 @@ export function NoiChuRules() {
         Đến lượt, gõ một <b>từ ghép đúng 2 tiếng</b> mà <b>tiếng đầu trùng tiếng cuối</b> của từ trước, kể cả dấu thanh (ví dụ <i>con mèo</i> → <i>mèo nổ</i>; <i>meo</i> không nối được <i>mèo</i>). Ô nhập đã điền sẵn tiếng cần nối, bạn chỉ cần gõ tiếng còn lại.
       </li>
       <li>
-        Không được dùng lại từ đã có trong ván. Từ phải có trong từ điển (chủ bàn có thể tắt kiểm tra này). Từ sai chỉ báo lỗi, đồng hồ vẫn chạy nên bạn gõ lại được.
+        Không được dùng lại từ đã có trong ván. Chủ bàn chọn mức kiểm tra từ: <b>có từ điển</b> (từ phải có trong từ điển) hoặc <b>từ điển lỏng</b> (từ điển, hoặc cả hai tiếng đều là tiếng Việt thật). Từ sai chỉ báo lỗi, đồng hồ vẫn chạy nên bạn gõ lại được.
       </li>
       <li>
         <b>Hết giờ thì bị loại</b> (mất kết nối cũng không kịp trả lời). Người cuối cùng còn lại thắng. Chuỗi dài tới {MAX_WORDS} từ thì dừng, xếp hạng theo số từ đã nối.
       </li>
       <li>Điểm xếp hạng theo thứ tự bị loại: người thắng nhận điểm Nhất, người bị loại muộn nhất nhận điểm Nhì; chủ bàn chọn điểm Nhất / Nhì.</li>
-      <li>Từ điển chưa đầy đủ, nếu từ đúng bị báo thiếu thì nhờ chủ bàn tắt kiểm tra từ điển cho ván sau.</li>
+      <li>Từ điển chưa đầy đủ: nếu từ đúng bị báo “không có trong từ điển”, nhờ chủ bàn chuyển sang <b>từ điển lỏng</b> cho ván sau.</li>
     </ul>
   );
 }

@@ -1124,12 +1124,12 @@ Luật và protocol: `be_game/docs/games/noichu.md`.
 **Bàn.** `Stage` hiện từ cuối cùng với **tiếng cần nối được tô màu**, các từ trước dưới dạng chip (chỉ 40 từ cuối do server gửi, `chainLength` là tổng), và khi đến lượt mình là ô nhập có `TurnRing`. Ô nhập được **điền sẵn tiếng cần nối** (`"{need} "`) mỗi khi tới lượt, tự focus, Enter để gửi (`{ type: "word", text }`); từ sai được server từ chối (toast) và ô nhập giữ nguyên để sửa. Không có phím tắt nào khác. Người bị loại và khán giả thấy "lượt của …".
 
 **Bản sao lib** (`src/lib/noichu/`)
-- `board.ts`: **chép nguyên văn** `be_game/src/noichu/board.ts` (chỉ thêm comment đầu file): `MIN_PLAYERS`, `MAX_PLAYERS`, `TURN_SECONDS_OPTIONS`, `MAX_WORDS`, `syllablesOf`, `normalizeWord`.
+- `board.ts`: **chép nguyên văn** `be_game/src/noichu/board.ts` (chỉ thêm comment đầu file): `MIN_PLAYERS`, `MAX_PLAYERS`, `TURN_SECONDS_OPTIONS`, `MAX_WORDS`, `DictionaryMode`, `DICTIONARY_MODES`, `dictionaryModeOf`, `syllablesOf`, `normalizeWord`.
 - `protocol.ts`: bản chỉnh tay (import kiểu chung từ `@/lib/tienlen`, không re-export hằng chat): `NOICHU_WS_PATH`, `NCRoomView`, `NCGameView`, `NCCommand`…
 
 Từ điển nằm ở server, client không kiểm tra từ có nghĩa; client chỉ hiện lỗi server trả về.
 
-**Cài đặt.** Trong `Waiting`, `SettingsTabs`: 🔤 Luật (`dictionary`: bật/tắt kiểm tra từ điển), ⏱️ Lượt (`turnSeconds`), 🏆 Điểm (`RankPointsPicker`). Chỉ chủ bàn sửa được.
+**Cài đặt.** Trong `Waiting`, `SettingsTabs`: 🔤 Luật (`dictionary`: hai mức bằng radio có giải thích: `strict` có từ điển, `loose` từ điển lỏng = từ điển hoặc hai tiếng Việt thật; không có mức tắt; tiêu đề bàn hiện mức đang dùng). Server vẫn nhận boolean cũ, client chỉ gửi chuỗi, ⏱️ Lượt (`turnSeconds`), 🏆 Điểm (`RankPointsPicker`). Chỉ chủ bàn sửa được.
 
 ---
 

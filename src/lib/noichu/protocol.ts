@@ -3,16 +3,17 @@
  * src/noichu/protocol.ts). Keep the two in sync.
  */
 import type { ChatMessage, GameRecord, LeaderboardEntry, Reaction } from "@/lib/tienlen";
+import type { DictionaryMode } from "./board";
 
-export type { ChatMessage, GameRecord, LeaderboardEntry, Reaction };
+export type { ChatMessage, GameRecord, LeaderboardEntry, Reaction, DictionaryMode };
 
 /** WebSocket endpoint for Nối Chữ. */
 export const NOICHU_WS_PATH = "/api/noichu/ws";
 
 export interface NCSettings {
   turnSeconds: number;
-  /** Check every word against the dictionary. Off = any two syllables of letters count (host's choice). */
-  dictionary: boolean;
+  /** How words are checked: strict = in the dictionary, loose = dictionary or two real Vietnamese syllables. */
+  dictionary: DictionaryMode;
   first: number;
   second: number;
 }
@@ -53,7 +54,7 @@ export interface NCGameView {
   deadline: number | null;
   /** Syllable the next word must start with (the last syllable of the last word). */
   need: string | null;
-  dictionary: boolean;
+  dictionary: DictionaryMode;
   players: NCPlayerView[];
   /** The last CHAIN_VIEW_LIMIT words, oldest first; `chainLength` counts them all. */
   chain: NCWordView[];
@@ -93,11 +94,11 @@ export interface NCRoomSummary {
 
 /**
  * Nối Chữ commands (acked like the other games):
- *   { type: "start" } · { type: "settings", turnSeconds?, dictionary?, first?, second? } · { type: "kick", playerId }
+ *   { type: "start" } · { type: "settings", turnSeconds?, dictionary?: "strict" | "loose", first?, second? } · { type: "kick", playerId }
  *   { type: "word", text }   // a two-syllable word that starts with the last syllable of the previous word
  */
 export type NCCommand =
   | { type: "start" }
-  | { type: "settings"; turnSeconds?: number; dictionary?: boolean; first?: number; second?: number }
+  | { type: "settings"; turnSeconds?: number; dictionary?: DictionaryMode; first?: number; second?: number }
   | { type: "kick"; playerId: string }
   | { type: "word"; text: string };
