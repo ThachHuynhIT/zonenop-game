@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { ThemeProvider } from "next-themes";
 import { domMax, LazyMotion, MotionConfig } from "motion/react";
 import PageTracker from "../components/auth/PageTracker";
@@ -7,20 +7,24 @@ import "./globals.css";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-const geistSans = Geist({
+// Self-hosted (SIL OFL, licences in ./fonts) instead of next/font/google: Vercel's Turbopack build
+// kept failing on the Google font fetch. Variable fonts subset to Latin + Vietnamese.
+const geistSans = localFont({
+  src: "./fonts/Geist-latin-vietnamese.woff2",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  weight: "100 900",
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "./fonts/GeistMono-latin-vietnamese.woff2",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: "100 900",
 });
 
-const bricolageGrotesque = Bricolage_Grotesque({
+const bricolageGrotesque = localFont({
+  src: "./fonts/BricolageGrotesque-latin-vietnamese.woff2",
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["600", "700"],
+  weight: "400 800",
 });
 
 export const metadata: Metadata = {

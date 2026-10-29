@@ -15,7 +15,8 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 - **Date:** 2026-10-28 (branch `claude/check-build-error-8dnat2`).
 - Why: a Vercel preview build (`0cb37f0`, docs-only commit) failed with `Can't resolve '@vercel/turbopack-next/internal/font/google/font'` on Baloo 2's generated `@font-face`; a no-cache redeploy of the same commit passed, so it was a flaky `next/font/google` fetch/cache, not the code.
 - `gameFont.ts` now uses `next/font/local` with `components/games/fonts/Baloo2-latin-vietnamese.woff2`: the OFL variable font (wght 400–800) subset to Latin + Vietnamese with `pyftsubset` (56 KB; licence beside it). Same `--font-game` variable, so no call sites changed.
-- Still on `next/font/google`: Bricolage Grotesque, Geist and Geist Mono in `app/layout.tsx`. They built fine in the failed deploy; move them the same way if they ever fail.
+- It was not a one-off: the next Vercel build of this branch (cache restored) failed the same way on Bricolage Grotesque in `app/layout.tsx`, so the failure follows whichever `next/font/google` font Turbopack resolves first. Bricolage Grotesque, Geist and Geist Mono are now self-hosted too (`app/fonts/`, same CSS variables, same Latin + Vietnamese subset; Bricolage has `wdth` pinned to 100, keeping `opsz` + `wght`, 108 KB). No `next/font/google` is left in the repo. Geist/Bricolage now also cover Vietnamese diacritics (they were `latin` only before).
+- To re-subset or update a font: take the OFL variable TTF from `google/fonts` (`ofl/<family>/`), `pyftsubset --flavor=woff2` with the Latin + Vietnamese ranges (see the Baloo 2 file's glyph set), keep the licence next to it.
 
 ---
 
