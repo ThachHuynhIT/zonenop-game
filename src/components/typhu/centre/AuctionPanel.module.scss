@@ -1,0 +1,80 @@
+@use "@styles/variables" as vars;
+
+// The auction board in the centre of the table. BorderTimer draws the clock on this border (rounded-2xl = 1rem).
+.panel {
+  position: relative;
+  display: grid;
+  gap: vars.$spacing-sm;
+  width: 100%;
+  margin-top: vars.$spacing-md;
+  padding: vars.$spacing-md vars.$spacing-sm vars.$spacing-sm;
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 0.72);
+  color: #064e3b;
+  text-align: center;
+}
+
+.title {
+  position: absolute;
+  top: 0;
+  left: vars.$spacing-md;
+  z-index: 10;
+  transform: translateY(-50%);
+  padding: 0.125rem vars.$spacing-sm;
+  border-radius: 999px;
+  background: #b45309;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
+  color: #fff;
+  font-size: vars.$font-size-xs;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.square {
+  margin: 0;
+  font-size: vars.$font-size-base;
+  font-weight: 800;
+  line-height: vars.$leading-tight;
+  overflow-wrap: anywhere;
+}
+
+.list {
+  margin: 0;
+  font-size: vars.$font-size-xs;
+  color: rgb(6 78 59 / 0.7);
+}
+
+.price {
+  margin: 0;
+  font-size: vars.$font-size-2xl;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.leader {
+  margin: 0;
+  font-size: vars.$font-size-sm;
+  font-weight: 600;
+}
+
+.mine {
+  color: #047857;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: vars.$spacing-xs;
+}
+
+.wide {
+  // "Khởi điểm" takes its own row while nobody has bid.
+  grid-column: 1 / -1;
+}
+
+.note {
+  margin: 0;
+  font-size: vars.$font-size-xs;
+  color: rgb(6 78 59 / 0.7);
+}

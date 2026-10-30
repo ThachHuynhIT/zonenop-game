@@ -126,6 +126,7 @@ export function mortgageBlocker(g: TPGameView, meId: string, pos: number): strin
   const sq = boardRef.current[pos];
   const d = g.deeds[pos];
   if (!d || d.owner !== meId) return "Đây không phải đất của bạn";
+  if (g.phase === "auction") return "Đang đấu giá — chưa thế chấp được";
   if (d.mortgaged) return "Đã thế chấp rồi";
   if (sq.kind === "prop" && groupPositions(sq.group).some((p) => g.deeds[p]?.owner === meId && g.deeds[p].houses > 0)) return "Bán hết nhà của bạn trong nhóm trước";
   return null;

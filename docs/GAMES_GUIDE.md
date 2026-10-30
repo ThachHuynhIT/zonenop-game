@@ -714,6 +714,7 @@ typhu/
 | `Die`, `PIPS` (`centre/Dice.tsx`) | Xúc xắc |
 | **`Centre`** (`centre/Centre.tsx`) | Giữa bàn: tiêu đề, xúc xắc, `LoanCard` / `TradeCard`, nút 🤝 / 🏦 (chỉ máy tính và `short:`; điện thoại dọc có hai nút này ở hàng nút nhanh dưới bàn), gợi ý khi ở tù hoặc phá sản, huy hiệu "Tự động chơi". Chứa **phím tắt** (`useHotkeys`) và phím ẩn Ctrl+Shift+Y. Nó mở `BuildPanel` (qua `showBuild`) và vẽ `ActionBar placement="center"` khi viewer không chọn thanh dưới. |
 | **`ActionBar`** (`centre/ActionBar.tsx`) | Dòng lượt (huy hiệu "Lượt của bạn" hoặc "Lượt của X" + `Countdown`; tới lượt mình ở giữa bàn (`onBorder`) thì chính đường viền là đồng hồ: huy hiệu "Lượt của bạn" ở góc trên trái, số giây ở góc trên phải, và `BorderTimer` (`centre/BorderTimer.tsx`) vẽ một đường dọc viền ngắn dần theo thời gian còn lại, đỏ khi còn ≤ 1/4, bên cạnh đèn chạy `game-beam`; lượt người khác và thanh dưới giữ `Countdown` tròn như cũ) và các nút của mình theo phase (`CBtn`): Tung / Nộp ra tù / Mua + Bỏ qua / Kết thúc lượt, Xây nhà, Thế chấp / Bán, `DebtControls` khi nợ. Một component, hai chỗ đặt: `placement="center"` (trong `Centre`, khung kính giữa bàn) hoặc `placement="bottom"` (thanh `fixed inset-x-0 bottom-0 z-30` do `TableBody` vẽ, báo chiều cao qua `onHeight` để trang chừa chỗ đáy; `pr-24` chừa góc phải cho nút chat / emoji `z-40` nổi trên thanh). Cùng nút, cùng điều kiện ở cả hai chỗ. Trên thanh dưới nút Mua chỉ có giá (tên ô nằm ở dòng lượt), không có `BuyHint`. |
+| **`AuctionPanel`** (`centre/AuctionPanel.tsx` + `.module.scss`, SCSS Module) | Luật Đấu giá (phase `auction`, `g.auction`): bảng giữa bàn gồm tên ô, giá hiện tại, người dẫn đầu, đồng hồ trên viền (`BorderTimer`, 15 s) và các nút "Khởi điểm" (chỉ khi chưa ai trả) + `+10/+20/+50/+100/+200/+500tr` (gửi `{type:"bid", amount: giá hiện tại + mức tăng}`; mờ khi vượt tiền mặt). **Ai còn trong ván cũng bid được**, không cần tới lượt. Logic nút / phím nằm ở `centre/auction.ts` (`bidChoices`, `bidForKey`, `bidBlocker`, có test) để nút và `useHotkeys` dùng chung một điều kiện. Trong phiên `ActionBar` không vẽ lượt / clock (chỉ một dòng "Đang đấu giá" ở thanh dưới), nút Đổi đất / Vay ẩn, `mortgageBlocker` chặn thế chấp. `clock.ts` (`localizeTPView`) dịch **cả** `deadline` và `auction.deadline` sang đồng hồ máy. Server cũ không gửi `auction` thì không có gì xảy ra; công tắc "Đấu giá" bị khoá. |
 | `BuyHint` | Dòng dưới nút Mua (chỉ ở giữa bàn): tiền thuê, số ô cùng nhóm mình đã có |
 | **`BuildPanel`** (`panels/BuildPanel.tsx`) | `Modal dark`: mọi nhóm màu và ô xây được, nút "+ Nhà n / Khách sạn", mục "Còn thiếu để xây". Dùng `buildableGroups` và `buildRuleText`. |
 | `CBtn` (`shared.tsx`) | Bọc `GameButton size="md"` (cao 44 px), biến thể `primary` / `danger` / `build`, prop `hotkey` hiện `<kbd>` (chỉ `lg:` và chuột). |
@@ -822,7 +823,7 @@ Phải khớp be_game `src/typhu/board.ts` và `protocol.ts`. `board.ts` là **b
 - 💰 Tiền: `startCash`, `goSalary`, `doubleGo`, `parkingPot`, `unmortgageFee`, `landSalePct`
 - 🗺️ Bản đồ: `map` (`MAP_SIZES`, nhãn `MAP_LABEL`)
 - ⏱️ Lượt: `timeLimit`, `stepSeconds`, `doubleRoll`, `jailRent`
-- 🏠 Luật nhà: `buildRule` (`"even"`/`"chain"`), `needGroup` (tắt thì chưa đủ nhóm chỉ xây tối đa 3 nhà), `risingCost`, `sellLand` (đất đang thế chấp cũng bán được, chỉ nhận phần chênh), `bankruptTo`
+- 🏠 Luật nhà: `buildRule` (`"even"`/`"chain"`), `needGroup` (tắt thì chưa đủ nhóm chỉ xây tối đa 3 nhà), `risingCost`, `sellLand` (đất đang thế chấp cũng bán được, chỉ nhận phần chênh), `bankruptTo`, `auction` (**mặc định tắt**; server cũ không gửi field → công tắc bị khoá, ghi "Máy chủ chưa hỗ trợ")
 - 🏆 Điểm: `RankPointsPicker`
 
 **Phím tắt** (`useHotkeys`, lượt của mình; `centre/Centre.tsx`):
@@ -836,11 +837,12 @@ Phải khớp be_game `src/typhu/board.ts` và `protocol.ts`. `board.ts` là **b
 | `J` / `K` | Nộp phạt ra tù / Dùng thẻ ra tù |
 | `L` | Mở / đóng "Toàn bộ diễn biến" (cả khi chưa tới lượt; nằm ở `TableBody`, `allowInDialog: ["l"]`) |
 | `Esc` | Đóng hộp Xây nhà |
+| `Space` / `1`–`6` | **Chỉ khi đang đấu giá**, mọi người còn trong ván (không cần tới lượt): `Space` = trả giá thấp nhất cho phép (khởi điểm nếu chưa ai trả), `1`–`6` = +10/+20/+50/+100/+200/+500tr. Bỏ qua khi không đủ tiền mặt |
 
 `CBtn` có prop `hotkey` (hiện `<kbd>`, cả ở `ActionBar` giữa bàn lẫn thanh dưới). Không bật khi `busy`. Dòng "Phím tắt: …" nằm dưới bàn (`lg:` và không cảm ứng).
 
 **Giới hạn đã biết**
-- Chưa có đấu giá, chưa có hiệu ứng khi tiền thay đổi.
+- Chưa có hiệu ứng khi tiền thay đổi (xu bay nằm ở PR riêng). Đấu giá là luật tuỳ chọn (mặc định tắt), cần be_game có `auction`.
 - Hộp xây nhà ghi "Đất trống · thuê Xtr" theo `rent[0]`, nhưng khi chủ sở hữu cả nhóm thì tiền thu thực tế gấp đôi.
 - Kích dùng `ConfirmButton` (bấm 2 lần).
 - Nhiều chữ viết cứng, không theo cài đặt: "30 giây" trong luật và trong `TradeModal`, "nộp 50tr" trong `SQUARE_TEXT`.

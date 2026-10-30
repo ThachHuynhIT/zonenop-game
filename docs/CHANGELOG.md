@@ -10,6 +10,16 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Cờ Tỷ Phú: luật Đấu giá
+
+- **Date:** 2026-10-30 (branch `feature/typhu-auction`; backend be_game PR `feature/typhu-auction` — **deploy be_game (primary và backup) TRƯỚC**).
+- Luật bàn mới **"Đấu giá"**, mặc định tắt: ô chưa có chủ mà người dừng bỏ qua / hết giờ thì đem ra đấu giá. Khởi điểm 50% giá đất, ai còn trong ván cũng trả giá được (kể cả người vừa bỏ qua), mỗi lần ≥ giá hiện tại + 10tr và bằng tiền mặt, 15 giây (+5 giây mỗi lần trả, tối đa còn 15 giây); hết giờ người cao nhất trả ngân hàng và nhận đất. Lượt tạm dừng; không đổi đất / vay / thế chấp trong phiên.
+- UI: `AuctionPanel` giữa bàn (nút +10…+500tr và "Khởi điểm", phím `Space` / `1`–`6`), công tắc "Đấu giá" ở tab 🏠 Luật nhà, mô tả trong `RulesDialog`. `protocol.ts` đồng bộ tay với be_game (`TPSettings.auction?`, `Phase "auction"`, `TPGameView.auction?`, `{type:"bid"}`; mọi field mới tuỳ chọn). `localizeTPView` (`typhu/clock.ts`) tách khỏi `TyPhuTable` để test, dịch cả `auction.deadline`.
+- Tương thích: server cũ không gửi `auction` → không có bảng đấu giá, công tắc bị khoá và ghi "Máy chủ chưa hỗ trợ" (không bật lạc quan). Client cũ không có UI trả giá: đừng bật luật ở bàn còn tab cũ.
+- Hiệu ứng xu bay khi trả tiền (`fx/MoneyFx`) **không** nằm trong PR này: nó thuộc PR #91 (chưa merge), tự chạy theo thay đổi tiền khi PR đó vào. Rebase lên `develop` mới nhất nếu #91 merge trước (xung đột có thể ở `TyPhuTable.tsx`).
+
+---
+
 ## Baloo 2 self-hosted
 
 - **Date:** 2026-10-28 (branch `claude/check-build-error-8dnat2`).

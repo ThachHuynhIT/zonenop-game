@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { boardRef } from "../board-ref";
 import { buildableGroups, money, type Act } from "../shared";
 import { ActionBar } from "./ActionBar";
+import { AuctionPanel } from "./AuctionPanel";
+import { bidBlocker, bidForKey } from "./auction";
 import { Die } from "./Dice";
 import { LoanCard, TradeCard } from "./OfferCards";
 import { BuildPanel } from "../panels/BuildPanel";
@@ -53,6 +55,7 @@ export function Centre({
   const fullGroups = mine ? buildableGroups(g, mine.id, view.settings.needGroup !== false) : [];
   const ownsLand = !!mine && Object.values(g.deeds).some((d) => d.owner === mine.id);
   const debt = myTurn && g.phase === "debt" ? g.debt : null;
+  const auction = g.phase === "auction" ? g.auction ?? null : null;
 
   // Desktop shortcuts (the buttons below show their key). Space = the main action of the moment.
   const canBuy = g.phase === "buy" && !!here && isOwnable(here) && !!mine && mine.cash >= here.price;
@@ -75,6 +78,14 @@ export function Centre({
     },
     myTurn && !!mine && !busy,
   );
+
+  // Auction: anyone still in the game may bid (not only the paused turn's player). Space = the lowest bid allowed, 1–6 = the raises.
+  const canBid = !!auction && !!mine && bidBlocker(auction, view.role, mine) === null;
+  const bidKey = (key: string) => () => {
+    const amount = auction && mine ? bidForKey(auction, key, mine.cash) : null;
+    if (amount !== null) void run({ type: "bid", amount });
+  };
+  useHotkeys(Object.fromEntries([" ", "1", "2", "3", "4", "5", "6"].map((k) => [k, bidKey(k)])), canBid && !busy);
 
   // Hidden auto-play (Ctrl+Shift+Y toggles): the server plays my turns, one step every 2.5 s like for an offline
   // player (jail and debts included), but buys squares under 300tr, always keeping 150tr. It never builds houses:
@@ -131,7 +142,7 @@ export function Centre({
         </div>
       )}
       <p className="hidden font-black tracking-tight [font-family:var(--font-game)] text-emerald-900 sm:block sm:text-3xl short:hidden">CỜ TỶ PHÚ</p>
-      <div className={cn("flex items-center gap-2", debt && "max-sm:hidden")}>
+      <div className={cn("flex items-center gap-2", (debt || auction) && "max-sm:hidden")}>
         {g.dice ? (
           <>
             <Die value={g.dice[0]} rolling={rollId} />
@@ -142,10 +153,11 @@ export function Centre({
           <span className="text-3xl sm:text-5xl short:text-2xl">🎲</span>
         )}
       </div>
+      {auction && <AuctionPanel auction={auction} role={view.role} mine={mine} busy={busy} run={run} nameOf={nameOf} />}
       {placement === "center" && (
         <ActionBar placement="center" g={g} view={view} myTurn={myTurn} mine={mine} busy={busy} run={run} nameOf={nameOf} assetsOpen={assetsOpen} onOpenAssets={onOpenAssets} onBuild={() => setShowBuild(true)} />
       )}
-      {canTrade && !trade && !loan && (
+      {canTrade && !trade && !loan && g.phase !== "auction" && (
         <div className="flex flex-wrap justify-center gap-2 max-lg:hidden short:flex">
           <button onClick={onTrade} className="rounded-lg border border-emerald-900/30 bg-white/60 px-3 py-1 text-xs font-semibold text-emerald-950 hover:bg-white/80 max-sm:min-h-9">
             🤝 Đổi đất / mua bán
@@ -165,7 +177,7 @@ export function Centre({
       {view.role === "player" && mine && !mine.bankrupt && (
         <p className="hidden text-[11px] text-emerald-900/60 sm:block short:hidden">
           Bấm vào một ô để xem chi tiết, xây nhà hoặc thế chấp.
-          <span className="hidden lg:inline [@media(pointer:coarse)]:hidden"> Phím tắt: Space = hành động chính · R tung · B mua · S bỏ qua · E kết thúc · X xây · A thế chấp · L diễn biến.</span>
+          <span className="hidden lg:inline [@media(pointer:coarse)]:hidden"> Phím tắt: Space = hành động chính · R tung · B mua · S bỏ qua · E kết thúc · X xây · A thế chấp · L diễn biến · Đấu giá: Space / 1–6 trả giá.</span>
         </p>
       )}
       {mine?.bankrupt && <p className="text-sm font-semibold text-rose-700">💸 Bạn đã phá sản — xem mọi người chơi tiếp nhé.</p>}
