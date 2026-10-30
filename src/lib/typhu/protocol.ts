@@ -7,7 +7,7 @@ import type { MapSize } from "./board";
 
 export type { ChatMessage, GameRecord, LeaderboardEntry, Reaction, MapSize };
 
-export type Phase = "roll" | "buy" | "debt" | "end";
+export type Phase = "roll" | "buy" | "debt" | "auction" | "end";
 
 export interface Deed {
   owner: string;
@@ -80,6 +80,8 @@ export interface TPSettings {
   landSalePct?: number;
   jailRent?: boolean;
   doubleRoll?: boolean;
+  /** An unbought square (skipped / timed out) goes to auction (missing from older servers = off, and the switch is not offered). */
+  auction?: boolean;
 }
 
 export const STEP_SECONDS_OPTIONS = [15, 20, 30, 45, 60];
@@ -131,6 +133,8 @@ export interface TPGameView {
   dice: [number, number] | null;
   rollAgain: boolean;
   debt: { amount: number; to: string | null; reason: string } | null;
+  /** The running auction (phase "auction"). `minNext` is the lowest bid allowed now; `deadline` is the same clock as `deadline` above. Missing from older servers. */
+  auction?: { pos: number; bid: number; bidder: string | null; minNext: number; deadline: number } | null;
   trade: { from: string; to: string; give: TradeSide; get: TradeSide; deadline: number } | null;
   lastCard: { deck: "chance" | "chest"; text: string; player: string; at: number } | null;
   finished: string[];
@@ -178,18 +182,41 @@ export interface TPRoomSummary {
  *   { type: "build" | "sell" | "mortgage" | "unmortgage", pos }
  *   { type: "trade", to, give: {props, cash}, get: {props, cash} }
  *   { type: "loan", to, amount, rate: 10 | 20 } · { type: "loananswer", accept }
+ *   { type: "bid", amount }   // auction rule: raise the price of the square being auctioned (anyone still in the game, cash only)
  *   { type: "tradeanswer", accept }   // the receiver answers; the proposer can withdraw with accept: false
  *   { type: "auto", on }   // your own auto-play: the server plays your turns (buys squares under 300tr, never builds), keeping 150tr
  */
 export type TPCommand =
   | { type: "start" }
-  | { type: "settings"; startCash?: number; timeLimit?: number; stepSeconds?: number; doubleGo?: boolean; parkingPot?: boolean; map?: MapSize; first?: number; second?: number }
+  | {
+      type: "settings";
+      startCash?: number;
+      timeLimit?: number;
+      stepSeconds?: number;
+      doubleGo?: boolean;
+      parkingPot?: boolean;
+      map?: MapSize;
+      first?: number;
+      second?: number;
+      buildRule?: "even" | "chain";
+      needGroup?: boolean;
+      sellLand?: boolean;
+      bankruptTo?: "bank" | "creditor";
+      goSalary?: number;
+      risingCost?: boolean;
+      unmortgageFee?: number;
+      landSalePct?: number;
+      jailRent?: boolean;
+      doubleRoll?: boolean;
+      auction?: boolean;
+    }
   | { type: "pick"; emoji: string; color: string }
   | { type: "kick"; playerId: string }
   | { type: "roll" | "buy" | "skip" | "end" | "payjail" | "jailcard" | "paydebt" | "bankrupt" }
   | { type: "build" | "sell" | "sellland" | "mortgage" | "unmortgage"; pos: number }
   | { type: "trade"; to: string; give: TradeSide; get: TradeSide }
   | { type: "loan"; to: string; amount: number; rate: number }
+  | { type: "bid"; amount: number }
   | { type: "loananswer"; accept: boolean }
   | { type: "tradeanswer"; accept: boolean }
   | { type: "auto"; on: boolean };

@@ -217,6 +217,14 @@ export function TableSettings({ view, isHost, act, className }: { view: TPRoomVi
                     disabled={!isHost}
                     onChange={(v) => void act({ type: "settings", sellLand: v })}
                   />
+                  {/* A server from before auctions sends no `auction` setting: it would ack the switch and ignore it. */}
+                  <Toggle
+                    label="Đấu giá 🔨: ô không ai mua đem ra đấu giá, ai cũng trả giá được (khởi điểm 50% giá đất, 15 giây, tiền mặt)"
+                    checked={view.settings.auction === true}
+                    disabled={!isHost || view.settings.auction === undefined}
+                    onChange={(v) => void act({ type: "settings", auction: v })}
+                  />
+                  {view.settings.auction === undefined && <p className="text-[11px] leading-snug text-emerald-900/60">Máy chủ chưa hỗ trợ đấu giá.</p>}
                   <label className="flex items-center justify-between gap-2">
                     <span>Đất của người phá sản</span>
                     <select
