@@ -219,7 +219,7 @@ export function TableSettings({ view, isHost, act, className }: { view: TPRoomVi
                   />
                   {/* A server from before auctions sends no `auction` setting: it would ack the switch and ignore it. */}
                   <Toggle
-                    label="Đấu giá 🔨: ô không ai mua đem ra đấu giá, ai cũng trả giá được (khởi điểm 50% giá đất, 15 giây, tiền mặt)"
+                    label="Đấu giá 🔨: ô không ai mua đem ra đấu giá, ai cũng trả giá được (khởi điểm 80% giá đất, 15 giây, tiền mặt, bỏ cuộc được)"
                     checked={view.settings.auction === true}
                     disabled={!isHost || view.settings.auction === undefined}
                     onChange={(v) => void act({ type: "settings", auction: v })}

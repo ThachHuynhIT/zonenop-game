@@ -1,7 +1,10 @@
 @use "@styles/variables" as vars;
 
 // The auction board in the centre of the table. BorderTimer draws the clock on this border (rounded-2xl = 1rem).
+// A size container: on a phone the board centre is only ~280px wide, so the narrow rules below follow the panel's
+// own width, not the viewport.
 .panel {
+  container: auction / inline-size;
   position: relative;
   display: grid;
   gap: vars.$spacing-sm;
@@ -9,8 +12,8 @@
   margin-top: vars.$spacing-md;
   padding: vars.$spacing-md vars.$spacing-sm vars.$spacing-sm;
   border-radius: 1rem;
-  background: rgb(255 255 255 / 0.72);
-  color: #064e3b;
+  background: color-mix(in oklab, vars.$color-white 72%, transparent);
+  color: vars.$color-emerald-900;
   text-align: center;
 }
 
@@ -22,9 +25,9 @@
   transform: translateY(-50%);
   padding: 0.125rem vars.$spacing-sm;
   border-radius: 999px;
-  background: #b45309;
+  background: vars.$color-amber-700;
   box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
-  color: #fff;
+  color: vars.$color-white;
   font-size: vars.$font-size-xs;
   font-weight: 800;
   white-space: nowrap;
@@ -38,10 +41,16 @@
   overflow-wrap: anywhere;
 }
 
-.list {
+.list,
+.note,
+.folded {
   margin: 0;
   font-size: vars.$font-size-xs;
-  color: rgb(6 78 59 / 0.7);
+  color: color-mix(in oklab, vars.$color-emerald-900 70%, transparent);
+}
+
+.folded {
+  overflow-wrap: anywhere;
 }
 
 .price {
@@ -59,7 +68,12 @@
 }
 
 .mine {
-  color: #047857;
+  color: vars.$color-emerald-700;
+}
+
+.warn {
+  font-weight: 700;
+  color: vars.$color-rose-700;
 }
 
 .choices {
@@ -68,13 +82,30 @@
   gap: vars.$spacing-xs;
 }
 
+// Overrides the CBtn size (Tailwind utilities live in a cascade layer, so this unlayered rule wins).
+.choice {
+  height: auto;
+  min-height: 2.5rem;
+  padding: vars.$spacing-xs vars.$spacing-sm;
+}
+
 .wide {
-  // "Khởi điểm" takes its own row while nobody has bid.
+  // "Khởi điểm" / "Giá đất" and "Bỏ cuộc" take their own row.
   grid-column: 1 / -1;
 }
 
-.note {
-  margin: 0;
-  font-size: vars.$font-size-xs;
-  color: rgb(6 78 59 / 0.7);
+@container auction (max-width: 18rem) {
+  .list {
+    display: none;
+  }
+
+  .price {
+    font-size: vars.$font-size-xl;
+  }
+
+  .choice {
+    min-height: 2rem;
+    padding: 0.125rem vars.$spacing-xs;
+    font-size: vars.$font-size-xs;
+  }
 }

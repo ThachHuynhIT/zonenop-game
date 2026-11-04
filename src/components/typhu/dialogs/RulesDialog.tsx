@@ -12,9 +12,11 @@ export function TyPhuRules() {
       <li>Tung 2 xúc xắc rồi đi. Tung đôi được tung tiếp; đôi 3 lần liền thì vào tù.</li>
       <li>Dừng ở đất, sân bay hay công ty chưa có chủ thì được mua. Không mua thì đất vẫn thuộc ngân hàng — trừ khi bàn bật luật Đấu giá (bên dưới).</li>
       <li>
-        Luật <b>Đấu giá</b> (chủ bàn bật, mặc định tắt): ô không ai mua (bỏ qua hoặc hết giờ) được đem ra đấu giá, <b>ai còn trong ván cũng được trả giá</b>, kể cả người vừa bỏ qua. Khởi điểm bằng 50% giá đất; mỗi lần trả phải cao hơn giá hiện tại ít nhất 10tr
-        và bằng <b>tiền mặt</b> đang có (không thế chấp để trả giá); người đang dẫn đầu không tự nâng giá của mình. Đồng hồ 15 giây, mỗi lần có người trả thêm 5 giây (tối đa còn 15 giây). Hết giờ, người trả cao nhất đưa tiền cho ngân hàng và nhận đất; không ai trả thì đất vẫn của ngân hàng. Lượt chơi tạm dừng trong lúc đấu giá
-        (không đổi đất, vay hay thế chấp được) rồi tiếp tục như thường.
+        Luật <b>Đấu giá</b> (chủ bàn bật, mặc định tắt): ô không ai mua (bỏ qua hoặc hết giờ) được đem ra đấu giá, <b>ai còn trong ván cũng được trả giá</b>. Khởi điểm bằng <b>80% giá đất</b>; mỗi lần trả phải cao hơn giá hiện tại ít nhất 10tr
+        và bằng <b>tiền mặt</b> đang có (không thế chấp để trả giá); người đang dẫn đầu không tự nâng giá của mình. Người vừa bỏ qua lượt mua vẫn được tham gia nhưng phải trả <b>ít nhất bằng giá đất</b>. Không muốn theo nữa thì bấm
+        <b> Bỏ cuộc</b> (không trả giá lại được; người đang dẫn đầu không bỏ cuộc). Đồng hồ 15 giây, mỗi lần có người trả thêm 5 giây (tối đa còn 15 giây). Hết giờ — hoặc ngay khi mọi người khác đều đã bỏ cuộc — người trả cao nhất đưa tiền
+        cho ngân hàng và nhận đất; không ai trả (kể cả khi tất cả bỏ cuộc) thì đất vẫn của ngân hàng. Lượt chơi tạm dừng trong lúc đấu giá (không đổi đất, vay hay thế chấp được; người đang tới lượt vẫn xây hoặc bán nhà được) rồi tiếp tục
+        như thường.
       </li>
       <li>Dừng ở đất người khác thì trả tiền thuê. Có đủ cả nhóm màu thì tiền thuê ×2 và được xây nhà — xây đều từng ô, 4 nhà rồi lên khách sạn.</li>
       <li>

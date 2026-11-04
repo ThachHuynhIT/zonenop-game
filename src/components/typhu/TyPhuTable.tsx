@@ -243,6 +243,14 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
     const loan = offerKey.startsWith("l");
     showToast(loan ? "🏦 Có lời xin vay tiền gửi cho bạn" : "🤝 Có lời mời đổi đất gửi cho bạn", { id: "typhu-offer", description: "Xem thẻ ở giữa bàn cờ" });
   }, [offerKey]);
+  // An auction opening pops a toast too (anyone still in the game may bid), once per auction: the key is the square
+  // while the phase is "auction" (never the deadline or the bid, which change on every state update).
+  const auctionPos = g?.phase === "auction" && g.auction ? g.auction.pos : null;
+  useEffect(() => {
+    if (auctionPos === null || view.role !== "player") return;
+    const name = boardRef.current[auctionPos]?.name ?? "Ô đất";
+    showToast(`🔨 Đấu giá: ${name}`, { id: "typhu-auction", description: "Ai còn trong ván cũng trả giá được — xem giữa bàn cờ" });
+  }, [auctionPos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // "Just built" banner, driven by the 🏠 lines in the log.
   const [buildFx, setBuildFx] = useState<{ id: number; text: string; hotel: boolean } | null>(null);

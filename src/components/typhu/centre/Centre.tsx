@@ -10,7 +10,7 @@ import { boardRef } from "../board-ref";
 import { buildableGroups, money, type Act } from "../shared";
 import { ActionBar } from "./ActionBar";
 import { AuctionPanel } from "./AuctionPanel";
-import { bidBlocker, bidForKey } from "./auction";
+import { bidBlocker, bidForKey, canFold } from "./auction";
 import { Die } from "./Dice";
 import { LoanCard, TradeCard } from "./OfferCards";
 import { BuildPanel } from "../panels/BuildPanel";
@@ -80,12 +80,15 @@ export function Centre({
   );
 
   // Auction: anyone still in the game may bid (not only the paused turn's player). Space = the lowest bid allowed, 1–6 = the raises.
+  // Q = "Bỏ cuộc" (fold), same condition as the button.
   const canBid = !!auction && !!mine && bidBlocker(auction, view.role, mine) === null;
   const bidKey = (key: string) => () => {
-    const amount = auction && mine ? bidForKey(auction, key, mine.cash) : null;
+    const amount = auction && mine ? bidForKey(auction, key, mine.cash, mine.id) : null;
     if (amount !== null) void run({ type: "bid", amount });
   };
   useHotkeys(Object.fromEntries([" ", "1", "2", "3", "4", "5", "6"].map((k) => [k, bidKey(k)])), canBid && !busy);
+  const foldable = !!auction && canFold(auction, view.role, mine);
+  useHotkeys({ q: () => foldable && void run({ type: "fold" }) }, foldable && !busy);
 
   // Hidden auto-play (Ctrl+Shift+Y toggles): the server plays my turns, one step every 2.5 s like for an offline
   // player (jail and debts included), but buys squares under 300tr, always keeping 150tr. It never builds houses:

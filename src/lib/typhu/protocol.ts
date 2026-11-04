@@ -133,8 +133,22 @@ export interface TPGameView {
   dice: [number, number] | null;
   rollAgain: boolean;
   debt: { amount: number; to: string | null; reason: string } | null;
-  /** The running auction (phase "auction"). `minNext` is the lowest bid allowed now; `deadline` is the same clock as `deadline` above. Missing from older servers. */
-  auction?: { pos: number; bid: number; bidder: string | null; minNext: number; deadline: number } | null;
+  /**
+   * The running auction (phase "auction"). Opens at 80% of the land price. `minNext` is the lowest bid allowed now;
+   * `deadline` is the same clock as `deadline` above. `folded`: who dropped out ("Bỏ cuộc"). `floorFor` declined to buy
+   * the square (skip / timeout) and may only bid max(minNext, `floor`), `floor` = the land price. Missing from older
+   * servers (the last three too: missing = nobody folded, no floor).
+   */
+  auction?: {
+    pos: number;
+    bid: number;
+    bidder: string | null;
+    minNext: number;
+    deadline: number;
+    folded?: string[];
+    floor?: number;
+    floorFor?: string;
+  } | null;
   trade: { from: string; to: string; give: TradeSide; get: TradeSide; deadline: number } | null;
   lastCard: { deck: "chance" | "chest"; text: string; player: string; at: number } | null;
   finished: string[];
@@ -183,6 +197,7 @@ export interface TPRoomSummary {
  *   { type: "trade", to, give: {props, cash}, get: {props, cash} }
  *   { type: "loan", to, amount, rate: 10 | 20 } · { type: "loananswer", accept }
  *   { type: "bid", amount }   // auction rule: raise the price of the square being auctioned (anyone still in the game, cash only)
+ *   { type: "fold" }   // auction rule: "Bỏ cuộc", drop out of this auction (can't bid again; the leader can't fold)
  *   { type: "tradeanswer", accept }   // the receiver answers; the proposer can withdraw with accept: false
  *   { type: "auto", on }   // your own auto-play: the server plays your turns (buys squares under 300tr, never builds), keeping 150tr
  */
@@ -217,6 +232,7 @@ export type TPCommand =
   | { type: "trade"; to: string; give: TradeSide; get: TradeSide }
   | { type: "loan"; to: string; amount: number; rate: number }
   | { type: "bid"; amount: number }
+  | { type: "fold" }
   | { type: "loananswer"; accept: boolean }
   | { type: "tradeanswer"; accept: boolean }
   | { type: "auto"; on: boolean };
