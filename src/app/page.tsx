@@ -6,7 +6,7 @@ import { ResumeBanner } from "@/components/games/ResumeBanner";
 export const metadata: Metadata = {
   // Absolute: the root layout's "%s | Games" template would print "Games | Games".
   title: { absolute: "Games — chơi online cùng bạn bè" },
-  description: "Các game mình tự làm: Tiến Lên Miền Nam, Mèo Nổ, Cờ Tỷ Phú, Đá Quý, Đấu Súng, Cờ Cá Ngựa và Ô Ăn Quan chơi online cùng bạn bè, cùng Contra phiên bản trình duyệt.",
+  description: "Các game mình tự làm: Tiến Lên Miền Nam, Mèo Nổ, Cờ Tỷ Phú, Đá Quý, Đấu Súng, Cờ Cá Ngựa, Ô Ăn Quan và Nối Chữ chơi online cùng bạn bè, cùng Contra phiên bản trình duyệt.",
 };
 
 interface GameCard {
@@ -74,6 +74,14 @@ const GAMES: GameCard[] = [
     tagline: "Trò chơi dân gian: bốc sỏi rải từng ô, ăn liên tiếp, giành quan — chọn quan non, giá quan 5 hay 10 dân. Chơi 2–4 người.",
     tags: ["Online", "2–4 người", "Dân gian"],
     gradient: "from-yellow-600/30 via-amber-800/20 to-transparent",
+  },
+  {
+    href: "/noi-chu",
+    title: "Nối Chữ",
+    emoji: "🔤",
+    tagline: "Nối từ ghép 2 tiếng: tiếng đầu phải trùng tiếng cuối của từ trước, hết giờ là bị loại — người cuối cùng thắng. Chơi 2–8 người.",
+    tags: ["Online", "2–8 người", "Từ ngữ"],
+    gradient: "from-teal-500/30 via-cyan-800/20 to-transparent",
   },
   {
     href: "/contra",

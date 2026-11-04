@@ -372,6 +372,7 @@
 [data-game="splendor"] { --game-accent: oklch(0.66 0.2 295); }
 [data-game="bang"] { --game-accent: oklch(0.64 0.17 35); }
 [data-game="oanquan"] { --game-accent: oklch(0.68 0.1 70); }
+[data-game="noichu"] { --game-accent: oklch(0.72 0.12 185); }
 [data-game="cangua"] { --game-accent: oklch(0.68 0.16 245); }
 
 @theme inline {
