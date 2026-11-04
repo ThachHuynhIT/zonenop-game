@@ -21,6 +21,7 @@ import { GameDialog } from "@/components/game-ui/GameDialog";
 import { GamePanel } from "@/components/game-ui/GamePanel";
 import { GameThemeScope } from "@/components/game-ui/theme";
 import { boardRef } from "./board-ref";
+import { localizeTPView } from "./clock";
 import { NowProvider, NowClock } from "./now";
 import { TOKENS, money, pieceOfSeat, type Act } from "./shared";
 import { seatTokens } from "./tokens";
@@ -52,22 +53,7 @@ const SCORE_NOTE =
   "Điểm theo thứ hạng: người còn trụ lại (hoặc giàu nhất khi hết giờ) Nhất, ai phá sản trước xếp sau. Chủ bàn chọn điểm Nhất / Nhì, các hạng cuối trừ tương ứng, tổng mỗi ván luôn bằng 0.";
 
 /** Shift server-clock deadlines onto the local clock. */
-function localize(view: TPRoomView): TPRoomView {
-  const g = view.current;
-  if (!g) return view;
-  const skew = Date.now() - view.serverTime;
-  const shift = (t: number | null) => (t ? t + skew : t);
-  return {
-    ...view,
-    current: {
-      ...g,
-      deadline: shift(g.deadline),
-      endsAt: shift(g.endsAt),
-      trade: g.trade ? { ...g.trade, deadline: g.trade.deadline + skew } : null,
-      loan: g.loan ? { ...g.loan, deadline: g.loan.deadline + skew } : null,
-    },
-  };
-}
+const localize = (view: TPRoomView) => localizeTPView(view, Date.now());
 
 export default function TyPhuTable({ code, name, watch }: { code: string; name: string; watch?: boolean }) {
   const { view, status, error, call } = useGameRoom<TPRoomView>(TYPHU_WS_PATH, code, name, watch ? "watch" : "play", localize);
@@ -209,7 +195,16 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const ownsLand = !!mine && Object.values(g?.deeds ?? {}).some((d) => d.owner === mine.id);
   // Same condition as the Đổi đất / Vay buttons in the board centre.
   const canTrade = view.role === "player" && !!mine && !mine.bankrupt;
-  const canPropose = canTrade && !g?.trade && !g?.loan;
+  // The server refuses offers while an auction runs, so the buttons wait for it too.
+  const canPropose = canTrade && !g?.trade && !g?.loan && g?.phase !== "auction";
+  const auctionOn = g?.phase === "auction";
+  useEffect(() => {
+    // An offer form left open would only be refused now.
+    if (auctionOn) {
+      setShowTrade(false);
+      setShowLoan(false);
+    }
+  }, [auctionOn]);
   // Chip tap: everybody gets their details (mine holds the piece picker, and "Tài sản" while my turn lets the assets open).
   const openPlayer = (id: string) => setViewPlayer(id);
 
@@ -248,6 +243,14 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
     const loan = offerKey.startsWith("l");
     showToast(loan ? "🏦 Có lời xin vay tiền gửi cho bạn" : "🤝 Có lời mời đổi đất gửi cho bạn", { id: "typhu-offer", description: "Xem thẻ ở giữa bàn cờ" });
   }, [offerKey]);
+  // An auction opening pops a toast too (anyone still in the game may bid), once per auction: the key is the square
+  // while the phase is "auction" (never the deadline or the bid, which change on every state update).
+  const auctionPos = g?.phase === "auction" && g.auction ? g.auction.pos : null;
+  useEffect(() => {
+    if (auctionPos === null || view.role !== "player") return;
+    const name = boardRef.current[auctionPos]?.name ?? "Ô đất";
+    showToast(`🔨 Đấu giá: ${name}`, { id: "typhu-auction", description: "Ai còn trong ván cũng trả giá được — xem giữa bàn cờ" });
+  }, [auctionPos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // "Just built" banner, driven by the 🏠 lines in the log.
   const [buildFx, setBuildFx] = useState<{ id: number; text: string; hotel: boolean } | null>(null);

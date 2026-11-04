@@ -1,0 +1,111 @@
+@use "@styles/variables" as vars;
+
+// The auction board in the centre of the table. BorderTimer draws the clock on this border (rounded-2xl = 1rem).
+// A size container: on a phone the board centre is only ~280px wide, so the narrow rules below follow the panel's
+// own width, not the viewport.
+.panel {
+  container: auction / inline-size;
+  position: relative;
+  display: grid;
+  gap: vars.$spacing-sm;
+  width: 100%;
+  margin-top: vars.$spacing-md;
+  padding: vars.$spacing-md vars.$spacing-sm vars.$spacing-sm;
+  border-radius: 1rem;
+  background: color-mix(in oklab, vars.$color-white 72%, transparent);
+  color: vars.$color-emerald-900;
+  text-align: center;
+}
+
+.title {
+  position: absolute;
+  top: 0;
+  left: vars.$spacing-md;
+  z-index: 10;
+  transform: translateY(-50%);
+  padding: 0.125rem vars.$spacing-sm;
+  border-radius: 999px;
+  background: vars.$color-amber-700;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
+  color: vars.$color-white;
+  font-size: vars.$font-size-xs;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.square {
+  margin: 0;
+  font-size: vars.$font-size-base;
+  font-weight: 800;
+  line-height: vars.$leading-tight;
+  overflow-wrap: anywhere;
+}
+
+.list,
+.note,
+.folded {
+  margin: 0;
+  font-size: vars.$font-size-xs;
+  color: color-mix(in oklab, vars.$color-emerald-900 70%, transparent);
+}
+
+.folded {
+  overflow-wrap: anywhere;
+}
+
+.price {
+  margin: 0;
+  font-size: vars.$font-size-2xl;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.leader {
+  margin: 0;
+  font-size: vars.$font-size-sm;
+  font-weight: 600;
+}
+
+.mine {
+  color: vars.$color-emerald-700;
+}
+
+.warn {
+  font-weight: 700;
+  color: vars.$color-rose-700;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: vars.$spacing-xs;
+}
+
+// Overrides the CBtn size (Tailwind utilities live in a cascade layer, so this unlayered rule wins).
+.choice {
+  height: auto;
+  min-height: 2.5rem;
+  padding: vars.$spacing-xs vars.$spacing-sm;
+}
+
+.wide {
+  // "Khởi điểm" / "Giá đất" and "Bỏ cuộc" take their own row.
+  grid-column: 1 / -1;
+}
+
+@container auction (max-width: 18rem) {
+  .list {
+    display: none;
+  }
+
+  .price {
+    font-size: vars.$font-size-xl;
+  }
+
+  .choice {
+    min-height: 2rem;
+    padding: 0.125rem vars.$spacing-xs;
+    font-size: vars.$font-size-xs;
+  }
+}
