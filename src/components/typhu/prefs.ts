@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { authRequest, getSession, useSession } from "@/components/auth/session";
 
 export type ActionsPlacement = "center" | "bottom";
 export type ViewMode = "full" | "minimal";
@@ -35,19 +36,44 @@ function parseFx(v: unknown): FxPrefs {
 }
 export const PREFS_KEY = "typhu:prefs";
 
-/** Saved prefs, falling back to the defaults for anything missing or broken. */
-export function parsePrefs(raw: string | null): TyPhuPrefs {
-  try {
-    const v: unknown = raw ? JSON.parse(raw) : null;
-    if (v && typeof v === "object" && !Array.isArray(v)) {
-      const { actions, view, fx } = v as { actions?: unknown; view?: unknown; fx?: unknown };
-      return { actions: actions === "bottom" ? "bottom" : "center", view: view === "minimal" ? "minimal" : "full", fx: parseFx(fx) };
-    }
-  } catch {
-    // broken JSON: defaults
+/** Prefs from an already-parsed value (storage or the account), falling back to the defaults for anything missing or broken. */
+export function prefsFrom(v: unknown): TyPhuPrefs {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const { actions, view, fx } = v as { actions?: unknown; view?: unknown; fx?: unknown };
+    return { actions: actions === "bottom" ? "bottom" : "center", view: view === "minimal" ? "minimal" : "full", fx: parseFx(fx) };
   }
   return DEFAULT_PREFS;
 }
+
+/** Saved prefs, falling back to the defaults for anything missing or broken. */
+export function parsePrefs(raw: string | null): TyPhuPrefs {
+  try {
+    return prefsFrom(raw ? JSON.parse(raw) : null);
+  } catch {
+    return DEFAULT_PREFS; // broken JSON
+  }
+}
+
+/** The account's Cờ Tỷ Phú prefs out of a `GET /api/auth/prefs` body (every game's prefs): null when it has none yet or the body is junk. */
+export function accountPrefs(body: unknown): TyPhuPrefs | null {
+  if (!body || typeof body !== "object") return null;
+  const all = (body as { prefs?: unknown }).prefs;
+  if (!all || typeof all !== "object" || Array.isArray(all)) return null;
+  const mine = (all as Record<string, unknown>).typhu;
+  return mine && typeof mine === "object" && !Array.isArray(mine) ? prefsFrom(mine) : null;
+}
+
+/** be_game caps one game's prefs JSON at this many characters. */
+export const MAX_PREFS_CHARS = 2000;
+
+/** The `PATCH /api/auth/prefs` body for these prefs: only the known fields, null if it would not fit the server's limit. */
+export function prefsPatch(p: TyPhuPrefs): { game: "typhu"; prefs: TyPhuPrefs } | null {
+  const prefs = prefsFrom(p); // drop anything unknown
+  return JSON.stringify(prefs).length > MAX_PREFS_CHARS ? null : { game: "typhu", prefs };
+}
+
+/** How long a change waits before it is saved on the account (several quick toggles = one request). */
+export const SAVE_DELAY_MS = 500;
 
 const PHONE_WIDTH_QUERY = "(max-width: 1023px)";
 const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-height: 500px)";
@@ -76,16 +102,103 @@ export function readPrefs(): TyPhuPrefs {
   }
 }
 
-/** This viewer's display prefs. The table route is client-only (`ssr: false`), so storage is read on the first render: no flash of the defaults. */
+function writeLocal(p: TyPhuPrefs) {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(p));
+  } catch {
+    // storage blocked: this tab only
+  }
+}
+
+/**
+ * This viewer's display prefs. The table route is client-only (`ssr: false`), so storage is read on the first render: no
+ * flash of the defaults. Signed in, they are also kept on the account (`/api/auth/prefs`, every device): fetched once per
+ * account on mount (applied unless the viewer already changed something; uploaded from this device when the account has
+ * none yet) and every change saved there after `SAVE_DELAY_MS`. A failed call (offline, 401, a backend without the endpoint
+ * answering 404) changes nothing: the local value stays.
+ */
 export function useTyPhuPrefs(): [TyPhuPrefs, (next: TyPhuPrefs) => void] {
+  const uid = useSession()?.user.id ?? null;
   const [prefs, setPrefs] = useState<TyPhuPrefs>(readPrefs);
-  const save = useCallback((next: TyPhuPrefs) => {
-    setPrefs(next);
+  const latest = useRef(prefs);
+  const touched = useRef(false); // the viewer changed something since mount: the account's copy must not overwrite it
+  const queued = useRef<TyPhuPrefs | null>(null);
+  const busy = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // One request at a time; whatever was queued meanwhile goes after it (only the newest value).
+  const flush = useCallback(async () => {
+    if (busy.current) return;
+    const next = queued.current;
+    queued.current = null;
+    if (!next || !getSession()) return;
+    const body = prefsPatch(next);
+    if (!body) return;
+    busy.current = true;
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+      await authRequest("PATCH", "/api/auth/prefs", body);
     } catch {
-      // storage blocked: this tab only
+      // never surfaces: the local copy is the source of truth for this device
+    } finally {
+      busy.current = false;
+      if (queued.current) void flush();
     }
   }, []);
+
+  const schedule = useCallback(
+    (next: TyPhuPrefs) => {
+      queued.current = next;
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => {
+        timer.current = null;
+        void flush();
+      }, SAVE_DELAY_MS);
+    },
+    [flush],
+  );
+
+  // Leaving the table with a change still waiting: send it now.
+  useEffect(
+    () => () => {
+      if (!timer.current) return;
+      clearTimeout(timer.current);
+      timer.current = null;
+      void flush();
+    },
+    [flush],
+  );
+
+  useEffect(() => {
+    if (!uid) return;
+    let live = true;
+    void (async () => {
+      const res = await authRequest<unknown>("GET", "/api/auth/prefs");
+      if (!live || !res.ok || getSession()?.user.id !== uid) return;
+      const remote = accountPrefs(res.data);
+      if (!remote) {
+        if (!touched.current) schedule(latest.current); // first time on this account: carry this device's choices over
+      } else if (!touched.current) {
+        latest.current = remote;
+        setPrefs(remote);
+        writeLocal(remote);
+      }
+    })().catch(() => {
+      // offline or an old backend: keep the local prefs
+    });
+    return () => {
+      live = false;
+    };
+  }, [uid, schedule]);
+
+  const save = useCallback(
+    (next: TyPhuPrefs) => {
+      touched.current = true;
+      latest.current = next;
+      setPrefs(next);
+      writeLocal(next);
+      if (getSession()) schedule(next);
+    },
+    [schedule],
+  );
   return [prefs, save];
 }

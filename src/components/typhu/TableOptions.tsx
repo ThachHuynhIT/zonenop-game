@@ -98,7 +98,7 @@ function EffectSwitches({ fx, onChange }: { fx: FxPrefs; onChange: (next: FxPref
 }
 
 /**
- * The small ⚙ in the table header: this viewer's options (saved on this device only). Effects on every screen;
+ * The small ⚙ in the table header: this viewer's options (saved on this device and, signed in, on the account). Effects on every screen;
  * the layout choices (Giao diện, Vị trí nút) only matter on a phone held upright, so only show there.
  */
 export function TableOptions({ prefs, onChange, phonePortrait }: { prefs: TyPhuPrefs; onChange: (next: TyPhuPrefs) => void; phonePortrait: boolean }) {
@@ -112,7 +112,7 @@ export function TableOptions({ prefs, onChange, phonePortrait }: { prefs: TyPhuP
         open={open}
         onOpenChange={setOpen}
         title="Tuỳ chọn hiển thị"
-        description="Chỉ áp dụng cho bạn, trên máy này."
+        description="Chỉ áp dụng cho bạn, lưu theo tài khoản (dùng được trên mọi máy)."
         footer={
           <GameButton size="sm" onClick={() => setOpen(false)}>
             Xong

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_FX, DEFAULT_PREFS, PREFS_KEY, parsePrefs, readPrefs } from "./prefs";
+import { DEFAULT_FX, DEFAULT_PREFS, MAX_PREFS_CHARS, PREFS_KEY, accountPrefs, parsePrefs, prefsFrom, prefsPatch, readPrefs } from "./prefs";
 
 describe("parsePrefs", () => {
   it("defaults to actions in the centre and the full view", () => {
@@ -47,5 +47,44 @@ describe("readPrefs", () => {
     expect(readPrefs()).toEqual(DEFAULT_PREFS); // node: no localStorage at all
     vi.stubGlobal("localStorage", { getItem: () => { throw new Error("blocked"); } });
     expect(readPrefs()).toEqual(DEFAULT_PREFS);
+  });
+});
+
+describe("prefsFrom", () => {
+  it("validates an already-parsed value like parsePrefs does", () => {
+    expect(prefsFrom({ actions: "bottom", view: "minimal", fx: { turn: false } })).toEqual({ actions: "bottom", view: "minimal", fx: { ...DEFAULT_FX, turn: false } });
+    expect(prefsFrom(null)).toEqual(DEFAULT_PREFS);
+    expect(prefsFrom("bottom")).toEqual(DEFAULT_PREFS);
+    expect(prefsFrom([])).toEqual(DEFAULT_PREFS);
+  });
+});
+
+describe("accountPrefs", () => {
+  it("picks the typhu entry out of every game's prefs and validates it", () => {
+    expect(accountPrefs({ ok: true, prefs: { typhu: { actions: "bottom", fx: { money: false, extra: 1 } }, meono: { x: 1 } } })).toEqual({
+      actions: "bottom",
+      view: "full",
+      fx: { ...DEFAULT_FX, money: false },
+    });
+    expect(accountPrefs({ ok: true, prefs: { typhu: { view: "huge", actions: 3 } } })).toEqual(DEFAULT_PREFS);
+  });
+  it("is null when the account has no typhu entry yet, or the body is junk", () => {
+    expect(accountPrefs({ ok: true, prefs: {} })).toBeNull();
+    expect(accountPrefs({ ok: true, prefs: { meono: {} } })).toBeNull();
+    expect(accountPrefs({ ok: true, prefs: { typhu: "bottom" } })).toBeNull();
+    expect(accountPrefs({ ok: true, prefs: { typhu: [1] } })).toBeNull();
+    expect(accountPrefs({ ok: true, prefs: [] })).toBeNull();
+    expect(accountPrefs({ ok: true })).toBeNull();
+    expect(accountPrefs(null)).toBeNull();
+    expect(accountPrefs("x")).toBeNull();
+  });
+});
+
+describe("prefsPatch", () => {
+  it("sends only the known fields for typhu, within the server's size limit", () => {
+    const junk = { ...DEFAULT_PREFS, view: "minimal", extra: "x".repeat(5000) } as unknown as typeof DEFAULT_PREFS;
+    const body = prefsPatch(junk);
+    expect(body).toEqual({ game: "typhu", prefs: { ...DEFAULT_PREFS, view: "minimal" } });
+    expect(JSON.stringify(body!.prefs).length).toBeLessThanOrEqual(MAX_PREFS_CHARS);
   });
 });

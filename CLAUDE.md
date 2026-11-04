@@ -46,6 +46,7 @@ favour of hosting the games; that code was removed in `refactor/repurpose-as-gam
   (`RULE_PRESETS`) sends one merged `settings` message. Tokens are the players' site looks
   (`seatTokens` in `typhu/tokens.ts`; a colour clash gives the later seat a free colour; tap your own token
   to edit the site profile in `LookDialog`). The ⚙ options (on every screen) live in `localStorage["typhu:prefs"]`
+  and, signed in, on the account (be_game `GET`/`PATCH /api/auth/prefs`, key `typhu`; synced by `useTyPhuPrefs`, failures silent)
   (`typhu/prefs.ts`): effect switches `fx` {money, turn, flag, end} for everybody; phone-portrait only: Giao diện
   Đầy đủ/Tối giản (full view = players panel, minimal = chip strip) and Vị trí nút. Table effects: `typhu/fx/`.
 - Keyboard shortcuts: `useHotkeys` (`src/components/games/useHotkeys.ts`);

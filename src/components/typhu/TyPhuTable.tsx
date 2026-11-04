@@ -647,7 +647,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
       {showLog && g && <LogModal log={g.log} onClose={() => setShowLog(false)} />}
       {showScores && <ScoreboardModal view={view} onClose={() => setShowScores(false)} note={SCORE_NOTE} />}
       <MoneyFx players={g?.players} status={g?.status} arrived={arrived} enabled={prefs.fx.money} />
-      <TurnBanner turn={g?.turn ?? null} meId={view.meId} name={g?.turn ? nameOf(g.turn) : ""} playing={!!playing} enabled={prefs.fx.turn} />
+      <TurnBanner turn={g?.turn ?? null} meId={view.meId} name={g?.turn ? nameOf(g.turn) : ""} color={g?.turn ? tokenOf(g.turn).color : "#f59e0b"} playing={!!playing} enabled={prefs.fx.turn} />
       <Celebration intensity={2.2} confetti={prefs.fx.end} show={g?.status === "ended"} playing={!!playing} won={iWon} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
       <VictoryFx show={g?.status === "ended"} playing={!!playing} won={iWon} color={g?.finished[0] ? tokenOf(g.finished[0]).color : "#fbbf24"} enabled={prefs.fx.end} />
       {confirmLeave && (
