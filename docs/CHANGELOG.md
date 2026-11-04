@@ -10,9 +10,19 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Nối Chữ, the eighth game
+
+- **Date:** 2026-10-29 (branch `feature/noi-chu`; backend be_game `feature/noi-chu` ([be_game #25](https://github.com/ThachHuynhIT/be_game/pull/25)), **deploy it first**).
+- New game at `/noi-chu`, 2–8 players: type a two-syllable word whose first syllable is the last syllable of the previous word (tone marks must match, no repeats); running out of time puts you out, the last one standing wins. Rules, settings and commands: `be_game/docs/games/noichu.md`; UI notes: `docs/GAMES_GUIDE.md` §4.8.
+- First table written with the SCSS Module rule (`NoiChuTable.module.scss`) and the `game-ui` kit instead of long Tailwind class strings.
+- Dictionary check lives on the server (be_game ships a 48,425-word list from Viet74K, GPL-2.0, kept as a separate data file there, plus 606 extra words written for this project such as `con mèo`, `trà sữa`, `đà nẵng`; the licence decision and caveats are in be_game's `src/noichu/dict/README.md`). Known limit: free compound phrases (`đôi mắt`, `giờ học`, `tin nhắn`…) are still often missing (about 81% of a fresh 150-word probe was accepted). So the room setting is two levels, with no way to turn the check off: **strict** (dictionary, the default) and **loose** (dictionary, or both syllables are real Vietnamese; accepts `đôi mắt`, refuses `qqqqq`, but also nonsense like `bàn bàn`). `dictionary` is a string now; the server still reads the old boolean (`false`, the old "off", means loose).
+- Verified against a real be_game with two Playwright browsers (register, create room, settings, refused words, 4 valid words, timeout, result, new game, phone width, hub card, lobby). The Playwright script is not in the repo.
+
+---
+
 ## Cờ Tỷ Phú: luật Đấu giá
 
-- **Date:** 2026-10-30 (branch `feature/typhu-auction`; backend be_game PR `feature/typhu-auction` — **deploy be_game (primary và backup) TRƯỚC**).
+- **Date:** 2026-10-30 (branch `feature/typhu-auction`; backend [be_game #26](https://github.com/ThachHuynhIT/be_game/pull/26) (đã merge) — **deploy be_game (primary và backup) TRƯỚC**).
 - Luật bàn mới **"Đấu giá"**, mặc định tắt: ô chưa có chủ mà người dừng bỏ qua / hết giờ thì đem ra đấu giá. Khởi điểm **80%** giá đất, ai còn trong ván cũng trả giá được, mỗi lần ≥ giá hiện tại + 10tr và bằng tiền mặt, 15 giây (+5 giây mỗi lần trả, tối đa còn 15 giây); hết giờ người cao nhất trả ngân hàng và nhận đất. Người vừa bỏ qua lượt mua (`floorFor`) chỉ được trả từ **giá đất** (`floor`) trở lên. Nút **"Bỏ cuộc"** (`{type:"fold"}`, phím `Q`): rời phiên, không trả lại được, người dẫn đầu không bỏ cuộc được; mọi người khác bỏ cuộc thì người dẫn đầu thắng ngay, tất cả bỏ cuộc mà chưa ai trả thì đất không bán. Lượt tạm dừng (người tới lượt vẫn xây / bán nhà được); không đổi đất / vay / thế chấp trong phiên. Toast khi phiên đấu giá mở (một lần mỗi phiên).
 - UI: `AuctionPanel` giữa bàn (nút +10…+500tr, "Khởi điểm" / "Giá đất" cho người vừa bỏ qua, "Bỏ cuộc"; phím `Space` / `1`–`6` / `Q`; danh sách người đã bỏ cuộc; gọn hơn khi bảng hẹp ≤ 18rem nhờ container query; màu qua alias `vars.$color-*` mới trong `_variables.scss`), công tắc "Đấu giá" ở tab 🏠 Luật nhà, mô tả trong `RulesDialog`. `protocol.ts` đồng bộ tay với be_game (`TPSettings.auction?`, `Phase "auction"`, `TPGameView.auction?` gồm cả `folded?` / `floor?` / `floorFor?`, `{type:"bid"}`, `{type:"fold"}`; mọi field mới tuỳ chọn — server không gửi `folded` thì không hiện nút Bỏ cuộc). `localizeTPView` (`typhu/clock.ts`) tách khỏi `TyPhuTable` để test, dịch cả `auction.deadline`.
 - Tương thích: server cũ không gửi `auction` → không có bảng đấu giá, công tắc bị khoá và ghi "Máy chủ chưa hỗ trợ" (không bật lạc quan). Client cũ không có UI trả giá: đừng bật luật ở bàn còn tab cũ.
