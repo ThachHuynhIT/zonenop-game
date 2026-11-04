@@ -4,7 +4,7 @@ Tài liệu này dành cho người (hoặc AI) cần **sửa giao diện một 
 
 **Luật chơi, state và protocol của từng game không được viết lại ở đây.** Nguồn sự thật là backend be_game:
 - Tổng quan backend: `be_game/docs/GUIDE.md`
-- Từng game: `be_game/docs/games/<id>.md`, với `<id>` là `tienlen`, `meono`, `typhu`, `splendor`, `bang`, `cangua`, `oanquan`
+- Từng game: `be_game/docs/games/<id>.md`, với `<id>` là `tienlen`, `meono`, `typhu`, `splendor`, `bang`, `cangua`, `oanquan`, `noichu`
 
 Đường dẫn trong tài liệu tính từ gốc repo này. Số dòng chỉ để tham khảo vì code thay đổi, nên hãy tìm theo tên.
 
@@ -38,6 +38,7 @@ Tài liệu này dành cho người (hoặc AI) cần **sửa giao diện một 
 | `bang` | Đấu Súng (Bang!) | `/bang` → `/bang/[room]` | `src/components/bang/` | `src/lib/bang/` | `/api/bang/ws` | 8 |
 | `oanquan` | Ô Ăn Quan | `/o-an-quan` → `/o-an-quan/[room]` | `src/components/oanquan/` | `src/lib/oanquan/` | `/api/oanquan/ws` | 2–4 |
 | `cangua` | Cờ Cá Ngựa | `/co-ca-ngua` → `/co-ca-ngua/[room]` | `src/components/cangua/` | `src/lib/cangua/` | `/api/cangua/ws` | 4 |
+| `noichu` | Nối Chữ | `/noi-chu` → `/noi-chu/[room]` | `src/components/noichu/` | `src/lib/noichu/` | `/api/noichu/ws` | 2–8 |
 
 Một số đường dẫn khác:
 - **`/`** là trang hub. Nội dung các thẻ game (tagline, số người) được viết cứng trong `src/app/page.tsx`. Trang này có cả thẻ `/contra`.
@@ -161,7 +162,7 @@ Cấu hình preview nằm trong `D:\WorkSpace\.claude\launch.json` (ở thư m�
 
 ```ts
 interface OnlineGame {
-  id: "tienlen" | "meono" | "typhu" | "splendor" | "bang" | "cangua" | "oanquan";
+  id: "tienlen" | "meono" | "typhu" | "splendor" | "bang" | "cangua" | "oanquan" | "noichu";
   title: string;      // tên đầy đủ (title của tab)
   short: string;      // nhãn ngắn cho tab và dòng bàn
   emoji: string;
@@ -1105,6 +1106,30 @@ Sảnh chờ hiện `đang ngồi/4`, nút bắt đầu cần ít nhất 2 ngư�
 | `Esc` | Bỏ chọn (chỉ khi có ô đang chọn và không có bảng điểm / luật; `Modal` vẫn tự đóng bằng `Esc`) |
 
 Điều kiện: lượt mình, không đang animation (`canMove`), không `busy`. Nút Rải trái / Rải phải / Bỏ chọn có huy hiệu `←`, `→`, `Esc`. Dòng "Phím tắt:" hiện khi chưa chọn ô. Với 3–4 người (bàn vòng), `1`–`5` vẫn chạy từ trái sang phải dọc **cạnh của mình**.
+
+### 4.8. Nối Chữ
+
+Luật và protocol: `be_game/docs/games/noichu.md`.
+
+**File map**
+
+| File | Vai trò / component chính |
+|---|---|
+| `src/app/noi-chu/{layout,page}.tsx`, `[room]/page.tsx` | Route theo §8: nền xanh ngọc, `GameLobby` (2–8 người), bàn nạp bằng `dynamic(..., { ssr: false })` |
+| `noichu/NoiChuTable.tsx` | Default `NoiChuTable` (kết nối, màn hình lỗi, `ChatBox row`), `Table`, `PlayerChip`, `Stage`, `Waiting`, `NoiChuRules` (export cho lobby) |
+| `noichu/NoiChuTable.module.scss` | Style của bàn (SCSS Module, theo quy tắc code mới; biến thể phone ngang dùng cùng media query với `short:`) |
+
+**Giao diện.** Dùng bộ `game-ui`: `GameThemeScope game="noichu"` (màu nhấn trong `globals.css`, pháo giấy trong `theme.tsx`), `GamePanel`, `GameButton`, `GameDialog` (luật), `Countdown` (vòng đếm ngược cạnh người đang tới lượt), `Celebration`, `gameToast` (lỗi từ server). Avatar dùng `SeatAvatar`, danh sách chờ dùng `RoomRoster`.
+
+**Bàn.** `Stage` hiện từ cuối cùng với **tiếng cần nối được tô màu**, các từ trước dưới dạng chip (chỉ 40 từ cuối do server gửi, `chainLength` là tổng), và khi đến lượt mình là ô nhập có `TurnRing`. Ô nhập được **điền sẵn tiếng cần nối** (`"{need} "`) mỗi khi tới lượt, tự focus, Enter để gửi (`{ type: "word", text }`); từ sai được server từ chối (toast) và ô nhập giữ nguyên để sửa. Không có phím tắt nào khác. Người bị loại và khán giả thấy "lượt của …".
+
+**Bản sao lib** (`src/lib/noichu/`)
+- `board.ts`: **chép nguyên văn** `be_game/src/noichu/board.ts` (chỉ thêm comment đầu file): `MIN_PLAYERS`, `MAX_PLAYERS`, `TURN_SECONDS_OPTIONS`, `MAX_WORDS`, `DictionaryMode`, `DICTIONARY_MODES`, `dictionaryModeOf`, `syllablesOf`, `normalizeWord`.
+- `protocol.ts`: bản chỉnh tay (import kiểu chung từ `@/lib/tienlen`, không re-export hằng chat): `NOICHU_WS_PATH`, `NCRoomView`, `NCGameView`, `NCCommand`…
+
+Từ điển nằm ở server, client không kiểm tra từ có nghĩa; client chỉ hiện lỗi server trả về.
+
+**Cài đặt.** Trong `Waiting`, `SettingsTabs`: 🔤 Luật (`dictionary`: hai mức bằng radio có giải thích: `strict` có từ điển, `loose` từ điển lỏng = từ điển hoặc hai tiếng Việt thật; không có mức tắt; tiêu đề bàn hiện mức đang dùng). Server vẫn nhận boolean cũ, client chỉ gửi chuỗi, ⏱️ Lượt (`turnSeconds`), 🏆 Điểm (`RankPointsPicker`). Chỉ chủ bàn sửa được.
 
 ---
 

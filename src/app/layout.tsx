@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     template: "%s | Games",
   },
   description:
-    "Tiến Lên, Mèo Nổ, Cờ Tỷ Phú, Splendor, Bang!, Ô Ăn Quan, Cờ Cá Ngựa — tạo phòng, gửi link mời bạn bè.",
+    "Tiến Lên, Mèo Nổ, Cờ Tỷ Phú, Splendor, Bang!, Ô Ăn Quan, Cờ Cá Ngựa, Nối Chữ — tạo phòng, gửi link mời bạn bè.",
   openGraph: { siteName: "Games", type: "website" },
   twitter: { card: "summary" },
 };

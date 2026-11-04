@@ -42,6 +42,7 @@ Create a table, share the invite link, and play Tiến Lên, Mèo Nổ, Cờ T�
 | 🤠 | **Đấu Súng** (Bang!-style) | 3–8 | Secret roles, 63 characters, 7 expansions | `/bang` |
 | 🐴 | **Cờ Cá Ngựa** (Vietnamese ludo) | 2–4 | Dice, kicking opponents home, 6-step stable climb | `/co-ca-ngua` |
 | 🪨 | **Ô Ăn Quan** | 2–4 | Traditional sowing game, quan non, 5- or 10-stone quan | `/o-an-quan` |
+| 🔤 | **Nối Chữ** | 2–8 | Vietnamese word chain: two-syllable words, last syllable continues the next word, out when the clock runs out | `/noi-chu` |
 | 🔫 | **Contra** | 1 | 8-bit side-scrolling shooter on `<canvas>`, fully offline | `/contra` |
 
 Every online table lives at `/<game>/<ROOM>`; add `?watch=1` to join as a spectator.
@@ -107,7 +108,7 @@ src/
 │   ├── api/health/route.ts       # { ok, commit } for deploy checks
 │   ├── ui-kit/                   # Dev-only gallery of components/game-ui (404 in production)
 │   ├── globals.css               # Theme tokens + shared game-shell CSS
-│   ├── <game>/                   # tien-len, meo-no, co-ty-phu, splendor, bang, o-an-quan, co-ca-ngua
+│   ├── <game>/                   # tien-len, meo-no, co-ty-phu, splendor, bang, o-an-quan, co-ca-ngua, noi-chu
 │   │   ├── layout.tsx            #   metadata + per-game backdrop + <GamesShell>
 │   │   ├── page.tsx              #   lobby (<GameLobby>)
 │   │   └── [room]/page.tsx       #   table
