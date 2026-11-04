@@ -3,15 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 // `m` (not `motion`): the root LazyMotion is strict, which throws on the full `motion` component.
-import { m as motion } from "motion/react";
+import { m as motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
+import styles from "./TurnBanner.module.scss";
 
 /**
  * A band across the whole screen when the turn passes to somebody: loud for me, a quiet
- * strip with the name for the others. Nothing on open, only on a real change of turn.
+ * strip with the name for the others. Nothing on open, only on a real change of turn. Nothing under
+ * prefers-reduced-motion or with the "Báo lượt" switch off (`enabled`): the turn glow and the action bar still say it.
  */
-export function TurnBanner({ turn, meId, name, playing }: { turn: string | null; meId: string; name: string; playing: boolean }) {
+export function TurnBanner({ turn, meId, name, playing, enabled }: { turn: string | null; meId: string; name: string; playing: boolean; enabled: boolean }) {
   const [mounted, setMounted] = useState(false);
+  const reduced = useReducedMotion();
   const [fx, setFx] = useState<{ at: number; mine: boolean; name: string } | null>(null);
   const last = useRef(turn);
   useEffect(() => setMounted(true), []);
@@ -26,27 +29,20 @@ export function TurnBanner({ turn, meId, name, playing }: { turn: string | null;
     const t = setTimeout(() => setFx(null), fx.mine ? 1100 : 800);
     return () => clearTimeout(t);
   }, [fx]);
-  if (!mounted) return null;
+  if (!mounted || !enabled || reduced) return null;
   return createPortal(
     <>
       {fx && (
         <motion.div
           key={fx.at}
           role="status"
-          className="pointer-events-none fixed inset-x-0 top-[34%] z-[55] flex justify-center overflow-hidden"
+          className={styles.layer}
           // Sharp in, held for a moment, then a gradual fade out.
           initial={{ opacity: 0, scale: 0.94 }}
           animate={{ opacity: [0, 1, 1, 0], scale: [0.94, 1, 1, 1] }}
           transition={{ duration: fx.mine ? 1.1 : 0.8, times: [0, 0.12, 0.4, 1], ease: "easeOut" }}
         >
-          <div
-            className={cn(
-              "w-full text-center font-black uppercase tracking-widest text-white shadow-2xl",
-              fx.mine
-                ? "bg-gradient-to-r from-transparent via-amber-500 to-transparent py-4 text-3xl drop-shadow sm:py-6 sm:text-5xl"
-                : "bg-gradient-to-r from-transparent via-slate-800/85 to-transparent py-2 text-base sm:text-xl",
-            )}
-          >
+          <div className={cn(styles.band, fx.mine ? styles.mine : styles.other)}>
             {fx.mine ? "⏳ Đến lượt bạn!" : `Lượt của ${fx.name}`}
           </div>
         </motion.div>

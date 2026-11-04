@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 // `m` (not `motion`): the root LazyMotion is strict, which throws on the full `motion` component.
-import { m as motion } from "motion/react";
-import { type TPPlayerView } from "@/lib/typhu/protocol";
+import { m as motion, useReducedMotion } from "motion/react";
+import { type TPGameView, type TPPlayerView } from "@/lib/typhu/protocol";
+import { cn } from "@/lib/utils";
 import { money } from "../shared";
 import { type MoneyFlow, moneyFlows } from "./moneyFlows";
+import styles from "./MoneyFx.module.scss";
 
 interface Point {
   x: number;
@@ -50,31 +52,49 @@ function flightOf(f: MoneyFlow, key: number): Flight | null {
 /**
  * Coins flying between players whenever cash changes hands, with the signed amount floating up over
  * each token. What a player pays and nobody receives goes to the bank (the board centre).
+ * `status` resets the comparison when a new game starts (ended → playing): be_game replaces the game in place, so
+ * the cash of the last game must not be compared with the starting cash of the next one. Nothing under
+ * prefers-reduced-motion or with the "Tiền bay" switch off (`enabled`).
  */
-export function MoneyFx({ players, gameKey, arrived }: { players: TPPlayerView[] | undefined; gameKey: number; arrived: boolean }) {
+export function MoneyFx({ players, status, arrived, enabled }: { players: TPPlayerView[] | undefined; status: TPGameView["status"] | undefined; arrived: boolean; enabled: boolean }) {
   const [mounted, setMounted] = useState(false);
   const [flights, setFlights] = useState<Flight[]>([]);
-  const seen = useRef<{ game: number; cash: Record<string, number>; out: Set<string> } | null>(null);
+  const reduced = useReducedMotion();
+  const show = enabled && !reduced;
+  const seen = useRef<{ status: TPGameView["status"]; cash: Record<string, number>; out: Set<string> } | null>(null);
   const counter = useRef(0);
   // Flows wait here until every token has finished walking: the money moves once the player is there.
   const pending = useRef<MoneyFlow[]>([]);
+  // Clean-up timers of the flights on screen, cleared on unmount.
+  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const live = timers.current;
+    return () => {
+      live.forEach(clearTimeout);
+      live.clear();
+    };
+  }, []);
 
   useEffect(() => {
-    if (!players) {
+    if (!players || !status) {
       seen.current = null;
       return;
     }
     const cash = Object.fromEntries(players.map((p) => [p.id, p.cash]));
     const out = new Set(players.filter((p) => p.bankrupt).map((p) => p.id));
     const prev = seen.current;
-    seen.current = { game: gameKey, cash, out };
-    // First look at this game (page opened, or a new game): nothing to replay.
-    if (!prev || prev.game !== gameKey) return;
+    seen.current = { status, cash, out };
+    // First look at this game (page opened, or a new game just started): nothing to replay.
+    if (!prev || (prev.status !== "playing" && status === "playing")) {
+      pending.current = [];
+      return;
+    }
+    if (!show) return;
     // A bankruptcy wipes the cash and hands the assets over: the "Phá sản" effect covers that.
     const skip = new Set([...out].filter((id) => !prev.out.has(id)));
     pending.current.push(...moneyFlows(prev.cash, cash, skip));
-  }, [players, gameKey]);
+  }, [players, status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!arrived || !pending.current.length) return;
@@ -86,20 +106,24 @@ export function MoneyFx({ players, gameKey, arrived }: { players: TPPlayerView[]
       if (!fresh.length) return;
       setFlights((l) => [...l, ...fresh]);
       const keys = new Set(fresh.map((f) => f.key));
-      setTimeout(() => setFlights((l) => l.filter((f) => !keys.has(f.key))), FLIGHT_MS + 200);
+      const done = setTimeout(() => {
+        timers.current.delete(done);
+        setFlights((l) => l.filter((f) => !keys.has(f.key)));
+      }, FLIGHT_MS + 200);
+      timers.current.add(done);
     }, 250);
     return () => clearTimeout(t);
   }, [players, arrived]);
 
-  if (!mounted) return null;
+  if (!mounted || !show) return null;
   return createPortal(
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
+    <div aria-hidden className={styles.layer}>
         {flights.map((f) => (
           <div key={f.key}>
             {Array.from({ length: f.coins }, (_, i) => (
               <motion.span
                 key={i}
-                className="absolute -ml-3 -mt-3 text-2xl drop-shadow-[0_2px_3px_rgba(0,0,0,0.5)]"
+                className={styles.coin}
                 style={{ left: f.from.x, top: f.from.y }}
                 initial={{ x: 0, y: 0, scale: 0.4, opacity: 0 }}
                 animate={{
@@ -128,7 +152,7 @@ function Amount({ at, amount, delay }: { at: Point; amount: number; delay: numbe
   const gain = amount > 0;
   return (
     <motion.span
-      className={`absolute -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5 font-mono text-sm font-black shadow-lg ring-2 sm:text-base ${gain ? "bg-emerald-500 text-white ring-emerald-200" : "bg-rose-600 text-white ring-rose-200"}`}
+      className={cn(styles.amount, gain ? styles.gain : styles.loss)}
       style={{ left: at.x, top: at.y - 20 }}
       initial={{ y: 0, scale: 0.5, opacity: 0 }}
       animate={{ y: -44, scale: [0.5, 1.25, 1], opacity: [0, 1, 1, 0] }}

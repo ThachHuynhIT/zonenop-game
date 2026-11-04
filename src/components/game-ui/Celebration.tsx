@@ -12,9 +12,11 @@ const DURATION = 4200;
  * Victory effect for every table: confetti in the game's colours + a banner, only on the playing → ended transition
  * this mounted component saw (a reconnect onto a finished game never replays it). Same props as WinCelebration.
  * Pointer-events-none overlay (z-40, below dialogs), ~4 s. prefers-reduced-motion: banner only.
- * `intensity` (default 1) scales the fireworks: more particles, more bursts and a second volley from the sides.
+ * `intensity` (default 1) scales the fireworks: above 1, more particles, more and faster bursts spread wider, and a second
+ * volley from the sides (at 1 every game gets exactly the original effect). `confetti={false}` keeps only the banner,
+ * as under reduced motion (a table's own "effects off" switch).
  */
-export function Celebration({ show, playing, won, title, intensity = 1 }: { show: boolean; playing: boolean; won: boolean; title?: string; intensity?: number }) {
+export function Celebration({ show, playing, won, title, intensity = 1, confetti = true }: { show: boolean; playing: boolean; won: boolean; title?: string; intensity?: number; confetti?: boolean }) {
   const [run, setRun] = useState(0);
   const wasPlaying = useRef(false);
   const wasShow = useRef(false);
@@ -27,15 +29,15 @@ export function Celebration({ show, playing, won, title, intensity = 1 }: { show
   }, [show, playing]);
 
   if (!run) return null;
-  return <Burst key={run} won={won} title={title} intensity={intensity} />;
+  return <Burst key={run} won={won} title={title} intensity={intensity} confetti={confetti} />;
 }
 
-function Burst({ won, title, intensity }: { won: boolean; title?: string; intensity: number }) {
+function Burst({ won, title, intensity, confetti }: { won: boolean; title?: string; intensity: number; confetti: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const game = useGameTheme() ?? "hub";
   const [alive, setAlive] = useState(true);
   const [fading, setFading] = useState(false);
-  const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const reduced = !confetti || (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 
   useEffect(() => {
     const t1 = setTimeout(() => setFading(true), DURATION - 700);
@@ -65,11 +67,14 @@ function Burst({ won, title, intensity }: { won: boolean; title?: string; intens
       // A second volley from the sides while the first one is still falling.
       if (intensity > 1) timers.push(setTimeout(cannons, 900));
       const bursts = Math.round(6 * intensity);
+      const big = intensity > 1;
       for (let i = 0; i < bursts; i++) {
         timers.push(
           setTimeout(() => {
-            fire({ ...base, particleCount: n(50), spread: 360, startVelocity: 28, ticks: 70, gravity: 0.8, scalar: 0.9, origin: { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.4 } });
-          }, 450 + i * (intensity > 1 ? 280 : 380)),
+            // Wider over the screen only for a bigger celebration; intensity 1 keeps the original spread.
+            const origin = big ? { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.4 } : { x: 0.15 + Math.random() * 0.7, y: 0.15 + Math.random() * 0.35 };
+            fire({ ...base, particleCount: n(50), spread: 360, startVelocity: 28, ticks: 70, gravity: 0.8, scalar: 0.9, origin });
+          }, 450 + i * (big ? 280 : 380)),
         );
       }
     });

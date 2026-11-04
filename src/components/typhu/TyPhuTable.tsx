@@ -36,6 +36,7 @@ import { AssetPanel } from "./panels/AssetPanel";
 import { BankruptOverlay, BuildOverlay, CardOverlay } from "./fx/Overlays";
 import { MoneyFx } from "./fx/MoneyFx";
 import { TurnBanner } from "./fx/TurnBanner";
+import { VictoryFx } from "./fx/VictoryFx";
 import { PlayerRow } from "./players/PlayerRow";
 import { PlayerStrip } from "./players/PlayerStrip";
 import { SquareModal } from "./dialogs/SquareDialog";
@@ -137,6 +138,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const me = view.seats.find((s) => s?.id === view.meId) ?? null;
   const mine = g?.players.find((p) => p.id === view.meId) ?? null;
   const myTurn = !!mine && playing && !mine.bankrupt && g?.turn === view.meId;
+  // I won the game shown (the first finisher).
+  const iWon = !!view.meId && g?.status === "ended" && g.finished[0] === view.meId;
 
   const seatOf = (id: string) => view.seats.find((s) => s?.id === id) ?? null;
   const nameOf = (id: string) =>
@@ -172,7 +175,11 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const inGame = playing && view.role === "player" && !!mine && !mine.bankrupt;
   useEffect(() => {
     if (!inGame) return;
-    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Older browsers only prompt when returnValue is set.
+      e.returnValue = "";
+    };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [inGame]);
@@ -289,8 +296,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
     outRef.current = now;
     if (!prev) return;
     const fresh = [...now].find((id) => !prev.has(id));
-    // The last bankruptcy ends the game: the victory effect takes the screen instead.
-    if (fresh && g?.status !== "ended") setBankruptFx({ id: fresh, name: nameOf(fresh), me: fresh === view.meId, at: Date.now() });
+    // The last bankruptcy ends the game: everybody sees it but the winner, whose screen gets the victory effect.
+    if (fresh && !iWon && prefs.fx.end) setBankruptFx({ id: fresh, name: nameOf(fresh), me: fresh === view.meId, at: Date.now() });
   }, [outKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!bankruptFx) return;
@@ -344,7 +351,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
             </Link>
             <span className="font-mono text-sm font-bold tracking-[0.2em] text-amber-300">{view.code}</span>
             {/* Not in `extra`: on phones that folds into the ⋯ menu, which closes (and unmounts the dialog) when tapped. */}
-            {phonePortrait && <TableOptions prefs={prefs} onChange={setPrefs} />}
+            <TableOptions prefs={prefs} onChange={setPrefs} phonePortrait={phonePortrait} />
           </>
         }
         extra={
@@ -422,6 +429,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                   here={here ?? NO_TOKENS}
                   highlight={!!here?.some((t) => t.turn)}
                   compact={compact}
+                  fxFlag={prefs.fx.flag}
                   onOpen={setOpenSquare}
                 />
               );
@@ -430,8 +438,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
             <div data-bank className="relative flex flex-col items-center justify-center-safe gap-2 overflow-y-auto overflow-x-hidden bg-[#0b1d3a] bg-cover bg-center p-[2%] text-emerald-950 short:gap-1 short:p-[1.5%]" style={{ gridColumn: `2 / ${boardRef.current.length / 4 + 1}`, gridRow: `2 / ${boardRef.current.length / 4 + 1}`, backgroundImage: "url(/games/typhu/center.webp)" }}>
               <CardOverlay card={cardFx} nameOf={nameOf} onClose={() => setCardFx(null)} />
               <BuildOverlay fx={buildFx} />
-              {/* The bankruptcy that ends the game gives way to the victory effect. */}
-              <BankruptOverlay fx={g?.status === "ended" ? null : bankruptFx} />
+              <BankruptOverlay fx={bankruptFx} />
               <div className="flex max-h-full min-h-0 w-full max-w-md flex-none flex-col items-center justify-center-safe gap-2 overflow-y-auto rounded-[1.5rem] bg-[#dff1e5]/60 p-1.5 shadow-xl ring-1 ring-amber-300/50 backdrop-blur-[2px] sm:p-2.5 short:gap-1 short:p-1">
               {!g || g.status === "ended" ? (
                 <Waiting view={view} me={me} act={act} nameOf={nameOf} />
@@ -639,9 +646,10 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
       {showTrade && g && <TradeModal g={g} meId={view.meId} nameOf={nameOf} run={run} onClose={() => setShowTrade(false)} />}
       {showLog && g && <LogModal log={g.log} onClose={() => setShowLog(false)} />}
       {showScores && <ScoreboardModal view={view} onClose={() => setShowScores(false)} note={SCORE_NOTE} />}
-      <MoneyFx players={g?.players} gameKey={view.history.length} arrived={arrived} />
-      <TurnBanner turn={g?.turn ?? null} meId={view.meId} name={g?.turn ? nameOf(g.turn) : ""} playing={!!playing} />
-      <Celebration intensity={2.2} show={g?.status === "ended"} playing={!!playing} won={!!view.meId && g?.finished[0] === view.meId} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
+      <MoneyFx players={g?.players} status={g?.status} arrived={arrived} enabled={prefs.fx.money} />
+      <TurnBanner turn={g?.turn ?? null} meId={view.meId} name={g?.turn ? nameOf(g.turn) : ""} playing={!!playing} enabled={prefs.fx.turn} />
+      <Celebration intensity={2.2} confetti={prefs.fx.end} show={g?.status === "ended"} playing={!!playing} won={iWon} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
+      <VictoryFx show={g?.status === "ended"} playing={!!playing} won={iWon} color={g?.finished[0] ? tokenOf(g.finished[0]).color : "#fbbf24"} enabled={prefs.fx.end} />
       {confirmLeave && (
         <GameDialog
           open

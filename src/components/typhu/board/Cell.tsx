@@ -2,11 +2,12 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 // `m` (not `motion`): the root LazyMotion is strict, which throws on the full `motion` component.
-import { m as motion } from "motion/react";
+import { m as motion, useReducedMotion } from "motion/react";
 import { GROUP_COLORS, MAX_HOUSES, type Square, isOwnable } from "@/lib/typhu/board";
 import { type Deed } from "@/lib/typhu/protocol";
 import { cn } from "@/lib/utils";
 import glow from "../fx/turnGlow.module.scss";
+import styles from "./Cell.module.scss";
 import { DROP_MS, Drop, DropFx, LAND_MS, dropOn } from "../fx/DropFx";
 import { tokenMinPx, tokenSlots } from "./layout";
 import { ArtIcon, Building, money, squareImg } from "../shared";
@@ -54,7 +55,6 @@ function BuildBurst({ count, cell }: { count: number; cell: React.RefObject<HTML
     };
   }, [count]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!burst) return <DropFx drop={drop} />;
-  if (!burst) return null;
   const n = burst.hotel ? 12 : 8;
   const color = burst.hotel ? "#fbbf24" : "#ffffff";
   return (
@@ -88,17 +88,29 @@ function BuildBurst({ count, cell }: { count: number; cell: React.RefObject<HTML
   );
 }
 
-/** A flag in the owner's colour dropped from above onto a square the moment it is bought (a new owner), then gone again. */
-function OwnerFlag({ owner, color, cell }: { owner: string | undefined; color: string | undefined; cell: React.RefObject<HTMLElement | null> }) {
+/** How long the square shakes once the flag touches down (ms); matches `.shake` in Cell.module.scss. */
+const SHAKE_MS = 320;
+
+/**
+ * A flag in the owner's colour dropped from above onto a square the moment it gets its first owner (bought, or won
+ * at auction), then gone again; `onLand` fires as it touches down. A trade or a bankruptcy hand-over moves an owned
+ * square to another owner: no flag. Off with the "Cắm cờ & rung ô" switch (`enabled`) and under reduced motion.
+ */
+function OwnerFlag({ owner, color, cell, enabled, onLand }: { owner: string | undefined; color: string | undefined; cell: React.RefObject<HTMLElement | null>; enabled: boolean; onLand: () => void }) {
   const prev = useRef(owner);
   const [drop, setDrop] = useState<Drop | null>(null);
+  const reduced = useReducedMotion();
   useEffect(() => {
-    const bought = owner !== undefined && owner !== prev.current;
+    const bought = prev.current === undefined && owner !== undefined;
     prev.current = owner;
-    if (!bought || !color) return;
+    if (!bought || !color || !enabled || reduced) return;
     setDrop(dropOn(cell.current, "flag", color));
-    const t = setTimeout(() => setDrop(null), DROP_MS.flag + 100);
-    return () => clearTimeout(t);
+    const land = setTimeout(onLand, LAND_MS);
+    const end = setTimeout(() => setDrop(null), DROP_MS.flag + 100);
+    return () => {
+      clearTimeout(land);
+      clearTimeout(end);
+    };
   }, [owner]); // eslint-disable-line react-hooks/exhaustive-deps
   return <DropFx drop={drop} />;
 }
@@ -150,6 +162,8 @@ interface CellProps {
   highlight: boolean;
   /** Narrow squares (phones): smaller icon and name, thinner colour band. */
   compact: boolean;
+  /** "Cắm cờ & rung ô" switch: the flag dropped on a newly bought square and the shake as it lands. */
+  fxFlag: boolean;
   onOpen: (pos: number) => void;
 }
 
@@ -160,6 +174,7 @@ const sameCell = (a: CellProps, b: CellProps) =>
   a.pot === b.pot &&
   a.highlight === b.highlight &&
   a.compact === b.compact &&
+  a.fxFlag === b.fxFlag &&
   a.onOpen === b.onOpen &&
   a.deed?.owner === b.deed?.owner &&
   a.deed?.houses === b.deed?.houses &&
@@ -169,8 +184,15 @@ const sameCell = (a: CellProps, b: CellProps) =>
   a.here.length === b.here.length &&
   a.here.every((t, i) => t.id === b.here[i].id && t.emoji === b.here[i].emoji && t.color === b.here[i].color && t.turn === b.here[i].turn);
 
-export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here, highlight, compact, onOpen }: CellProps) {
+export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here, highlight, compact, fxFlag, onOpen }: CellProps) {
   const cellRef = useRef<HTMLButtonElement>(null);
+  // The square shakes a little when a planted flag touches down (`shake` is a fresh key each time, so it restarts).
+  const [shake, setShake] = useState(0);
+  useEffect(() => {
+    if (!shake) return;
+    const t = setTimeout(() => setShake(0), SHAKE_MS);
+    return () => clearTimeout(t);
+  }, [shake]);
   const { row, col, side } = cellOf(index, edge);
   const band = sq.kind === "prop" ? GROUP_COLORS[sq.group] : null;
   const bandSide = side === "bottom" ? "top" : side === "top" ? "bottom" : side === "left" ? "right" : side === "right" ? "left" : null;
@@ -197,6 +219,7 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
         side === "corner" && "bg-[#e6f4ea]",
         highlight && "ring-2 ring-inset ring-amber-400",
         deed?.mortgaged && "opacity-60 grayscale-[40%]",
+        !!shake && styles.shake,
         band && bandSide === "top" && (compact ? (houses ? "pt-[30%]" : "pt-[18%]") : houses ? "pt-[40%]" : "pt-[22%]"),
         band && bandSide === "bottom" && (compact ? (houses ? "pb-[30%]" : "pb-[18%]") : houses ? "pb-[40%]" : "pb-[22%]"),
         band && bandSide === "left" && (compact ? (houses ? "pl-[30%]" : "pl-[18%]") : houses ? "pl-[40%]" : "pl-[22%]"),
@@ -222,7 +245,7 @@ export const Cell = memo(function Cell({ index, edge, sq, deed, pot, owner, here
         </span>
       )}
       {band && <BuildBurst count={houses} cell={cellRef} />}
-      <OwnerFlag owner={deed?.owner} color={owner?.color} cell={cellRef} />
+      <OwnerFlag owner={deed?.owner} color={owner?.color} cell={cellRef} enabled={fxFlag} onLand={() => setShake(Date.now())} />
       {compact ? (
         <span className="pointer-events-none flex flex-col items-center">
           {sq.kind !== "prop" && squareImg(sq) ? <ArtIcon name={squareImg(sq)!} className={side === "corner" ? "size-5" : "size-4"} /> : null}

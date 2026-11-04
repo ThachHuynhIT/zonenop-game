@@ -686,7 +686,7 @@ Luật và protocol: `be_game/docs/games/typhu.md`.
 ```
 typhu/
   TyPhuTable.tsx      TyPhuTable (default), Table, TableBody
-  TableOptions.tsx    ⚙ trên thanh trên (chỉ điện thoại dọc): giao diện đầy đủ / tối giản, vị trí nút hành động
+  TableOptions.tsx    ⚙ trên thanh trên (mọi màn hình): bật/tắt hiệu ứng; điện thoại dọc thêm giao diện đầy đủ / tối giản, vị trí nút hành động
   prefs.ts            parsePrefs, useTyPhuPrefs, usePhonePortrait, PREFS_KEY  (+ prefs.test.ts)
   board-ref.ts        boardRef, groupPositions
   now.tsx             NowProvider, NowContext, useSecondsLeft, NowClock, useNow, formatClock
@@ -699,7 +699,9 @@ typhu/
   tokens.ts           seatTokens: quân trên bàn = biểu tượng + màu hồ sơ của người chơi, không trùng màu (có test)
   players/            PlayerRow.tsx, PlayerStrip.tsx
   waiting/            Waiting.tsx, TableSettings.tsx
-  fx/                 Overlays.tsx (BankruptOverlay, BuildOverlay, CardOverlay)
+  fx/                 Overlays.tsx (BankruptOverlay, BuildOverlay, CardOverlay), MoneyFx.tsx + moneyFlows.ts (+ test),
+                      TurnBanner.tsx, DropFx.tsx (cờ / nhà rơi xuống ô), VictoryFx.tsx (kèn, cờ, pháo hoa của người thắng),
+                      turnGlow.module.scss
 ```
 
 | Component / hàm | Vai trò |
@@ -738,7 +740,7 @@ typhu/
 
 **`boardRef` (`board-ref.ts`).** Bản đồ của bàn đang xem, thay cho biến module `BOARD` cũ: `boardRef.current: Square[]`; `TableBody` gán lại ở đầu mỗi lần render, các file khác đọc `boardRef.current[i]` (và `groupPositions(group)`). Cùng hợp đồng như trước, chỉ là chia sẻ qua nhiều file. Chỉ có **một** bàn Tỷ Phú trên trang.
 
-**Vị trí nút hành động và `typhu:prefs`.** Chỉ **điện thoại dọc** (`usePhonePortrait()`), mỗi người chọn cho mình: nút ⚙ ("Tuỳ chọn hiển thị", `TableOptions`) nằm ở `primary` của `GameHeader` (không ở `extra`: `extra` gấp vào menu ⋯ và menu đóng sẽ gỡ dialog đang mở) mở một `GameDialog` với hai nhóm lựa chọn: **Giao diện** "Đầy đủ" (mặc định: tên ô trên bàn cờ và panel "Người chơi" với tiền, tổng tài sản, đất và nhà, như bản cũ) (không có hàng chip phía trên, panel không có tiêu đề) hoặc "Tối giản" (`minimal`: ẩn panel "Người chơi", hiện hàng chip `PlayerStrip` phía trên bàn; tên ô vẫn hiện); **Vị trí nút** "Nút ở giữa bàn" (mặc định) hoặc "Thanh nút dưới màn hình". Lưu ở `localStorage["typhu:prefs"]` = `{"actions":"center"|"bottom","view":"full"|"minimal"}` (chỉ trên máy này). `parsePrefs` đọc từng trường riêng, gặp JSON hỏng hoặc giá trị lạ thì dùng mặc định của trường đó (bản lưu cũ không có `view` = đầy đủ); `useTyPhuPrefs` đọc `localStorage` ngay ở lần render đầu qua `readPrefs()` (route bàn chạy `ssr: false` nên không lệch hydration, không nháy nút ở giữa rồi mới nhảy xuống thanh dưới) và bọc `try/catch` cho trình duyệt chặn storage. Máy tính và điện thoại ngang luôn để nút ở giữa bàn, dù prefs ghi `bottom`. Khi dùng thanh dưới: `Centre` không vẽ `ActionBar`, thanh `fixed` ở đáy, trang chừa `paddingBottom = barHeight + 8`.
+**Vị trí nút hành động, hiệu ứng và `typhu:prefs`.** Nút ⚙ ("Tuỳ chọn hiển thị", `TableOptions`) có trên **mọi màn hình**, nằm ở `primary` của `GameHeader` (không ở `extra`: `extra` gấp vào menu ⋯ và menu đóng sẽ gỡ dialog đang mở) và mở một `GameDialog`. Nhóm **Hiệu ứng** (mọi màn hình, 4 công tắc `role="switch"`, mặc định bật hết): `money` "Tiền bay" (`MoneyFx`), `turn` "Báo lượt" (`TurnBanner`), `flag` "Cắm cờ & rung ô" (cờ rơi xuống ô vừa mua + ô rung khi cờ chạm đất), `end` "Phá sản & chiến thắng" (`BankruptOverlay`, `VictoryFx` và pháo giấy của `Celebration`; banner kết quả vẫn hiện). Chỉ **điện thoại dọc** (`usePhonePortrait()`) có thêm hai nhóm lựa chọn bố cục: **Giao diện** "Đầy đủ" (mặc định: tên ô trên bàn cờ và panel "Người chơi" với tiền, tổng tài sản, đất và nhà, như bản cũ) (không có hàng chip phía trên, panel không có tiêu đề) hoặc "Tối giản" (`minimal`: ẩn panel "Người chơi", hiện hàng chip `PlayerStrip` phía trên bàn; tên ô vẫn hiện); **Vị trí nút** "Nút ở giữa bàn" (mặc định) hoặc "Thanh nút dưới màn hình". Lưu ở `localStorage["typhu:prefs"]` = `{"actions":"center"|"bottom","view":"full"|"minimal","fx":{"money","turn","flag","end": boolean}}` (chỉ trên máy này). `parsePrefs` đọc từng trường riêng, gặp JSON hỏng hoặc giá trị lạ thì dùng mặc định của trường đó (bản lưu cũ không có `view` = đầy đủ, không có `fx` = bật hết; một hiệu ứng chỉ tắt khi lưu đúng `false`); `useTyPhuPrefs` đọc `localStorage` ngay ở lần render đầu qua `readPrefs()` (route bàn chạy `ssr: false` nên không lệch hydration, không nháy nút ở giữa rồi mới nhảy xuống thanh dưới) và bọc `try/catch` cho trình duyệt chặn storage. Máy tính và điện thoại ngang luôn để nút ở giữa bàn, dù prefs ghi `bottom`. Khi dùng thanh dưới: `Centre` không vẽ `ActionBar`, thanh `fixed` ở đáy, trang chừa `paddingBottom = barHeight + 8`.
 
 **Bố cục**
 - Bàn cờ là grid vuông, `gridTemplateColumns/Rows: 1.6fr repeat(side−1, 1fr) 1.6fr` với `side = boardRef.current.length / 4` (11×11, 13×13 hoặc 15×15), nằm trong `PinchZoom` (`boardEl` là grid). `Centre` chiếm `2 / side+1` và tự cuộn (`overflow-y-auto`, `justify-center-safe`).
@@ -806,7 +808,8 @@ for (let i = 0; i < n; i++) {
 - Xúc xắc xoay vào, key theo id của dòng log "🎲".
 - Nhà nảy lên khi được xây.
 - Huy hiệu chủ sở hữu thu nhỏ vào ô.
-- `CardOverlay` (3,5 giây), `BuildOverlay` (2,2 giây), `BankruptOverlay` (3,2 giây).
+- `CardOverlay` (3,5 giây), `BuildOverlay` (2,2 giây), `BankruptOverlay` (3,2 giây). Lần phá sản kết thúc ván vẫn hiện "PHÁ SẢN!" cho mọi người trừ người thắng.
+- `fx/` (portal lên `document.body`, `pointer-events-none`, dưới dialog z-50; không vẽ gì khi `useReducedMotion()` hoặc công tắc tương ứng tắt): `MoneyFx` (z-46, so tiền giữa hai state, reset khi ván mới bắt đầu ended → playing), `DropFx` (z-45, cờ / nhà rơi xuống ô; ô rung ~320 ms khi cờ chạm đất, `.shake` trong `board/Cell.module.scss`; cờ chỉ cắm khi ô từ **chưa có chủ** sang có chủ — mua hoặc thắng đấu giá, không phải đổi đất / phá sản giao lại), `TurnBanner` (z-44), `VictoryFx` (z-41, chỉ người thắng, chỉ khi thấy playing → ended như `Celebration`: 2 kèn 🎺 ở hai góc dưới, 2 cờ màu quân của người thắng mọc lên ở hai bên và bay phấp phới, pháo hoa canvas-confetti nạp lười; ~4,6 giây). `Celebration` của Tỷ Phú chạy `intensity={2.2}`.
 - Các ref `initialCount`, `initialOwner`, `lastCardAt` đảm bảo hiệu ứng không chạy lại cho những gì đã có khi mới mở bàn.
 
 **Bản sao lib** (`src/lib/typhu/`)
