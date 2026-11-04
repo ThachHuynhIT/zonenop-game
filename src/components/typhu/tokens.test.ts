@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PROFILE_COLORS } from "@/components/games/gameClient";
-import { seatTokens } from "./tokens";
+import { inkOn, seatTokens } from "./tokens";
 
 const piece = (id: string) => ({ emoji: `piece-${id}`, color: "#000000" });
 const seat = (id: string, name = id) => ({ id, name });
@@ -32,5 +32,20 @@ describe("seatTokens", () => {
   it("keeps the in-game piece for a seat without a look (older client)", () => {
     const t = seatTokens([seat("a", "Lan")], {}, piece);
     expect(t.get("a")).toEqual(piece("a"));
+  });
+});
+
+describe("inkOn", () => {
+  it("puts dark text on light colours and white text on dark ones (after the banner's darkening)", () => {
+    expect(inkOn("#e5e7eb")).toBe("#0f172a");
+    expect(inkOn("#fbbf24")).toBe("#0f172a");
+    expect(inkOn("#1e3a8a")).toBe("#ffffff");
+    expect(inkOn("#ef4444")).toBe("#ffffff");
+    expect(inkOn("#ffffff", 0.2)).toBe("#ffffff"); // darkened nearly to black
+  });
+  it("gives every site colour a side, and white for anything that is not #rrggbb", () => {
+    for (const c of PROFILE_COLORS) expect(["#ffffff", "#0f172a"]).toContain(inkOn(c));
+    expect(inkOn("red")).toBe("#ffffff");
+    expect(inkOn("#fff")).toBe("#ffffff");
   });
 });

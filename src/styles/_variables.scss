@@ -102,3 +102,6 @@ $syntax-title: var(--syntax-title);
 $syntax-deletion: var(--syntax-deletion);
 
 $marker-current: var(--marker-current);
+
+// Game shell accent (globals.css `--game-accent`, set per game by GameThemeScope).
+$game-accent: var(--game-accent);

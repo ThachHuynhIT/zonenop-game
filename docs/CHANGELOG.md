@@ -10,6 +10,26 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Cờ Tỷ Phú table effects
+
+- **Date:** 2026-10-29 (branch `claude/dautri-millionaire-flags-ui-664700`, cut from `origin/develop`). No game protocol change; the per-account prefs (below) need be_game's new `/api/auth/prefs` endpoint (older backends answer 404 and the prefs stay on the device).
+- Money flying (`typhu/fx/MoneyFx.tsx`): the server sends no "who paid whom" event, so `fx/moneyFlows.ts` infers it from each player's cash between two state updates. Payers are matched with receivers in turn (rent: tenant → owner); what is left over goes to / comes from the bank (the board centre, `data-bank`). Totals per player are exact, only the pairing is a guess when several payments land in one update. It skips the first state it sees and resets when a new game starts (the game `status` going ended → playing: be_game replaces the game in place, so the last game's cash is never compared with the next one's), and players who just went bankrupt.
+- Positions come from the DOM: `data-token` (board token) falling back to `data-seat` (panel avatar).
+- Turn: `fx/TurnBanner.tsx` (full-width band, loud for me, quiet for others, only on a real turn change) and `fx/turnGlow.module.scss` (pulsing halo on the board token and the panel avatar, still under `prefers-reduced-motion`).
+- Buying land: `OwnerFlag` in `board/Cell.tsx` plants a flag in the owner's colour for about 1.8 s when a square gets its first owner (purchase or auction win; not on a trade or a bankruptcy hand-over); not replayed for owners already there on load.
+- Review round 1: money ± waits until every token has stopped walking (`arrived` from `useWalkingTokens`, then a 250 ms beat); walking is ~2x faster (step 40–110 ms); the turn banner flashes in and fades (1.1 s mine / 0.8 s others); the turn glow is softer.
+- Flag and house drop straight down from above and touch down, no wobble (`fx/DropFx.tsx`). They are drawn in a portal on `document.body`, because a square is `overflow-hidden` and clipped the flag on the side squares. The in-square burst and the new building wait for the touch-down (`LAND_MS`).
+- `Celebration` got an `intensity` prop (default 1, Cờ Tỷ Phú passes 2.2: more particles, more and faster bursts spread wider, a second side volley) and a `confetti` prop (default true; false = banner only). Everything that differs only applies when `intensity > 1` or `confetti={false}`, so other games are unchanged.
+- Leaving: "← Sảnh" asks for confirmation for a seated, non-bankrupt player in a running game, and `beforeunload` warns on closing / refreshing (`preventDefault` + `returnValue = ""`). Browser Back and the site nav are not covered.
+- Review round 2: the effect layers (`MoneyFx` z-46, `DropFx` z-45, `TurnBanner` z-44) sit below dialogs (z-50) and use colocated SCSS Modules; all of them render nothing under `prefers-reduced-motion` (`useReducedMotion`); MoneyFx's clean-up timers are cleared on unmount; dead code in `Cell.tsx` removed.
+- The bankruptcy that ends the game shows "PHÁ SẢN!" to everybody but the winner. The winner gets `fx/VictoryFx.tsx` on top of `Celebration` (playing → ended only, never on reconnect): two trumpets blowing in the lower corners, two flags in the winner's token colour rising on poles at the sides and waving, and fireworks (rockets climbing, then bursting; canvas-confetti, lazily imported). ~4.6 s, z-41.
+- A planted flag makes its square shake for ~320 ms as it touches down (`board/Cell.module.scss`, `.shake`, motion-safe).
+- Effect switches: `typhu:prefs` gains `fx: { money, turn, flag, end }` (default all on; older saves without `fx` = all on, only an explicit `false` turns one off; tests in `prefs.test.ts`). The ⚙ button is now on every screen with a "Hiệu ứng" section of four switches (Tiền bay · Báo lượt · Cắm cờ & rung ô · Phá sản & chiến thắng); Giao diện / Vị trí nút still show on phones held upright only. `end` off = no "PHÁ SẢN!", no VictoryFx and no confetti (the result banner stays).
+- Prefs per account: `useTyPhuPrefs` also keeps `typhu:prefs` on the signed-in account via be_game `GET`/`PATCH /api/auth/prefs` (`{ game: "typhu", prefs }`, ≤ 2000 chars). Local storage stays the first read (no flash); the account's copy is fetched once on mount and applied (validated by `prefsFrom`/`accountPrefs`) unless the viewer already changed something; an account without one gets this device's prefs uploaded once. Changes save after 500 ms, one request at a time; every failure (offline, 401, 404 from an older backend) is silent and keeps the local value. Needs the matching be_game release to take effect; until then it behaves as before. The ⚙ dialog now says the options are saved with the account.
+- Turn banner restyle: the band takes the turn player's token colour darkened with black (`color-mix(in oklab, <colour> 75%, black)` via the `--turn-color` custom property), black borders on its top and bottom edges, text white or dark by contrast (`inkOn` in `typhu/tokens.ts`, tested), and a slower fade-in (about 0.26 s, was 0.13 s; on screen 1.4 s mine / 1.0 s others).
+
+---
+
 ## Nối Chữ, the eighth game
 
 - **Date:** 2026-10-29 (branch `feature/noi-chu`; backend be_game `feature/noi-chu` ([be_game #25](https://github.com/ThachHuynhIT/be_game/pull/25)), **deploy it first**).

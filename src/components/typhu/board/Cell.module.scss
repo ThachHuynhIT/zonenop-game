@@ -1,0 +1,31 @@
+@use "@styles/mixins" as mix;
+
+// A square shaking for a moment as a planted flag touches down (~320 ms, SHAKE_MS in Cell.tsx).
+.shake {
+  @include mix.motion-safe {
+    animation: shake 320ms ease-out;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+
+  20% {
+    transform: translate(-1.5px, 1px) rotate(-1.5deg);
+  }
+
+  40% {
+    transform: translate(1.5px, -1px) rotate(1.5deg);
+  }
+
+  60% {
+    transform: translate(-1px, 0.5px) rotate(-1deg);
+  }
+
+  80% {
+    transform: translate(1px, 0) rotate(0.5deg);
+  }
+}

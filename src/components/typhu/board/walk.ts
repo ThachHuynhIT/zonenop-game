@@ -53,7 +53,7 @@ export function useWalkingTokens(g: TPGameView | null) {
         continue;
       }
       const path = walkPath(from, p.pos, !wasJailed && p.jail > 0, dice);
-      const step = Math.max(60, Math.min(220, 2600 / path.length));
+      const step = Math.max(40, Math.min(110, 1300 / path.length));
       path.forEach((pos, i) => timers.push(setTimeout(() => setShown((m) => ({ ...m, [p.id]: pos })), step * (i + 1))));
     }
     return () => timers.forEach(clearTimeout);

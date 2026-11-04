@@ -2,6 +2,7 @@
 
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { toast as showToast } from "sonner";
 import { ChatBox } from "@/components/games/ChatBox";
@@ -34,6 +35,9 @@ import { ActionBar } from "./centre/ActionBar";
 import { Centre } from "./centre/Centre";
 import { AssetPanel } from "./panels/AssetPanel";
 import { BankruptOverlay, BuildOverlay, CardOverlay } from "./fx/Overlays";
+import { MoneyFx } from "./fx/MoneyFx";
+import { TurnBanner } from "./fx/TurnBanner";
+import { VictoryFx } from "./fx/VictoryFx";
 import { PlayerRow } from "./players/PlayerRow";
 import { PlayerStrip } from "./players/PlayerStrip";
 import { SquareModal } from "./dialogs/SquareDialog";
@@ -120,6 +124,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const me = view.seats.find((s) => s?.id === view.meId) ?? null;
   const mine = g?.players.find((p) => p.id === view.meId) ?? null;
   const myTurn = !!mine && playing && !mine.bankrupt && g?.turn === view.meId;
+  // I won the game shown (the first finisher).
+  const iWon = !!view.meId && g?.status === "ended" && g.finished[0] === view.meId;
 
   const seatOf = (id: string) => view.seats.find((s) => s?.id === id) ?? null;
   const nameOf = (id: string) =>
@@ -136,6 +142,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
 
   const shownPos = useWalkingTokens(g);
   // Who stands on each square right now (walking animation included): the cells only get what they draw.
+  // Every token stands on its real square (the walk is over): money effects wait for that.
+  const arrived = (g?.players ?? []).every((p) => p.bankrupt || shownPos(p.id, p.pos) === p.pos);
   const hereByPos = new Map<number, CellToken[]>();
   for (const p of g?.players ?? []) {
     if (p.bankrupt) continue;
@@ -147,6 +155,20 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const [openSquare, setOpenSquare] = useState<number | null>(null);
   const [showTrade, setShowTrade] = useState(false);
   const [showLoan, setShowLoan] = useState(false);
+  // Leaving a running game drops my seat (the table sends "leave" on unmount): ask first.
+  const router = useRouter();
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const inGame = playing && view.role === "player" && !!mine && !mine.bankrupt;
+  useEffect(() => {
+    if (!inGame) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Older browsers only prompt when returnValue is set.
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [inGame]);
   const [showScores, setShowScores] = useState(false);
   const [showLog, setShowLog] = useState(false);
   useHotkeys({ l: g ? () => setShowLog((v) => !v) : undefined }, true, ["l"]);
@@ -277,7 +299,8 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
     outRef.current = now;
     if (!prev) return;
     const fresh = [...now].find((id) => !prev.has(id));
-    if (fresh) setBankruptFx({ id: fresh, name: nameOf(fresh), me: fresh === view.meId, at: Date.now() });
+    // The last bankruptcy ends the game: everybody sees it but the winner, whose screen gets the victory effect.
+    if (fresh && !iWon && prefs.fx.end) setBankruptFx({ id: fresh, name: nameOf(fresh), me: fresh === view.meId, at: Date.now() });
   }, [outKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!bankruptFx) return;
@@ -318,12 +341,20 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
       <GameHeader
         primary={
           <>
-            <Link href="/co-ty-phu" className={headerBtn}>
+            <Link
+              href="/co-ty-phu"
+              className={headerBtn}
+              onClick={(e) => {
+                if (!inGame) return;
+                e.preventDefault();
+                setConfirmLeave(true);
+              }}
+            >
               ← Sảnh
             </Link>
             <span className="font-mono text-sm font-bold tracking-[0.2em] text-amber-300">{view.code}</span>
             {/* Not in `extra`: on phones that folds into the ⋯ menu, which closes (and unmounts the dialog) when tapped. */}
-            {phonePortrait && <TableOptions prefs={prefs} onChange={setPrefs} />}
+            <TableOptions prefs={prefs} onChange={setPrefs} phonePortrait={phonePortrait} />
           </>
         }
         extra={
@@ -401,12 +432,13 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                   here={here ?? NO_TOKENS}
                   highlight={!!here?.some((t) => t.turn)}
                   compact={compact}
+                  fxFlag={prefs.fx.flag}
                   onOpen={setOpenSquare}
                 />
               );
             })}
             {/* Centre */}
-            <div className="relative flex flex-col items-center justify-center-safe gap-2 overflow-y-auto overflow-x-hidden bg-[#0b1d3a] bg-cover bg-center p-[2%] text-emerald-950 short:gap-1 short:p-[1.5%]" style={{ gridColumn: `2 / ${boardRef.current.length / 4 + 1}`, gridRow: `2 / ${boardRef.current.length / 4 + 1}`, backgroundImage: "url(/games/typhu/center.webp)" }}>
+            <div data-bank className="relative flex flex-col items-center justify-center-safe gap-2 overflow-y-auto overflow-x-hidden bg-[#0b1d3a] bg-cover bg-center p-[2%] text-emerald-950 short:gap-1 short:p-[1.5%]" style={{ gridColumn: `2 / ${boardRef.current.length / 4 + 1}`, gridRow: `2 / ${boardRef.current.length / 4 + 1}`, backgroundImage: "url(/games/typhu/center.webp)" }}>
               <CardOverlay card={cardFx} nameOf={nameOf} onClose={() => setCardFx(null)} />
               <BuildOverlay fx={buildFx} />
               <BankruptOverlay fx={bankruptFx} />
@@ -617,7 +649,29 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
       {showTrade && g && <TradeModal g={g} meId={view.meId} nameOf={nameOf} run={run} onClose={() => setShowTrade(false)} />}
       {showLog && g && <LogModal log={g.log} onClose={() => setShowLog(false)} />}
       {showScores && <ScoreboardModal view={view} onClose={() => setShowScores(false)} note={SCORE_NOTE} />}
-      <Celebration show={g?.status === "ended"} playing={!!playing} won={!!view.meId && g?.finished[0] === view.meId} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
+      <MoneyFx players={g?.players} status={g?.status} arrived={arrived} enabled={prefs.fx.money} />
+      <TurnBanner turn={g?.turn ?? null} meId={view.meId} name={g?.turn ? nameOf(g.turn) : ""} color={g?.turn ? tokenOf(g.turn).color : "#f59e0b"} playing={!!playing} enabled={prefs.fx.turn} />
+      <Celebration intensity={2.2} confetti={prefs.fx.end} show={g?.status === "ended"} playing={!!playing} won={iWon} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
+      <VictoryFx show={g?.status === "ended"} playing={!!playing} won={iWon} color={g?.finished[0] ? tokenOf(g.finished[0]).color : "#fbbf24"} enabled={prefs.fx.end} />
+      {confirmLeave && (
+        <GameDialog
+          open
+          onOpenChange={(o) => !o && setConfirmLeave(false)}
+          title="Rời phòng?"
+          footer={
+            <>
+              <GameButton size="sm" onClick={() => setConfirmLeave(false)}>
+                Ở lại
+              </GameButton>
+              <GameButton size="sm" variant="danger" onClick={() => router.push("/co-ty-phu")}>
+                Rời phòng
+              </GameButton>
+            </>
+          }
+        >
+          <p className="text-sm">Ván đang diễn ra. Bạn chắc chắn muốn rời phòng?</p>
+        </GameDialog>
+      )}
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
     </div>
     </GameThemeScope>
