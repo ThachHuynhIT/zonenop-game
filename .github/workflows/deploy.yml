@@ -65,13 +65,26 @@ jobs:
           tags: ${{ vars.TS_TAGS || 'tag:ci' }}
           ping: ${{ secrets.DEPLOY_HOST }}
 
+      # Secrets and variables reach `run:` scripts only through `env:`, never as ${{ }} inside the script, where
+      # a quote, newline or $(...) in the value would become shell syntax. Every value that ends up in a command,
+      # the SSH config or a URL is checked first (scripts/check-deploy-env.mjs; tests in
+      # scripts/check-deploy-env.test.mjs also fail if a run: block ever interpolates ${{ }} again).
+      - name: Validate configuration
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          WEB_DOMAIN: ${{ vars.WEB_DOMAIN }}
+        run: node scripts/check-deploy-env.mjs
+
       - name: Prepare SSH
         if: steps.cfg.outputs.ready == 'true'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
-          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           cat > ~/.ssh/config <<EOF
           Host deploy
             HostName $DEPLOY_HOST
@@ -160,9 +173,11 @@ jobs:
       # Public check once the server has a domain (e.g. through a Cloudflare Tunnel).
       - name: Public health check
         if: steps.cfg.outputs.ready == 'true' && vars.WEB_DOMAIN != ''
+        env:
+          WEB_DOMAIN: ${{ vars.WEB_DOMAIN }} # checked as a bare hostname in "Validate configuration"
         run: |
           for i in $(seq 1 20); do
-            health=$(curl -fsS "https://${{ vars.WEB_DOMAIN }}/api/health" || true)
+            health=$(curl -fsS "https://$WEB_DOMAIN/api/health" || true)
             if [[ $health == *'"ok":true'* && $health == *"\"commit\":\"$SHA\""* ]]; then
               echo "healthy at $SHA"; exit 0
             fi
