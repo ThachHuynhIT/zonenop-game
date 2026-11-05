@@ -56,15 +56,6 @@ jobs:
         with:
           ref: ${{ env.SHA }}
 
-      - name: Join the tailnet
-        if: steps.cfg.outputs.ready == 'true'
-        uses: tailscale/github-action@v4
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ secrets.TS_AUDIENCE }}
-          tags: ${{ vars.TS_TAGS || 'tag:ci' }}
-          ping: ${{ secrets.DEPLOY_HOST }}
-
       # Secrets and variables reach `run:` scripts only through `env:`, never as ${{ }} inside the script, where
       # a quote, newline or $(...) in the value would become shell syntax. Every value that ends up in a command,
       # the SSH config or a URL is checked first (scripts/check-deploy-env.mjs; tests in
@@ -74,6 +65,15 @@ jobs:
         env:
           WEB_DOMAIN: ${{ vars.WEB_DOMAIN }}
         run: node scripts/check-deploy-env.mjs
+
+      - name: Join the tailnet
+        if: steps.cfg.outputs.ready == 'true'
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: ${{ vars.TS_TAGS || 'tag:ci' }}
+          ping: ${{ secrets.DEPLOY_HOST }}
 
       - name: Prepare SSH
         if: steps.cfg.outputs.ready == 'true'

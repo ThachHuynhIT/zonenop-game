@@ -107,9 +107,14 @@ describe("workflows never interpolate ${{ }} into a run: script", () => {
     expect(bad).toEqual([]);
   });
 
-  it("the deploy job validates its configuration before any step uses it", () => {
-    const order = deployBlocks.map((b) => b.step);
-    expect(order.indexOf("Validate configuration")).toBeLessThan(order.indexOf("Prepare SSH"));
+  it("the deploy job validates its configuration right after checkout, before any step uses it", () => {
+    // Every step of the deploy job in order, named or not (uses: steps like the Tailscale action included).
+    const deployJob = deployYml.slice(deployYml.indexOf("  deploy:"), deployYml.indexOf("  vercel:"));
+    const steps = [...deployJob.matchAll(/^ {6}- (?:name|uses): *(.+)$/gm)].map((m) => m[1].trim());
+    const validate = steps.indexOf("Validate configuration");
+    expect(steps[validate - 1]).toBe("actions/checkout@v4");
+    expect(validate).toBeLessThan(steps.indexOf("Join the tailnet"));
+    expect(validate).toBeLessThan(steps.indexOf("Prepare SSH"));
     expect(deployBlocks.find((b) => b.step === "Validate configuration").script.trim()).toBe("node scripts/check-deploy-env.mjs");
   });
 });
