@@ -64,6 +64,35 @@ describe("blocked storage", () => {
     expect(s.getSession()).toBeNull();
   });
 
+  it("a read that fails once does not sign out for good: the next read finds the stored session", async () => {
+    shared.set(KEY, JSON.stringify({ session: "tok", user: lan }));
+    let failNext = true;
+    vi.stubGlobal("localStorage", {
+      ...storage(shared),
+      getItem: (k: string) => {
+        if (failNext) {
+          failNext = false;
+          throw new DOMException("blocked", "SecurityError");
+        }
+        return shared.get(k) ?? null;
+      },
+    });
+    const s = await load();
+    expect(s.getSession()).toBeNull();
+    expect(s.getSession()).toEqual({ session: "tok", user: lan });
+  });
+
+  it("a failed write also removes the previous account from storage, so a reload does not bring it back", async () => {
+    shared.set(KEY, JSON.stringify({ session: "old", user: minh }));
+    vi.stubGlobal("localStorage", storage(shared, { set: true }));
+    const s = await load();
+    s.saveSession({ session: "tok", user: lan });
+    expect(s.getSession()).toEqual({ session: "tok", user: lan });
+    expect(shared.has(KEY)).toBe(false);
+    vi.stubGlobal("localStorage", storage(shared));
+    expect((await load()).getSession()).toBeNull();
+  });
+
   it("sends no Authorization header once signed out, even with storage blocked", async () => {
     vi.stubGlobal("localStorage", storage(shared, { get: true, set: true, remove: true }));
     const s = await load();

@@ -62,9 +62,10 @@ function parse(raw: string | null): StoredSession | null {
 
 // Used when storage is blocked: the session lasts until the tab closes.
 let memory: string | null = null;
-// Set once any localStorage call for the session throws (blocked storage, quota exceeded, some private modes).
-// From then on this page trusts only `memory`: otherwise a write that failed would read back the previous value
-// (a new sign-in lost) and a removal that failed would read back the old token (signing out undone).
+// Set once writing or removing the session in localStorage throws (quota exceeded, blocked storage, some private
+// modes). From then on this page trusts only `memory`: otherwise a write that failed would read back the previous
+// value (a new sign-in lost) and a removal that failed would read back the old token (signing out undone).
+// A failed read alone does not set it: the next read may work again and find the stored session.
 let storageFailed = false;
 
 function readRaw(): string | null {
@@ -72,7 +73,6 @@ function readRaw(): string | null {
   try {
     return localStorage.getItem(SESSION_KEY);
   } catch {
-    storageFailed = true;
     return memory;
   }
 }
@@ -95,6 +95,12 @@ export function saveSession(s: StoredSession): void {
     localStorage.setItem(SESSION_KEY, raw);
   } catch {
     storageFailed = true; // kept in memory for this page
+    // Do not leave the previous session (maybe another account) in storage for a reload or another tab to pick up.
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch {
+      /* nothing more to do */
+    }
   }
   notify();
 }
