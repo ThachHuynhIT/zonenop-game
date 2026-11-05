@@ -224,20 +224,25 @@ function ResetPasswordDialog({ user, onClose, onPatch }: { user: AdminUser | nul
   const [prev, setPrev] = useState<AdminUser | null>(user);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  // Set by a submit attempt: the length rule is shown then, not on every keystroke (an alert while typing would be
+  // announced by screen readers before the admin has finished).
+  const [tried, setTried] = useState(false);
   // Every open and every close starts from an empty field: a typed password never lingers in state.
   if (user !== prev) {
     setPrev(user);
     setPassword("");
+    setTried(false);
     if (user) setShown(user);
   }
   // The account keeps its role, so its own minimum applies (be_game checks the same).
   const role = shown?.role ?? "user";
   const problem = password === "" ? null : passwordProblem(password, role);
-  const ready = password !== "" && problem === null;
+  const ready = password !== "";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!shown || !ready || busy) return;
+    if (problem) return setTried(true);
     setBusy(true);
     const ok = await onPatch(shown, { password });
     setBusy(false);
@@ -253,7 +258,7 @@ function ResetPasswordDialog({ user, onClose, onPatch }: { user: AdminUser | nul
     >
       <form onSubmit={submit} className="space-y-4">
         <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} autoComplete="off" autoFocus hint={`${passwordHint(role)} Nhớ gửi mật khẩu này cho người dùng.`} />
-        {problem && (
+        {tried && problem && (
           <p role="alert" className="text-sm text-rose-300">
             {problem}
           </p>
