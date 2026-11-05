@@ -10,6 +10,13 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Password rules: 8–72, admin 12–72
+
+- **Date:** 2026-11-06 (branch `fix/password-policy-8-12`, from `origin/develop`; T10 part 1 of the be_game/zonenop-game hardening plan, decision D1-b).
+- `src/components/auth/password.ts` mirrors be_game `validatePassword` (be_game PR #28): new passwords need 8–72 characters, 12–72 for an admin account, counted as NFC code points (the old client counted without NFC and allowed 1). `passwordProblem(p, role)` and `passwordHint(role)` take the role; register uses the user rule, "Đổi mật khẩu" the signed-in role, the admin "Đặt lại mật khẩu" dialog the target account's role. Login checks no length, so short old passwords still sign in.
+- The submit buttons of register / change password now wait only for non-empty fields, so a too-short password gets a message on submit instead of a silently disabled button; the reset dialog shows the problem for short passwords too (it used to show only "too long").
+- Order: the client is only stricter than an older backend, so it is safe before be_game #28 is deployed; until then the server still accepts shorter passwords from other clients.
+
 ## Cờ Tỷ Phú table effects
 
 - **Date:** 2026-10-29 (branch `claude/dautri-millionaire-flags-ui-664700`, cut from `origin/develop`). No game protocol change; the per-account prefs (below) need be_game's new `/api/auth/prefs` endpoint (older backends answer 404 and the prefs stay on the device).

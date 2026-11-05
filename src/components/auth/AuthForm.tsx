@@ -8,7 +8,7 @@ import { ProfilePicker } from "@/components/games/PlayerAvatar";
 import styles from "./AuthForm.module.scss";
 import { AuthField } from "./fields";
 import { safeNext } from "./next";
-import { PASSWORD_MIN, passwordLength, passwordProblem } from "./password";
+import { passwordHint, passwordProblem } from "./password";
 import { authRequest, saveSession, signOutMessage, takeSignOutReason, useSession, type PublicUser } from "./session";
 
 type AuthData = { session: string; user: PublicUser };
@@ -102,7 +102,8 @@ function RegisterTab() {
   const [look, setLook] = useState<PlayerProfile>(DEFAULT_PROFILE);
   const [local, setLocal] = useState<string | null>(null);
   const { busy, error, run } = useSubmit();
-  const ready = username.trim().length >= 3 && passwordLength(password) >= PASSWORD_MIN && again !== "";
+  // Not gated on the minimum length: the submit explains what is missing (a disabled button would not).
+  const ready = username.trim().length >= 3 && password !== "" && again !== "";
   const message = local ?? error;
   return (
     <form
@@ -124,7 +125,7 @@ function RegisterTab() {
       }}
     >
       <AuthField label="Tên đăng nhập" value={username} onChange={setUsername} autoComplete="username" maxLength={20} hint="3–20 ký tự: chữ, số, dấu _, dấu chấm và dấu cách đơn. Cũng là tên hiện ở bàn chơi." />
-      <AuthField label="Mật khẩu" value={password} onChange={setPassword} type="password" autoComplete="new-password" hint="Tối đa 72 ký tự." />
+      <AuthField label="Mật khẩu" value={password} onChange={setPassword} type="password" autoComplete="new-password" hint={passwordHint()} />
       <AuthField label="Nhập lại mật khẩu" value={again} onChange={setAgain} type="password" autoComplete="new-password" />
       <ProfilePicker name={username.trim()} value={look} onChange={setLook} />
       {message && (

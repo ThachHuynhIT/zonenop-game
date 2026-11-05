@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { KeyRound, Lock, LockOpen, Search, Shield, ShieldOff } from "lucide-react";
 import { GameBadge, GameButton, GameDialog, gameToast } from "@/components/game-ui";
 import { AuthField } from "@/components/auth/fields";
-import { PASSWORD_MAX, passwordLength, passwordProblem } from "@/components/auth/password";
+import { passwordHint, passwordProblem } from "@/components/auth/password";
 import { authRequest } from "@/components/auth/session";
 import { cn } from "@/lib/utils";
 import { Forbidden } from "./Forbidden";
@@ -230,7 +230,9 @@ function ResetPasswordDialog({ user, onClose, onPatch }: { user: AdminUser | nul
     setPassword("");
     if (user) setShown(user);
   }
-  const problem = password === "" ? null : passwordProblem(password);
+  // The account keeps its role, so its own minimum applies (be_game checks the same).
+  const role = shown?.role ?? "user";
+  const problem = password === "" ? null : passwordProblem(password, role);
   const ready = password !== "" && problem === null;
 
   async function submit(e: React.FormEvent) {
@@ -250,8 +252,8 @@ function ResetPasswordDialog({ user, onClose, onPatch }: { user: AdminUser | nul
       description={shown ? `Mật khẩu mới cho ${shown.username}. Mọi phiên đăng nhập cũ của tài khoản này sẽ bị đăng xuất.` : undefined}
     >
       <form onSubmit={submit} className="space-y-4">
-        <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} autoComplete="off" autoFocus hint="Tối đa 72 ký tự. Nhớ gửi mật khẩu này cho người dùng." />
-        {problem && passwordLength(password) > PASSWORD_MAX && (
+        <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} autoComplete="off" autoFocus hint={`${passwordHint(role)} Nhớ gửi mật khẩu này cho người dùng.`} />
+        {problem && (
           <p role="alert" className="text-sm text-rose-300">
             {problem}
           </p>

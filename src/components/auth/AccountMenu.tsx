@@ -7,7 +7,7 @@ import { GameButton, GameDialog, GameTabs, gameToast } from "@/components/game-u
 import { ProfilePicker } from "@/components/games/PlayerAvatar";
 import type { PlayerProfile } from "@/components/games/gameClient";
 import { AuthField } from "./fields";
-import { PASSWORD_MIN, passwordLength, passwordProblem } from "./password";
+import { type PasswordRole, passwordHint, passwordProblem } from "./password";
 import { usernameProblem } from "./username";
 import { authRequest, clearSession, saveSession, updateProfile, useSession, type PublicUser } from "./session";
 
@@ -55,7 +55,7 @@ export function AccountMenu({ onClose }: { onClose: () => void }) {
       <GameTabs
         tabs={[
           { id: "profile", label: "Hồ sơ", content: <ProfileSection user={user} /> },
-          { id: "password", label: "Mật khẩu", content: <PasswordSection /> },
+          { id: "password", label: "Mật khẩu", content: <PasswordSection role={user.role} /> },
         ]}
       />
     </GameDialog>
@@ -109,18 +109,19 @@ function ProfileSection({ user }: { user: PublicUser }) {
   );
 }
 
-function PasswordSection() {
+/** `role` is the signed-in account's: an admin's new password needs the admin minimum (server rule). */
+function PasswordSection({ role }: { role: PasswordRole }) {
   const [oldPassword, setOld] = useState("");
   const [password, setPassword] = useState("");
   const [again, setAgain] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const ready = oldPassword !== "" && passwordLength(password) >= PASSWORD_MIN && again !== "";
+  const ready = oldPassword !== "" && password !== "" && again !== "";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!ready || busy) return;
-    const problem = passwordProblem(password);
+    const problem = passwordProblem(password, role);
     if (problem) return setMessage({ ok: false, text: problem });
     if (password !== again) return setMessage({ ok: false, text: "Hai mật khẩu mới chưa giống nhau" });
     setBusy(true);
@@ -139,7 +140,7 @@ function PasswordSection() {
   return (
     <form onSubmit={submit} className="space-y-3" aria-label="Đổi mật khẩu">
       <AuthField label="Mật khẩu hiện tại" value={oldPassword} onChange={setOld} type="password" autoComplete="current-password" />
-      <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} type="password" autoComplete="new-password" hint="Tối đa 72 ký tự." />
+      <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} type="password" autoComplete="new-password" hint={passwordHint(role)} />
       <AuthField label="Nhập lại mật khẩu mới" value={again} onChange={setAgain} type="password" autoComplete="new-password" />
       <Feedback message={message} />
       <GameButton type="submit" variant="secondary" loading={busy} disabled={!ready}>
