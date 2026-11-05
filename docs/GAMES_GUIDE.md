@@ -1441,7 +1441,7 @@ Từ 17/10/2026 (production) phải đăng nhập mới chơi được. Backend 
 - `PageTracker.tsx` (gắn trong layout) gửi `POST /api/track` `{ path, device }` (kèm Bearer nếu có) mỗi lần đổi trang; be_game trả 204 và giới hạn 60 lần/phút/IP.
 
 ### 10.5. Trang quản trị `/admin`
-- Chỉ `role: "admin"` vào được (người khác thấy `Forbidden`). Tab **Thống kê** (`GET /api/admin/stats?days=7|30|90`): thẻ tổng, hai biểu đồ theo ngày, bảng theo game, trang xem nhiều, người chơi nhiều nhất. Tab **Người dùng** (`GET /api/admin/users?q=&page=`): tìm, phân trang 50, đổi quyền, khoá / mở khoá, đặt lại mật khẩu (`PATCH /api/admin/users/<id>`). Không tự hạ quyền hay tự khoá mình.
+- Chỉ `role: "admin"` vào được (người khác thấy `Forbidden`). Tab **Thống kê** (`GET /api/admin/stats?days=7|30|90`): thẻ tổng, hai biểu đồ theo ngày, bảng theo game, trang xem nhiều, người chơi nhiều nhất. Tab **Người dùng** (`GET /api/admin/users?q=&page=`): tìm, phân trang 50, đổi quyền, khoá / mở khoá, đặt lại mật khẩu (`PATCH /api/admin/users/<id>`). "Cấp quyền" mở hộp mật khẩu (chế độ `promote` của `ResetPasswordDialog`) và gửi `{ role: "admin", password }` trong một request: be_game bắt buộc mật khẩu mới 12–72 ký tự khi nâng lên admin (hash không cho biết mật khẩu cũ đủ dài chưa), và mọi phiên cũ của tài khoản đó bị đăng xuất. "Bỏ quyền" vẫn hỏi xác nhận rồi gửi `{ role: "user" }`. Không tự hạ quyền hay tự khoá mình.
 - Admin đầu tiên: đặt `ADMIN_USERNAMES=boss` (danh sách phân tách bằng dấu phẩy) bên be_game rồi đăng ký username đó; xem README của be_game.
 
 ### 10.6. Chạy thử cục bộ không cần Docker
