@@ -10,6 +10,13 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Session lifecycle tests, and two storage bugs
+
+- **Date:** 2026-11-06 (branch `test/session-lifecycle`, from `origin/develop`; T10 part 2 of the be_game/zonenop-game hardening plan, decision D3-a: keep the token in localStorage, sent as Bearer).
+- `src/components/auth/sessionLifecycle.test.ts` (21 tests, each on a freshly loaded `session.ts`): blocked storage, reload, several tabs (storage events, `clear()` in another tab), a late 401 / `refreshMe` / profile answer after signing in again or out (the 401 test checks the request really carried the old token), password change, a 401 (expiry after 30 days, revocation) signs out with a notice, 403/429/500/503 and network failures keep the session.
+- Two bugs found and fixed in `session.ts`: when only `setItem` threw (quota, some private modes) the session read back as the previous value, so a fresh sign-in was lost at once; when `removeItem` threw, signing out read the old token back. Now the first failing storage call makes the page use only its in-memory copy until it closes (`storageFailed`). Limit: with removal failing, a reload still finds the old token in storage (nothing in the page can clear it).
+- The 30-day expiry itself is checked by be_game (`readSession`); its boundary test is in be_game.
+
 ## Cờ Tỷ Phú table effects
 
 - **Date:** 2026-10-29 (branch `claude/dautri-millionaire-flags-ui-664700`, cut from `origin/develop`). No game protocol change; the per-account prefs (below) need be_game's new `/api/auth/prefs` endpoint (older backends answer 404 and the prefs stay on the device).
