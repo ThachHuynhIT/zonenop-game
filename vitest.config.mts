@@ -6,7 +6,8 @@ const root = import.meta.dirname;
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // scripts/: tooling tests (e.g. the deploy configuration check), plain ESM.
+    include: ["src/**/*.test.ts", "scripts/**/*.test.mjs"],
   },
   resolve: {
     alias: {
