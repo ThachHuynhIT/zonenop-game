@@ -1417,7 +1417,7 @@ Từ 17/10/2026 (production) phải đăng nhập mới chơi được. Backend 
 - `join` / `watch` qua WebSocket gửi thêm `session` và `device` (id máy ngẫu nhiên, `device.ts`). Ack `"Cần đăng nhập"` thì `gameClient.ts` xoá phiên và người chơi bị đưa về `/dang-nhap`.
 - Tên hiển thị = username (tối đa 20 ký tự Unicode; `MAX_NAME_LENGTH` trong `src/lib/tienlen/protocol.ts` khớp be_game). Icon và màu lấy từ tài khoản, chọn lúc đăng ký và đổi ở menu tài khoản (`AccountMenu.tsx`).
 - Menu tài khoản (bấm tên/avatar ở thanh trên, `AccountMenu.tsx`) có hai tab. **Hồ sơ**: đổi tên đăng nhập, biểu tượng và màu bằng một nút "Lưu" chỉ gửi trường đã đổi (`PATCH /api/auth/me { username?, icon?, color? }` → `{ ok, user }`, `updateProfile` trong `session.ts`). Tên kiểm tra phía client như lúc đăng ký (`username.ts`: 3–20 ký tự Unicode, chữ/số/`_`/`.`/dấu cách đơn); lỗi máy chủ hiện ngay dưới form (400 tên không hợp lệ hoặc "Tên này đã được giữ", 409 "Tên đăng nhập đã có người dùng"). Tên mới chỉ áp dụng từ bàn tiếp theo (`join` kế tiếp), nên đổi sau khi ván kết thúc. **Mật khẩu**: mật khẩu hiện tại, mật khẩu mới, nhập lại; thành công thì lưu phiên mới do máy chủ trả.
-- Mật khẩu dài 1–72 ký tự Unicode (`password.ts`, `PASSWORD_MIN = 1`; trước đây 8–72) ở đăng ký, đổi mật khẩu và hộp "Đặt lại mật khẩu" của quản trị. Đăng nhập không kiểm tra độ dài.
+- Mật khẩu mới: tài khoản thường 8–72 ký tự, tài khoản admin 12–72 (`password.ts`: `PASSWORD_MIN`, `ADMIN_PASSWORD_MIN`, `PASSWORD_MAX`; đếm code point sau NFC, giống `validatePassword` của be_game theo quyết định D1-b). Áp dụng ở đăng ký (mức thường), đổi mật khẩu (theo vai trò của chính mình) và hộp "Đặt lại mật khẩu" của quản trị (theo vai trò của tài khoản được đặt lại). Đăng nhập không kiểm tra độ dài, nên mật khẩu cũ ngắn hơn vẫn đăng nhập được cho tới khi đổi. Nút gửi chỉ chờ ô không rỗng; bấm gửi thì form nói rõ thiếu gì.
 
 ### Một phiên và ghế theo tài khoản (2026-10-23)
 
@@ -1441,7 +1441,7 @@ Từ 17/10/2026 (production) phải đăng nhập mới chơi được. Backend 
 - `PageTracker.tsx` (gắn trong layout) gửi `POST /api/track` `{ path, device }` (kèm Bearer nếu có) mỗi lần đổi trang; be_game trả 204 và giới hạn 60 lần/phút/IP.
 
 ### 10.5. Trang quản trị `/admin`
-- Chỉ `role: "admin"` vào được (người khác thấy `Forbidden`). Tab **Thống kê** (`GET /api/admin/stats?days=7|30|90`): thẻ tổng, hai biểu đồ theo ngày, bảng theo game, trang xem nhiều, người chơi nhiều nhất. Tab **Người dùng** (`GET /api/admin/users?q=&page=`): tìm, phân trang 50, đổi quyền, khoá / mở khoá, đặt lại mật khẩu (`PATCH /api/admin/users/<id>`). Không tự hạ quyền hay tự khoá mình.
+- Chỉ `role: "admin"` vào được (người khác thấy `Forbidden`). Tab **Thống kê** (`GET /api/admin/stats?days=7|30|90`): thẻ tổng, hai biểu đồ theo ngày, bảng theo game, trang xem nhiều, người chơi nhiều nhất. Tab **Người dùng** (`GET /api/admin/users?q=&page=`): tìm, phân trang 50, đổi quyền, khoá / mở khoá, đặt lại mật khẩu (`PATCH /api/admin/users/<id>`). "Cấp quyền" mở hộp mật khẩu (chế độ `promote` của `ResetPasswordDialog`) và gửi `{ role: "admin", password }` trong một request: be_game bắt buộc mật khẩu mới 12–72 ký tự khi nâng lên admin (hash không cho biết mật khẩu cũ đủ dài chưa), và mọi phiên cũ của tài khoản đó bị đăng xuất. "Bỏ quyền" vẫn hỏi xác nhận rồi gửi `{ role: "user" }`. Không tự hạ quyền hay tự khoá mình.
 - Admin đầu tiên: đặt `ADMIN_USERNAMES=boss` (danh sách phân tách bằng dấu phẩy) bên be_game rồi đăng ký username đó; xem README của be_game.
 
 ### 10.6. Chạy thử cục bộ không cần Docker

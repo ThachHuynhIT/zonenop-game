@@ -10,6 +10,14 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Password rules: 8–72, admin 12–72
+
+- **Date:** 2026-11-06 (branch `fix/password-policy-8-12`, from `origin/develop`; T10 part 1 of the be_game/zonenop-game hardening plan, decision D1-b).
+- `src/components/auth/password.ts` mirrors be_game `validatePassword` (be_game PR #28): new passwords need 8–72 characters, 12–72 for an admin account, counted as NFC code points (the old client counted without NFC and allowed 1). `passwordProblem(p, role)` and `passwordHint(role)` take the role; register uses the user rule, "Đổi mật khẩu" the signed-in role, the admin "Đặt lại mật khẩu" dialog the target account's role. Login checks no length, so short old passwords still sign in.
+- The submit buttons of register / change password now wait only for non-empty fields, so a too-short password gets a message on submit instead of a silently disabled button; the admin reset dialog works the same way: its button waits for a non-empty field and the length rule appears after a submit attempt (not on every keystroke, where a `role="alert"` would be read out while typing); it used to show only "too long".
+- Granting admin in `/admin` now opens the password dialog in a "promote" mode and sends `{ role: "admin", password }` (admin minimum, 12): be_game #28 refuses a promotion without a new password (`ADMIN_NEEDS_PASSWORD`), since the stored hash cannot tell whether the old one is long enough. Removing admin still asks for confirmation and sends `{ role: "user" }`. With an older backend the password is simply set along with the role.
+- Order: be_game #28 has been live since 2026-11-06, so production already refuses short new passwords and a promotion without a password; until this reaches `main`, the "Cấp quyền" button of `/admin` gets that 400. The client is never looser than the server, so releasing it is safe at any time.
+
 ## Session lifecycle tests, and two storage bugs
 
 - **Date:** 2026-11-06 (branch `test/session-lifecycle`, from `origin/develop`; T10 part 2 of the be_game/zonenop-game hardening plan, decision D3-a: keep the token in localStorage, sent as Bearer).
