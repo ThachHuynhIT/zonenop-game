@@ -4,7 +4,8 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { GameButton } from "@/components/game-ui/GameButton";
 import { GameDialog } from "@/components/game-ui/GameDialog";
-import { type ActionsPlacement, type TyPhuPrefs, type ViewMode } from "./prefs";
+import { type ActionsPlacement, type FxPrefs, type TyPhuPrefs, type ViewMode } from "./prefs";
+import styles from "./TableOptions.module.scss";
 
 interface Choice<T extends string> {
   value: T;
@@ -52,19 +53,66 @@ function RadioGroup<T extends string>({ label, choices, value, onPick }: { label
   );
 }
 
-/** The small ⚙ in the table header: this viewer's display options (saved on this device only). */
-export function TableOptions({ prefs, onChange }: { prefs: TyPhuPrefs; onChange: (next: TyPhuPrefs) => void }) {
+const EFFECTS: { key: keyof FxPrefs; label: string; hint: string }[] = [
+  { key: "money", label: "Tiền bay", hint: "Đồng xu bay giữa người chơi, số tiền +/− nổi lên." },
+  { key: "turn", label: "Báo lượt", hint: "Dải chữ ngang màn hình khi đổi lượt." },
+  { key: "flag", label: "Cắm cờ & rung ô", hint: "Cờ cắm xuống ô vừa mua, ô rung nhẹ." },
+  { key: "end", label: "Phá sản & chiến thắng", hint: "Hiệu ứng PHÁ SẢN!, kèn, cờ và pháo hoa khi thắng." },
+];
+
+/** One on/off switch per table effect. */
+function EffectSwitches({ fx, onChange }: { fx: FxPrefs; onChange: (next: FxPrefs) => void }) {
+  return (
+    <div className={styles.group} role="group" aria-labelledby="typhu-fx-label">
+      <p id="typhu-fx-label" className={styles.legend}>
+        Hiệu ứng
+      </p>
+      {EFFECTS.map((e) => {
+        const on = fx[e.key];
+        const hintId = `typhu-fx-${e.key}`;
+        return (
+          <button
+            key={e.key}
+            type="button"
+            role="switch"
+            aria-checked={on}
+            aria-label={e.label}
+            aria-describedby={hintId}
+            onClick={() => onChange({ ...fx, [e.key]: !on })}
+            className={styles.row}
+          >
+            <span className={styles.text}>
+              <span className={styles.label}>{e.label}</span>
+              <span id={hintId} className={styles.hint}>
+                {e.hint}
+              </span>
+            </span>
+            <span aria-hidden className={cn(styles.track, on && styles.on)}>
+              <span className={styles.thumb} />
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * The small ⚙ in the table header: this viewer's options (saved on this device and, signed in, on the account). Effects on every screen;
+ * the layout choices (Giao diện, Vị trí nút) only matter on a phone held upright, so only show there.
+ */
+export function TableOptions({ prefs, onChange, phonePortrait }: { prefs: TyPhuPrefs; onChange: (next: TyPhuPrefs) => void; phonePortrait: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <GameButton variant="ghost" size="sm" aria-label="Tuỳ chọn hiển thị" onClick={() => setOpen(true)} className="size-9 px-0 text-base">
+      <GameButton variant="ghost" size="sm" aria-label="Tuỳ chọn hiển thị và hiệu ứng" onClick={() => setOpen(true)} className="size-9 px-0 text-base">
         ⚙
       </GameButton>
       <GameDialog
         open={open}
         onOpenChange={setOpen}
         title="Tuỳ chọn hiển thị"
-        description="Chỉ áp dụng cho bạn, trên máy này."
+        description="Chỉ áp dụng cho bạn, lưu theo tài khoản (dùng được trên mọi máy)."
         footer={
           <GameButton size="sm" onClick={() => setOpen(false)}>
             Xong
@@ -72,8 +120,13 @@ export function TableOptions({ prefs, onChange }: { prefs: TyPhuPrefs; onChange:
         }
       >
         <div className="flex flex-col gap-4">
-          <RadioGroup label="Giao diện" choices={VIEWS} value={prefs.view} onPick={(view) => onChange({ ...prefs, view })} />
-          <RadioGroup label="Vị trí nút" choices={PLACEMENTS} value={prefs.actions} onPick={(actions) => onChange({ ...prefs, actions })} />
+          {phonePortrait && (
+            <>
+              <RadioGroup label="Giao diện" choices={VIEWS} value={prefs.view} onPick={(view) => onChange({ ...prefs, view })} />
+              <RadioGroup label="Vị trí nút" choices={PLACEMENTS} value={prefs.actions} onPick={(actions) => onChange({ ...prefs, actions })} />
+            </>
+          )}
+          <EffectSwitches fx={prefs.fx} onChange={(fx) => onChange({ ...prefs, fx })} />
         </div>
       </GameDialog>
     </>

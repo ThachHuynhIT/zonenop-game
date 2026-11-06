@@ -86,6 +86,14 @@ $focus-ring-width: var(--focus-ring-width);
 $focus-ring-offset: var(--focus-ring-offset);
 $focus-ring-color: var(--focus-ring-color);
 
+// Tailwind palette colours (owned by Tailwind's `@theme`, emitted as `--color-*`) that game SCSS Modules need,
+// e.g. the Cờ Tỷ Phú auction panel, which sits on the same emerald board as the Tailwind-styled table.
+$color-white: var(--color-white);
+$color-emerald-700: var(--color-emerald-700);
+$color-emerald-900: var(--color-emerald-900);
+$color-amber-700: var(--color-amber-700);
+$color-rose-700: var(--color-rose-700);
+
 $syntax-keyword: var(--syntax-keyword);
 $syntax-number: var(--syntax-number);
 $syntax-string: var(--syntax-string);
@@ -94,3 +102,6 @@ $syntax-title: var(--syntax-title);
 $syntax-deletion: var(--syntax-deletion);
 
 $marker-current: var(--marker-current);
+
+// Game shell accent (globals.css `--game-accent`, set per game by GameThemeScope).
+$game-accent: var(--game-accent);

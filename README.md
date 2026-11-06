@@ -42,6 +42,7 @@ Create a table, share the invite link, and play Tiến Lên, Mèo Nổ, Cờ T�
 | 🤠 | **Đấu Súng** (Bang!-style) | 3–8 | Secret roles, 63 characters, 7 expansions | `/bang` |
 | 🐴 | **Cờ Cá Ngựa** (Vietnamese ludo) | 2–4 | Dice, kicking opponents home, 6-step stable climb | `/co-ca-ngua` |
 | 🪨 | **Ô Ăn Quan** | 2–4 | Traditional sowing game, quan non, 5- or 10-stone quan | `/o-an-quan` |
+| 🔤 | **Nối Chữ** | 2–8 | Vietnamese word chain: two-syllable words, last syllable continues the next word, out when the clock runs out | `/noi-chu` |
 | 🔫 | **Contra** | 1 | 8-bit side-scrolling shooter on `<canvas>`, fully offline | `/contra` |
 
 Every online table lives at `/<game>/<ROOM>`; add `?watch=1` to join as a spectator.
@@ -107,7 +108,7 @@ src/
 │   ├── api/health/route.ts       # { ok, commit } for deploy checks
 │   ├── ui-kit/                   # Dev-only gallery of components/game-ui (404 in production)
 │   ├── globals.css               # Theme tokens + shared game-shell CSS
-│   ├── <game>/                   # tien-len, meo-no, co-ty-phu, splendor, bang, o-an-quan, co-ca-ngua
+│   ├── <game>/                   # tien-len, meo-no, co-ty-phu, splendor, bang, o-an-quan, co-ca-ngua, noi-chu
 │   │   ├── layout.tsx            #   metadata + per-game backdrop + <GamesShell>
 │   │   ├── page.tsx              #   lobby (<GameLobby>)
 │   │   └── [room]/page.tsx       #   table
@@ -186,6 +187,7 @@ docker compose -f compose.selfhost.yml up -d --build
 
 Every push to `main` that passes CI is deployed by `.github/workflows/deploy.yml`: the runner joins the Tailscale tailnet (OIDC, no stored key), uploads the tested commit over SSH, rebuilds with Compose and checks health. It needs the `self-hosted` GitHub environment (`TS_OAUTH_CLIENT_ID`, `TS_AUDIENCE`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`, and its **own** `DEPLOY_PATH`) and is skipped until those exist.
 
+- Before anything reaches a shell or the SSH config, the "Validate configuration" step (`scripts/check-deploy-env.mjs`) checks `DEPLOY_HOST` (hostname or IP), `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_PATH` (letters, digits, `. _ - /` only), the commit hash and `WEB_DOMAIN` (bare hostname); a bad value fails the run and names the variable, never its value. Secrets and variables reach `run:` scripts only through `env:`, never as `${{ }}` in the script (a test in `scripts/check-deploy-env.test.mjs` enforces it for every workflow).
 - `DEPLOY_PATH` must be an absolute path under the deploy user's `$HOME` (the script refuses anything else). Set path secrets from Git Bash with `MSYS_NO_PATHCONV=1`, or `/home/...` is rewritten into `C:/Program Files/Git/home/...`.
 - The image is built in this app's own BuildKit builder (`zonenop-game`, driver `docker-container`), never the host's shared `default` one. After each deploy its cache is pruned to 2 GB and the builder is stopped; never prune anything without `--builder zonenop-game`.
 - A full build takes about 10 minutes on the phone; the variable `WEB_DOMAIN` of the `self-hosted` environment enables the public health check.

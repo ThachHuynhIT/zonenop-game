@@ -4,7 +4,7 @@ Tài liệu này dành cho người (hoặc AI) cần **sửa giao diện một 
 
 **Luật chơi, state và protocol của từng game không được viết lại ở đây.** Nguồn sự thật là backend be_game:
 - Tổng quan backend: `be_game/docs/GUIDE.md`
-- Từng game: `be_game/docs/games/<id>.md`, với `<id>` là `tienlen`, `meono`, `typhu`, `splendor`, `bang`, `cangua`, `oanquan`
+- Từng game: `be_game/docs/games/<id>.md`, với `<id>` là `tienlen`, `meono`, `typhu`, `splendor`, `bang`, `cangua`, `oanquan`, `noichu`
 
 Đường dẫn trong tài liệu tính từ gốc repo này. Số dòng chỉ để tham khảo vì code thay đổi, nên hãy tìm theo tên.
 
@@ -38,6 +38,7 @@ Tài liệu này dành cho người (hoặc AI) cần **sửa giao diện một 
 | `bang` | Đấu Súng (Bang!) | `/bang` → `/bang/[room]` | `src/components/bang/` | `src/lib/bang/` | `/api/bang/ws` | 8 |
 | `oanquan` | Ô Ăn Quan | `/o-an-quan` → `/o-an-quan/[room]` | `src/components/oanquan/` | `src/lib/oanquan/` | `/api/oanquan/ws` | 2–4 |
 | `cangua` | Cờ Cá Ngựa | `/co-ca-ngua` → `/co-ca-ngua/[room]` | `src/components/cangua/` | `src/lib/cangua/` | `/api/cangua/ws` | 4 |
+| `noichu` | Nối Chữ | `/noi-chu` → `/noi-chu/[room]` | `src/components/noichu/` | `src/lib/noichu/` | `/api/noichu/ws` | 2–8 |
 
 Một số đường dẫn khác:
 - **`/`** là trang hub. Nội dung các thẻ game (tagline, số người) được viết cứng trong `src/app/page.tsx`. Trang này có cả thẻ `/contra`.
@@ -161,7 +162,7 @@ Cấu hình preview nằm trong `D:\WorkSpace\.claude\launch.json` (ở thư m�
 
 ```ts
 interface OnlineGame {
-  id: "tienlen" | "meono" | "typhu" | "splendor" | "bang" | "cangua" | "oanquan";
+  id: "tienlen" | "meono" | "typhu" | "splendor" | "bang" | "cangua" | "oanquan" | "noichu";
   title: string;      // tên đầy đủ (title của tab)
   short: string;      // nhãn ngắn cho tab và dòng bàn
   emoji: string;
@@ -686,7 +687,7 @@ Luật và protocol: `be_game/docs/games/typhu.md`.
 ```
 typhu/
   TyPhuTable.tsx      TyPhuTable (default), Table, TableBody
-  TableOptions.tsx    ⚙ trên thanh trên (chỉ điện thoại dọc): giao diện đầy đủ / tối giản, vị trí nút hành động
+  TableOptions.tsx    ⚙ trên thanh trên (mọi màn hình): bật/tắt hiệu ứng; điện thoại dọc thêm giao diện đầy đủ / tối giản, vị trí nút hành động
   prefs.ts            parsePrefs, useTyPhuPrefs, usePhonePortrait, PREFS_KEY  (+ prefs.test.ts)
   board-ref.ts        boardRef, groupPositions
   now.tsx             NowProvider, NowContext, useSecondsLeft, NowClock, useNow, formatClock
@@ -699,7 +700,9 @@ typhu/
   tokens.ts           seatTokens: quân trên bàn = biểu tượng + màu hồ sơ của người chơi, không trùng màu (có test)
   players/            PlayerRow.tsx, PlayerStrip.tsx
   waiting/            Waiting.tsx, TableSettings.tsx
-  fx/                 Overlays.tsx (BankruptOverlay, BuildOverlay, CardOverlay)
+  fx/                 Overlays.tsx (BankruptOverlay, BuildOverlay, CardOverlay), MoneyFx.tsx + moneyFlows.ts (+ test),
+                      TurnBanner.tsx, DropFx.tsx (cờ / nhà rơi xuống ô), VictoryFx.tsx (kèn, cờ, pháo hoa của người thắng),
+                      turnGlow.module.scss
 ```
 
 | Component / hàm | Vai trò |
@@ -714,6 +717,7 @@ typhu/
 | `Die`, `PIPS` (`centre/Dice.tsx`) | Xúc xắc |
 | **`Centre`** (`centre/Centre.tsx`) | Giữa bàn: tiêu đề, xúc xắc, `LoanCard` / `TradeCard`, nút 🤝 / 🏦 (chỉ máy tính và `short:`; điện thoại dọc có hai nút này ở hàng nút nhanh dưới bàn), gợi ý khi ở tù hoặc phá sản, huy hiệu "Tự động chơi". Chứa **phím tắt** (`useHotkeys`) và phím ẩn Ctrl+Shift+Y. Nó mở `BuildPanel` (qua `showBuild`) và vẽ `ActionBar placement="center"` khi viewer không chọn thanh dưới. |
 | **`ActionBar`** (`centre/ActionBar.tsx`) | Dòng lượt (huy hiệu "Lượt của bạn" hoặc "Lượt của X" + `Countdown`; tới lượt mình ở giữa bàn (`onBorder`) thì chính đường viền là đồng hồ: huy hiệu "Lượt của bạn" ở góc trên trái, số giây ở góc trên phải, và `BorderTimer` (`centre/BorderTimer.tsx`) vẽ một đường dọc viền ngắn dần theo thời gian còn lại, đỏ khi còn ≤ 1/4, bên cạnh đèn chạy `game-beam`; lượt người khác và thanh dưới giữ `Countdown` tròn như cũ) và các nút của mình theo phase (`CBtn`): Tung / Nộp ra tù / Mua + Bỏ qua / Kết thúc lượt, Xây nhà, Thế chấp / Bán, `DebtControls` khi nợ. Một component, hai chỗ đặt: `placement="center"` (trong `Centre`, khung kính giữa bàn) hoặc `placement="bottom"` (thanh `fixed inset-x-0 bottom-0 z-30` do `TableBody` vẽ, báo chiều cao qua `onHeight` để trang chừa chỗ đáy; `pr-24` chừa góc phải cho nút chat / emoji `z-40` nổi trên thanh). Cùng nút, cùng điều kiện ở cả hai chỗ. Trên thanh dưới nút Mua chỉ có giá (tên ô nằm ở dòng lượt), không có `BuyHint`. |
+| **`AuctionPanel`** (`centre/AuctionPanel.tsx` + `.module.scss`, SCSS Module) | Luật Đấu giá (phase `auction`, `g.auction`): bảng giữa bàn gồm tên ô, giá hiện tại, người dẫn đầu, đồng hồ trên viền (`BorderTimer`, 15 s) và các nút "Khởi điểm" (chỉ khi chưa ai trả) + `+10/+20/+50/+100/+200/+500tr` (gửi `{type:"bid", amount: giá hiện tại + mức tăng}`; mờ khi vượt tiền mặt). **Ai còn trong ván cũng bid được**, không cần tới lượt. Khởi điểm 80% giá đất; người vừa bỏ qua lượt mua (`auction.floorFor`) chỉ được trả từ `auction.floor` (giá đất): nút đầu đổi thành "Giá đất", các mức tăng dưới mức đó bị bỏ. Nút "Bỏ cuộc" (phím `Q`, `{type:"fold"}`) ở cuối; danh sách `auction.folded` hiện ngay dưới người dẫn đầu; ai đã bỏ cuộc thấy "Bạn đã bỏ cuộc". Bảng là size container (`@container auction`): hẹp ≤ 18rem (centre trên điện thoại) thì nút nhỏ lại và ẩn dòng "Giá đất". Mở phiên thì `TyPhuTable` bật toast một lần (khoá theo ô đang đấu giá). Logic nút / phím nằm ở `centre/auction.ts` (`bidChoices`, `bidForKey`, `bidBlocker`, `myMin`, `canFold`, có test) để nút và `useHotkeys` dùng chung một điều kiện. Trong phiên `ActionBar` không vẽ lượt / clock (chỉ một dòng "Đang đấu giá" ở thanh dưới), nút Đổi đất / Vay ẩn, `mortgageBlocker` chặn thế chấp. `clock.ts` (`localizeTPView`) dịch **cả** `deadline` và `auction.deadline` sang đồng hồ máy. Server cũ không gửi `auction` thì không có gì xảy ra; công tắc "Đấu giá" bị khoá. |
 | `BuyHint` | Dòng dưới nút Mua (chỉ ở giữa bàn): tiền thuê, số ô cùng nhóm mình đã có |
 | **`BuildPanel`** (`panels/BuildPanel.tsx`) | `Modal dark`: mọi nhóm màu và ô xây được, nút "+ Nhà n / Khách sạn", mục "Còn thiếu để xây". Dùng `buildableGroups` và `buildRuleText`. |
 | `CBtn` (`shared.tsx`) | Bọc `GameButton size="md"` (cao 44 px), biến thể `primary` / `danger` / `build`, prop `hotkey` hiện `<kbd>` (chỉ `lg:` và chuột). |
@@ -738,7 +742,7 @@ typhu/
 
 **`boardRef` (`board-ref.ts`).** Bản đồ của bàn đang xem, thay cho biến module `BOARD` cũ: `boardRef.current: Square[]`; `TableBody` gán lại ở đầu mỗi lần render, các file khác đọc `boardRef.current[i]` (và `groupPositions(group)`). Cùng hợp đồng như trước, chỉ là chia sẻ qua nhiều file. Chỉ có **một** bàn Tỷ Phú trên trang.
 
-**Vị trí nút hành động và `typhu:prefs`.** Chỉ **điện thoại dọc** (`usePhonePortrait()`), mỗi người chọn cho mình: nút ⚙ ("Tuỳ chọn hiển thị", `TableOptions`) nằm ở `primary` của `GameHeader` (không ở `extra`: `extra` gấp vào menu ⋯ và menu đóng sẽ gỡ dialog đang mở) mở một `GameDialog` với hai nhóm lựa chọn: **Giao diện** "Đầy đủ" (mặc định: tên ô trên bàn cờ và panel "Người chơi" với tiền, tổng tài sản, đất và nhà, như bản cũ) (không có hàng chip phía trên, panel không có tiêu đề) hoặc "Tối giản" (`minimal`: ẩn panel "Người chơi", hiện hàng chip `PlayerStrip` phía trên bàn; tên ô vẫn hiện); **Vị trí nút** "Nút ở giữa bàn" (mặc định) hoặc "Thanh nút dưới màn hình". Lưu ở `localStorage["typhu:prefs"]` = `{"actions":"center"|"bottom","view":"full"|"minimal"}` (chỉ trên máy này). `parsePrefs` đọc từng trường riêng, gặp JSON hỏng hoặc giá trị lạ thì dùng mặc định của trường đó (bản lưu cũ không có `view` = đầy đủ); `useTyPhuPrefs` đọc `localStorage` ngay ở lần render đầu qua `readPrefs()` (route bàn chạy `ssr: false` nên không lệch hydration, không nháy nút ở giữa rồi mới nhảy xuống thanh dưới) và bọc `try/catch` cho trình duyệt chặn storage. Máy tính và điện thoại ngang luôn để nút ở giữa bàn, dù prefs ghi `bottom`. Khi dùng thanh dưới: `Centre` không vẽ `ActionBar`, thanh `fixed` ở đáy, trang chừa `paddingBottom = barHeight + 8`.
+**Vị trí nút hành động, hiệu ứng và `typhu:prefs`.** Nút ⚙ ("Tuỳ chọn hiển thị", `TableOptions`) có trên **mọi màn hình**, nằm ở `primary` của `GameHeader` (không ở `extra`: `extra` gấp vào menu ⋯ và menu đóng sẽ gỡ dialog đang mở) và mở một `GameDialog`. Nhóm **Hiệu ứng** (mọi màn hình, 4 công tắc `role="switch"`, mặc định bật hết): `money` "Tiền bay" (`MoneyFx`), `turn` "Báo lượt" (`TurnBanner`), `flag` "Cắm cờ & rung ô" (cờ rơi xuống ô vừa mua + ô rung khi cờ chạm đất), `end` "Phá sản & chiến thắng" (`BankruptOverlay`, `VictoryFx` và pháo giấy của `Celebration`; banner kết quả vẫn hiện). Chỉ **điện thoại dọc** (`usePhonePortrait()`) có thêm hai nhóm lựa chọn bố cục: **Giao diện** "Đầy đủ" (mặc định: tên ô trên bàn cờ và panel "Người chơi" với tiền, tổng tài sản, đất và nhà, như bản cũ) (không có hàng chip phía trên, panel không có tiêu đề) hoặc "Tối giản" (`minimal`: ẩn panel "Người chơi", hiện hàng chip `PlayerStrip` phía trên bàn; tên ô vẫn hiện); **Vị trí nút** "Nút ở giữa bàn" (mặc định) hoặc "Thanh nút dưới màn hình". Lưu ở `localStorage["typhu:prefs"]` = `{"actions":"center"|"bottom","view":"full"|"minimal","fx":{"money","turn","flag","end": boolean}}` và, khi đã đăng nhập, **theo tài khoản** trên be_game: `GET /api/auth/prefs` → `{ ok, prefs: { <game>: … } }` (mọi game, 401 khi chưa đăng nhập), `PATCH /api/auth/prefs` body `{ game: "typhu", prefs }` (JSON ≤ 2000 ký tự, `MAX_PREFS_CHARS`). `useTyPhuPrefs` vẫn bắt đầu từ `localStorage` (không nháy), lúc mount gọi `GET` một lần cho tài khoản đó: có `prefs.typhu` thì áp qua `prefsFrom` (cùng kiểm tra như `parsePrefs`, `accountPrefs` lấy nó ra khỏi body) và ghi lại vào `localStorage`, trừ khi người xem đã kịp đổi gì; chưa có thì tải prefs của máy này lên một lần. Mỗi lần đổi: cập nhật state + `localStorage` ngay, rồi `PATCH` sau `SAVE_DELAY_MS` (500 ms, gộp nhiều lần bấm), chỉ một request chạy cùng lúc (giá trị mới nhất xếp hàng sau), rời bàn khi còn thay đổi chờ thì gửi ngay. Lỗi mạng, 401, hoặc backend cũ trả 404 đều im lặng, giữ giá trị trên máy. `parsePrefs` đọc từng trường riêng, gặp JSON hỏng hoặc giá trị lạ thì dùng mặc định của trường đó (bản lưu cũ không có `view` = đầy đủ, không có `fx` = bật hết; một hiệu ứng chỉ tắt khi lưu đúng `false`); `useTyPhuPrefs` đọc `localStorage` ngay ở lần render đầu qua `readPrefs()` (route bàn chạy `ssr: false` nên không lệch hydration, không nháy nút ở giữa rồi mới nhảy xuống thanh dưới) và bọc `try/catch` cho trình duyệt chặn storage. Máy tính và điện thoại ngang luôn để nút ở giữa bàn, dù prefs ghi `bottom`. Khi dùng thanh dưới: `Centre` không vẽ `ActionBar`, thanh `fixed` ở đáy, trang chừa `paddingBottom = barHeight + 8`.
 
 **Bố cục**
 - Bàn cờ là grid vuông, `gridTemplateColumns/Rows: 1.6fr repeat(side−1, 1fr) 1.6fr` với `side = boardRef.current.length / 4` (11×11, 13×13 hoặc 15×15), nằm trong `PinchZoom` (`boardEl` là grid). `Centre` chiếm `2 / side+1` và tự cuộn (`overflow-y-auto`, `justify-center-safe`).
@@ -806,7 +810,8 @@ for (let i = 0; i < n; i++) {
 - Xúc xắc xoay vào, key theo id của dòng log "🎲".
 - Nhà nảy lên khi được xây.
 - Huy hiệu chủ sở hữu thu nhỏ vào ô.
-- `CardOverlay` (3,5 giây), `BuildOverlay` (2,2 giây), `BankruptOverlay` (3,2 giây).
+- `CardOverlay` (3,5 giây), `BuildOverlay` (2,2 giây), `BankruptOverlay` (3,2 giây). Lần phá sản kết thúc ván vẫn hiện "PHÁ SẢN!" cho mọi người trừ người thắng.
+- `fx/` (portal lên `document.body`, `pointer-events-none`, dưới dialog z-50; không vẽ gì khi `useReducedMotion()` hoặc công tắc tương ứng tắt): `MoneyFx` (z-46, so tiền giữa hai state, reset khi ván mới bắt đầu ended → playing), `DropFx` (z-45, cờ / nhà rơi xuống ô; ô rung ~320 ms khi cờ chạm đất, `.shake` trong `board/Cell.module.scss`; cờ chỉ cắm khi ô từ **chưa có chủ** sang có chủ — mua hoặc thắng đấu giá, không phải đổi đất / phá sản giao lại), `TurnBanner` (z-44), `VictoryFx` (z-41, chỉ người thắng, chỉ khi thấy playing → ended như `Celebration`: 2 kèn 🎺 ở hai góc dưới, 2 cờ màu quân của người thắng mọc lên ở hai bên và bay phấp phới, pháo hoa canvas-confetti nạp lười; ~4,6 giây). `Celebration` của Tỷ Phú chạy `intensity={2.2}`.
 - Các ref `initialCount`, `initialOwner`, `lastCardAt` đảm bảo hiệu ứng không chạy lại cho những gì đã có khi mới mở bàn.
 
 **Bản sao lib** (`src/lib/typhu/`)
@@ -822,7 +827,7 @@ Phải khớp be_game `src/typhu/board.ts` và `protocol.ts`. `board.ts` là **b
 - 💰 Tiền: `startCash`, `goSalary`, `doubleGo`, `parkingPot`, `unmortgageFee`, `landSalePct`
 - 🗺️ Bản đồ: `map` (`MAP_SIZES`, nhãn `MAP_LABEL`)
 - ⏱️ Lượt: `timeLimit`, `stepSeconds`, `doubleRoll`, `jailRent`
-- 🏠 Luật nhà: `buildRule` (`"even"`/`"chain"`), `needGroup` (tắt thì chưa đủ nhóm chỉ xây tối đa 3 nhà), `risingCost`, `sellLand` (đất đang thế chấp cũng bán được, chỉ nhận phần chênh), `bankruptTo`
+- 🏠 Luật nhà: `buildRule` (`"even"`/`"chain"`), `needGroup` (tắt thì chưa đủ nhóm chỉ xây tối đa 3 nhà), `risingCost`, `sellLand` (đất đang thế chấp cũng bán được, chỉ nhận phần chênh), `bankruptTo`, `auction` (**mặc định tắt**; server cũ không gửi field → công tắc bị khoá, ghi "Máy chủ chưa hỗ trợ")
 - 🏆 Điểm: `RankPointsPicker`
 
 **Phím tắt** (`useHotkeys`, lượt của mình; `centre/Centre.tsx`):
@@ -836,11 +841,13 @@ Phải khớp be_game `src/typhu/board.ts` và `protocol.ts`. `board.ts` là **b
 | `J` / `K` | Nộp phạt ra tù / Dùng thẻ ra tù |
 | `L` | Mở / đóng "Toàn bộ diễn biến" (cả khi chưa tới lượt; nằm ở `TableBody`, `allowInDialog: ["l"]`) |
 | `Esc` | Đóng hộp Xây nhà |
+| `Space` / `1`–`6` | **Chỉ khi đang đấu giá**, mọi người còn trong ván (không cần tới lượt): `Space` = trả giá thấp nhất cho phép (khởi điểm nếu chưa ai trả; với người vừa bỏ qua lượt mua là giá đất), `1`–`6` = +10/+20/+50/+100/+200/+500tr (mức nào dưới giá đất của người vừa bỏ qua thì không có). Bỏ qua khi không đủ tiền mặt |
+| `Q` | **Chỉ khi đang đấu giá**: Bỏ cuộc (`{type:"fold"}`), cùng điều kiện với nút (`canFold`: còn trong ván, chưa bỏ cuộc, không phải người dẫn đầu, server có gửi `folded`) |
 
 `CBtn` có prop `hotkey` (hiện `<kbd>`, cả ở `ActionBar` giữa bàn lẫn thanh dưới). Không bật khi `busy`. Dòng "Phím tắt: …" nằm dưới bàn (`lg:` và không cảm ứng).
 
 **Giới hạn đã biết**
-- Chưa có đấu giá, chưa có hiệu ứng khi tiền thay đổi.
+- Chưa có hiệu ứng khi tiền thay đổi (xu bay nằm ở PR riêng). Đấu giá là luật tuỳ chọn (mặc định tắt), cần be_game có `auction`.
 - Hộp xây nhà ghi "Đất trống · thuê Xtr" theo `rent[0]`, nhưng khi chủ sở hữu cả nhóm thì tiền thu thực tế gấp đôi.
 - Kích dùng `ConfirmButton` (bấm 2 lần).
 - Nhiều chữ viết cứng, không theo cài đặt: "30 giây" trong luật và trong `TradeModal`, "nộp 50tr" trong `SQUARE_TEXT`.
@@ -1106,6 +1113,30 @@ Sảnh chờ hiện `đang ngồi/4`, nút bắt đầu cần ít nhất 2 ngư�
 
 Điều kiện: lượt mình, không đang animation (`canMove`), không `busy`. Nút Rải trái / Rải phải / Bỏ chọn có huy hiệu `←`, `→`, `Esc`. Dòng "Phím tắt:" hiện khi chưa chọn ô. Với 3–4 người (bàn vòng), `1`–`5` vẫn chạy từ trái sang phải dọc **cạnh của mình**.
 
+### 4.8. Nối Chữ
+
+Luật và protocol: `be_game/docs/games/noichu.md`.
+
+**File map**
+
+| File | Vai trò / component chính |
+|---|---|
+| `src/app/noi-chu/{layout,page}.tsx`, `[room]/page.tsx` | Route theo §8: nền xanh ngọc, `GameLobby` (2–8 người), bàn nạp bằng `dynamic(..., { ssr: false })` |
+| `noichu/NoiChuTable.tsx` | Default `NoiChuTable` (kết nối, màn hình lỗi, `ChatBox row`), `Table`, `PlayerChip`, `Stage`, `Waiting`, `NoiChuRules` (export cho lobby) |
+| `noichu/NoiChuTable.module.scss` | Style của bàn (SCSS Module, theo quy tắc code mới; biến thể phone ngang dùng cùng media query với `short:`) |
+
+**Giao diện.** Dùng bộ `game-ui`: `GameThemeScope game="noichu"` (màu nhấn trong `globals.css`, pháo giấy trong `theme.tsx`), `GamePanel`, `GameButton`, `GameDialog` (luật), `Countdown` (vòng đếm ngược cạnh người đang tới lượt), `Celebration`, `gameToast` (lỗi từ server). Avatar dùng `SeatAvatar`, danh sách chờ dùng `RoomRoster`.
+
+**Bàn.** `Stage` hiện từ cuối cùng với **tiếng cần nối được tô màu**, các từ trước dưới dạng chip (chỉ 40 từ cuối do server gửi, `chainLength` là tổng), và khi đến lượt mình là ô nhập có `TurnRing`. Ô nhập được **điền sẵn tiếng cần nối** (`"{need} "`) mỗi khi tới lượt, tự focus, Enter để gửi (`{ type: "word", text }`); từ sai được server từ chối (toast) và ô nhập giữ nguyên để sửa. Không có phím tắt nào khác. Người bị loại và khán giả thấy "lượt của …".
+
+**Bản sao lib** (`src/lib/noichu/`)
+- `board.ts`: **chép nguyên văn** `be_game/src/noichu/board.ts` (chỉ thêm comment đầu file): `MIN_PLAYERS`, `MAX_PLAYERS`, `TURN_SECONDS_OPTIONS`, `MAX_WORDS`, `DictionaryMode`, `DICTIONARY_MODES`, `dictionaryModeOf`, `syllablesOf`, `normalizeWord`.
+- `protocol.ts`: bản chỉnh tay (import kiểu chung từ `@/lib/tienlen`, không re-export hằng chat): `NOICHU_WS_PATH`, `NCRoomView`, `NCGameView`, `NCCommand`…
+
+Từ điển nằm ở server, client không kiểm tra từ có nghĩa; client chỉ hiện lỗi server trả về.
+
+**Cài đặt.** Trong `Waiting`, `SettingsTabs`: 🔤 Luật (`dictionary`: hai mức bằng radio có giải thích: `strict` có từ điển, `loose` từ điển lỏng = từ điển hoặc hai tiếng Việt thật; không có mức tắt; tiêu đề bàn hiện mức đang dùng). Server vẫn nhận boolean cũ, client chỉ gửi chuỗi, ⏱️ Lượt (`turnSeconds`), 🏆 Điểm (`RankPointsPicker`). Chỉ chủ bàn sửa được.
+
 ---
 
 ## 5. Quy ước responsive
@@ -1369,8 +1400,8 @@ Giả sử game có id `xyz` và route `/xyz`.
 - **Tỷ Phú: hộp thoại phải render qua portal.** Giữa bàn cờ có lớp có `overflow` / `backdrop-filter`; một phần tử `fixed` nằm trong đó bị kẹt trong khung đó (hộp thoại "Xây nhà" từng chỉ hiện trong khu trung tâm và không đóng được trên tablet / điện thoại). `Modal` (`typhu/shared.tsx`) bọc `GameDialog`, vốn tự render qua portal (drawer vaul dưới 768 px, base-ui Dialog từ `md`), nên mở từ đâu cũng nằm trên cùng. Đừng tự viết lại `fixed inset-0` trong `typhu/`. Khung xanh ở giữa bàn chỉ vừa nội dung (`max-w-md`, nền mờ 85 %) để ảnh nền `public/games/typhu/center.webp` lộ ra xung quanh.
 - **Tỷ Phú: hiệu ứng xây.** `BuildBurst` (trong `Cell`) nổ ngay trên ô khi số nhà tăng — chớp sáng, vòng sóng lan ra và tia lửa (khách sạn: vàng, to hơn). Nhà / khách sạn trên bản đồ có viền trắng mỏng (`drop-shadow` 4 hướng) để nổi trên dải màu. Banner giữa bàn (`BuildOverlay`) vẫn giữ.
 - **Thư viện dùng chung cho game** (đã thêm vào `package.json`): `@number-flow/react` (số tiền nhảy mượt — `PlayerRow` của Tỷ Phú), `@formkit/auto-animate` (`useAutoAnimate` cho danh sách log / người chơi / khoản vay), `sonner` (một `<Toaster>` trong `GamesShell`; lỗi lệnh và lời mời đổi / vay gửi cho mình hiện bằng `toast()`), `canvas-confetti` (nạp động trong `WinCelebration`, pháo từ hai góc + pháo hoa) và `@use-gesture/react` (`PinchZoom.tsx`: pinch-zoom 1×–2,6× và kéo để di chuyển bàn Tỷ Phú dưới `lg`, nút "🔍 Thu nhỏ"; ở 1× một ngón vẫn cuộn trang, chạm vào ô vẫn mở được). Bàn game khác cần zoom thì bọc bằng `PinchZoom`.
-- **Font tiêu đề game**: `gameFont.ts` (Baloo 2, có tiếng Việt) qua `next/font`, đặt biến `--font-game` ở wrapper của `GamesShell`; mọi `h1`/`h2`/`h3` trong các trang game dùng font này, chỗ khác dùng `[font-family:var(--font-game)]`. Chỉ nạp cùng layout games, các trang còn lại của site không bị ảnh hưởng.
-- **Tỷ Phú: tự động chơi (tính năng ẩn).** `Ctrl+Shift+Y` gửi `{ type: "auto", on }` lên be_game; **server** chơi thay như với người mất kết nối (mỗi bước `ABSENT_MS` = 2,5 s, xử lý cả tù và nợ — bán tài sản / trả nợ / phá sản), vẫn chạy khi tab bị ẩn và giữ nguyên sau khi tải lại. Khác người mất kết nối: mua ô nếu giá `< AUTO_BUY_BELOW` (300) **và** tiền sau khi mua `> AUTO_KEEP_CASH` (150), cuối lượt tự xây nhà ở chỗ `buildBlocker` cho phép (đủ nhóm màu, xây đều / chuỗi, không thế chấp) — ô ít nhà nhất rồi rẻ nhất — vẫn giữ > 150tr. Đổi đất, vay, trả lời lời mời vẫn thủ công (lời mời gửi tới mình vẫn chờ tới hạn). Huy hiệu "🤖 Tự động chơi" lấy từ `view.auto` (chỉ có trong view của chính mình). Client chỉ có phím tắt trong `Centre` (`typhu/centre/Centre.tsx`); luật nằm ở be_game `src/typhu/game.ts` (`autoStep`, `autoBuild`).
+- **Font tiêu đề game**: `gameFont.ts` (Baloo 2, có tiếng Việt) qua `next/font/local` (file woff2 tự host trong `components/games/fonts/`, không tải từ Google lúc build), đặt biến `--font-game` ở wrapper của `GamesShell`; mọi `h1`/`h2`/`h3` trong các trang game dùng font này, chỗ khác dùng `[font-family:var(--font-game)]`. Chỉ nạp cùng layout games, các trang còn lại của site không bị ảnh hưởng.
+- **Tỷ Phú: tự động chơi (tính năng ẩn).** `Ctrl+Shift+Y` gửi `{ type: "auto", on }` lên be_game; **server** chơi thay như với người mất kết nối (mỗi bước `ABSENT_MS` = 2,5 s, xử lý cả tù và nợ — bán tài sản / trả nợ / phá sản), vẫn chạy khi tab bị ẩn và giữ nguyên sau khi tải lại. Khác người mất kết nối: mua ô nếu giá `< AUTO_BUY_BELOW` (300) **và** tiền sau khi mua `> AUTO_KEEP_CASH` (150); **không** tự xây nhà (xây vẫn là việc của người chơi). Đổi đất, vay, trả lời lời mời vẫn thủ công (lời mời gửi tới mình vẫn chờ tới hạn). Huy hiệu "🤖 Tự động chơi" lấy từ `view.auto` (chỉ có trong view của chính mình). Client chỉ có phím tắt trong `Centre` (`typhu/centre/Centre.tsx`); luật nằm ở be_game `src/typhu/game.ts` (`autoStep`).
 - **Cá Ngựa: tự động chơi (tính năng ẩn).** Giống Tỷ Phú: `Ctrl+Shift+Y` gửi `{ type: "auto", on }`, **server** gieo và đi hộ (`bestMove`: đá ngựa > vào / lên cột đích > ra quân > con đi xa nhất) mỗi bước `ABSENT_MS` = 2,5 s, vẫn chạy khi tab ẩn, giữ sau khi tải lại. Huy hiệu "🤖 Tự động chơi" ở `TurnPanel` lấy từ `view.auto` (chỉ có trong view của chính mình). Phím tắt nằm ở `Table` (`cangua/CaNguaTable.tsx`); luật nằm ở be_game `src/cangua/game.ts` (`tickGame(…, auto)`). Cần be_game có message `auto` cho Cá Ngựa, nếu chưa thì server báo lỗi lệnh.
 - **Tỷ Phú: nền toàn màn hình** — ảnh `public/games/typhu/center.webp` làm mờ (`blur-2xl`), phóng `scale-110` và `bg-cover` để phủ kín màn hình theo cạnh dài nhất, phủ thêm lớp đen 55 %. Nằm ở đầu root của `TableBody` (`fixed inset-0 -z-10`, root có `isolate`).
 
@@ -1381,12 +1412,12 @@ Giả sử game có id `xyz` và route `/xyz`.
 Từ 17/10/2026 (production) phải đăng nhập mới chơi được. Backend giữ tài khoản, phiên và thống kê; frontend chỉ lưu phiên và gắn nó vào mọi lời gọi.
 
 ### 10.1. Phiên (`src/components/auth/session.ts`)
-- Phiên lưu ở `localStorage["games:session"]` dạng JSON `{ session, user }` (`user` = `PublicUser`: `id, username, role, icon, color`). Hook `useSession()` đọc nó (`useSyncExternalStore`); `saveSession` / `clearSession` ghi và báo mọi tab. Khi localStorage bị chặn, phiên chỉ sống trong bộ nhớ của tab.
+- Phiên lưu ở `localStorage["games:session"]` dạng JSON `{ session, user }` (`user` = `PublicUser`: `id, username, role, icon, color`). Hook `useSession()` đọc nó (`useSyncExternalStore`); `saveSession` / `clearSession` ghi và báo mọi tab. Khi localStorage bị chặn, phiên chỉ sống trong bộ nhớ của tab. Chỉ cần một lần đọc/ghi/xoá phiên báo lỗi (bị chặn, hết quota, vài chế độ riêng tư) là trang đó chỉ tin bản trong bộ nhớ tới khi đóng: nếu không, ghi lỗi sẽ đọc lại phiên cũ (mất lần đăng nhập vừa rồi) và xoá lỗi sẽ đọc lại token cũ (đăng xuất bị hoàn tác). Vòng đời phiên (storage bị chặn, reload, nhiều tab, phản hồi về trễ sau khi đổi tài khoản, đổi mật khẩu, 401 khi hết hạn 30 ngày hay bị thu hồi, lỗi khác 401 giữ phiên) có test ở `sessionLifecycle.test.ts`.
 - `authRequest(method, path, body)` gọi be_game kèm `Authorization: Bearer <session>`. Token ghế (`tienlen:token`, vào lại bàn) vẫn tách riêng, không đổi.
 - `join` / `watch` qua WebSocket gửi thêm `session` và `device` (id máy ngẫu nhiên, `device.ts`). Ack `"Cần đăng nhập"` thì `gameClient.ts` xoá phiên và người chơi bị đưa về `/dang-nhap`.
 - Tên hiển thị = username (tối đa 20 ký tự Unicode; `MAX_NAME_LENGTH` trong `src/lib/tienlen/protocol.ts` khớp be_game). Icon và màu lấy từ tài khoản, chọn lúc đăng ký và đổi ở menu tài khoản (`AccountMenu.tsx`).
 - Menu tài khoản (bấm tên/avatar ở thanh trên, `AccountMenu.tsx`) có hai tab. **Hồ sơ**: đổi tên đăng nhập, biểu tượng và màu bằng một nút "Lưu" chỉ gửi trường đã đổi (`PATCH /api/auth/me { username?, icon?, color? }` → `{ ok, user }`, `updateProfile` trong `session.ts`). Tên kiểm tra phía client như lúc đăng ký (`username.ts`: 3–20 ký tự Unicode, chữ/số/`_`/`.`/dấu cách đơn); lỗi máy chủ hiện ngay dưới form (400 tên không hợp lệ hoặc "Tên này đã được giữ", 409 "Tên đăng nhập đã có người dùng"). Tên mới chỉ áp dụng từ bàn tiếp theo (`join` kế tiếp), nên đổi sau khi ván kết thúc. **Mật khẩu**: mật khẩu hiện tại, mật khẩu mới, nhập lại; thành công thì lưu phiên mới do máy chủ trả.
-- Mật khẩu dài 1–72 ký tự Unicode (`password.ts`, `PASSWORD_MIN = 1`; trước đây 8–72) ở đăng ký, đổi mật khẩu và hộp "Đặt lại mật khẩu" của quản trị. Đăng nhập không kiểm tra độ dài.
+- Mật khẩu mới: tài khoản thường 8–72 ký tự, tài khoản admin 12–72 (`password.ts`: `PASSWORD_MIN`, `ADMIN_PASSWORD_MIN`, `PASSWORD_MAX`; đếm code point sau NFC, giống `validatePassword` của be_game theo quyết định D1-b). Áp dụng ở đăng ký (mức thường), đổi mật khẩu (theo vai trò của chính mình) và hộp "Đặt lại mật khẩu" của quản trị (theo vai trò của tài khoản được đặt lại). Đăng nhập không kiểm tra độ dài, nên mật khẩu cũ ngắn hơn vẫn đăng nhập được cho tới khi đổi. Nút gửi chỉ chờ ô không rỗng; bấm gửi thì form nói rõ thiếu gì.
 
 ### Một phiên và ghế theo tài khoản (2026-10-23)
 
@@ -1410,7 +1441,7 @@ Từ 17/10/2026 (production) phải đăng nhập mới chơi được. Backend 
 - `PageTracker.tsx` (gắn trong layout) gửi `POST /api/track` `{ path, device }` (kèm Bearer nếu có) mỗi lần đổi trang; be_game trả 204 và giới hạn 60 lần/phút/IP.
 
 ### 10.5. Trang quản trị `/admin`
-- Chỉ `role: "admin"` vào được (người khác thấy `Forbidden`). Tab **Thống kê** (`GET /api/admin/stats?days=7|30|90`): thẻ tổng, hai biểu đồ theo ngày, bảng theo game, trang xem nhiều, người chơi nhiều nhất. Tab **Người dùng** (`GET /api/admin/users?q=&page=`): tìm, phân trang 50, đổi quyền, khoá / mở khoá, đặt lại mật khẩu (`PATCH /api/admin/users/<id>`). Không tự hạ quyền hay tự khoá mình.
+- Chỉ `role: "admin"` vào được (người khác thấy `Forbidden`). Tab **Thống kê** (`GET /api/admin/stats?days=7|30|90`): thẻ tổng, hai biểu đồ theo ngày, bảng theo game, trang xem nhiều, người chơi nhiều nhất. Tab **Người dùng** (`GET /api/admin/users?q=&page=`): tìm, phân trang 50, đổi quyền, khoá / mở khoá, đặt lại mật khẩu (`PATCH /api/admin/users/<id>`). "Cấp quyền" mở hộp mật khẩu (chế độ `promote` của `ResetPasswordDialog`) và gửi `{ role: "admin", password }` trong một request: be_game bắt buộc mật khẩu mới 12–72 ký tự khi nâng lên admin (hash không cho biết mật khẩu cũ đủ dài chưa), và mọi phiên cũ của tài khoản đó bị đăng xuất. "Bỏ quyền" vẫn hỏi xác nhận rồi gửi `{ role: "user" }`. Không tự hạ quyền hay tự khoá mình.
 - Admin đầu tiên: đặt `ADMIN_USERNAMES=boss` (danh sách phân tách bằng dấu phẩy) bên be_game rồi đăng ký username đó; xem README của be_game.
 
 ### 10.6. Chạy thử cục bộ không cần Docker

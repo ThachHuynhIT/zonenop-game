@@ -2,8 +2,8 @@
 
 ## What this repo is
 
-**zonenop-game** (GitHub `ThachHuynhIT/zonenop-game`, formerly `portfolio_with_cms`), the games site: 7 online multiplayer games (Tiến Lên, Mèo Nổ, Cờ Tỷ Phú, Splendor,
-Bang!, Ô Ăn Quan, Cờ Cá Ngựa) plus offline Contra. The hub is `/`, each game lives
+**zonenop-game** (GitHub `ThachHuynhIT/zonenop-game`, formerly `portfolio_with_cms`), the games site: 8 online multiplayer games (Tiến Lên, Mèo Nổ, Cờ Tỷ Phú, Splendor,
+Bang!, Ô Ăn Quan, Cờ Cá Ngựa, Nối Chữ) plus offline Contra. The hub is `/`, each game lives
 at its own route (`/tien-len`, `/meo-no`, …, `/contra`). There is no database here:
 rooms, game state, WebSockets, accounts, sessions, leaderboards and admin stats live in the separate **be_game** repo,
 reached via `NEXT_PUBLIC_TIENLEN_SERVER_URL`, with an optional backup backend in
@@ -45,8 +45,10 @@ favour of hosting the games; that code was removed in `refactor/repurpose-as-gam
   (`typhu/board-ref.ts`) from `g.map ?? settings.map` at the top of each render. "Luật nhanh"
   (`RULE_PRESETS`) sends one merged `settings` message. Tokens are the players' site looks
   (`seatTokens` in `typhu/tokens.ts`; a colour clash gives the later seat a free colour; tap your own token
-  to edit the site profile in `LookDialog`). Phone display options (⚙: Giao diện Đầy đủ/Tối giản, Vị trí nút)
-  live in `localStorage["typhu:prefs"]` (`typhu/prefs.ts`): full view = players panel, minimal = chip strip.
+  to edit the site profile in `LookDialog`). The ⚙ options (on every screen) live in `localStorage["typhu:prefs"]`
+  and, signed in, on the account (be_game `GET`/`PATCH /api/auth/prefs`, key `typhu`; synced by `useTyPhuPrefs`, failures silent)
+  (`typhu/prefs.ts`): effect switches `fx` {money, turn, flag, end} for everybody; phone-portrait only: Giao diện
+  Đầy đủ/Tối giản (full view = players panel, minimal = chip strip) and Vị trí nút. Table effects: `typhu/fx/`.
 - Keyboard shortcuts: `useHotkeys` (`src/components/games/useHotkeys.ts`);
   each key repeats its button's condition and the button shows a `<kbd>` badge
   (hidden on touch). Per-game tables: `docs/GAMES_GUIDE.md` §3.12 and §4.

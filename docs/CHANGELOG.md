@@ -10,6 +10,86 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Password rules: 8–72, admin 12–72
+
+- **Date:** 2026-11-06 (branch `fix/password-policy-8-12`, from `origin/develop`; T10 part 1 of the be_game/zonenop-game hardening plan, decision D1-b).
+- `src/components/auth/password.ts` mirrors be_game `validatePassword` (be_game PR #28): new passwords need 8–72 characters, 12–72 for an admin account, counted as NFC code points (the old client counted without NFC and allowed 1). `passwordProblem(p, role)` and `passwordHint(role)` take the role; register uses the user rule, "Đổi mật khẩu" the signed-in role, the admin "Đặt lại mật khẩu" dialog the target account's role. Login checks no length, so short old passwords still sign in.
+- The submit buttons of register / change password now wait only for non-empty fields, so a too-short password gets a message on submit instead of a silently disabled button; the admin reset dialog works the same way: its button waits for a non-empty field and the length rule appears after a submit attempt (not on every keystroke, where a `role="alert"` would be read out while typing); it used to show only "too long".
+- Granting admin in `/admin` now opens the password dialog in a "promote" mode and sends `{ role: "admin", password }` (admin minimum, 12): be_game #28 refuses a promotion without a new password (`ADMIN_NEEDS_PASSWORD`), since the stored hash cannot tell whether the old one is long enough. Removing admin still asks for confirmation and sends `{ role: "user" }`. With an older backend the password is simply set along with the role.
+- Order: be_game #28 has been live since 2026-11-06, so production already refuses short new passwords and a promotion without a password; until this reaches `main`, the "Cấp quyền" button of `/admin` gets that 400. The client is never looser than the server, so releasing it is safe at any time.
+
+## Session lifecycle tests, and two storage bugs
+
+- **Date:** 2026-11-06 (branch `test/session-lifecycle`, from `origin/develop`; T10 part 2 of the be_game/zonenop-game hardening plan, decision D3-a: keep the token in localStorage, sent as Bearer).
+- `src/components/auth/sessionLifecycle.test.ts` (21 tests, each on a freshly loaded `session.ts`): blocked storage, reload, several tabs (storage events, `clear()` in another tab), a late 401 / `refreshMe` / profile answer after signing in again or out (the 401 test checks the request really carried the old token), password change, a 401 (expiry after 30 days, revocation) signs out with a notice, 403/429/500/503 and network failures keep the session.
+- Two bugs found and fixed in `session.ts`: when only `setItem` threw (quota, some private modes) the session read back as the previous value, so a fresh sign-in was lost at once; when `removeItem` threw, signing out read the old token back. Now the first failing write or removal makes the page use only its in-memory copy until it closes (`storageFailed`); a failed write also tries to remove the previous value, so a reload or another tab does not bring back the earlier account. A failed read alone does not switch modes (the next read may work). Limits: with removal failing, a reload still finds the old token in storage (nothing in the page can clear it); once a page has switched to memory it no longer follows sign-in/sign-out in other tabs, and the other tabs do not see its changes (the server still answers a revoked token with a 401).
+- The 30-day expiry itself is checked by be_game (`readSession`); its boundary test is in be_game.
+
+## Deploy workflow: no `${{ }}` in shell scripts
+
+- **Date:** 2026-11-06 (branch `fix/deploy-shell-env`, from `origin/develop`; T08 of the be_game/zonenop-game hardening plan in be_game `docs/superpowers/plans/2026-11-05-be-game-and-zonenop-game-hardening.md`).
+- `.github/workflows/deploy.yml` pasted `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` and `WEB_DOMAIN` into `run:` scripts as `${{ }}`: Actions substitutes the text before bash runs, so a quote, `$(...)` or backtick in the value became shell syntax. They now come in through step `env:` and are read as `"$VAR"` (same secret names, file paths and modes).
+- New step "Validate configuration" (`scripts/check-deploy-env.mjs`) runs right after checkout: `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_PORT` go into `~/.ssh/config` through a heredoc (a newline could add e.g. a `ProxyCommand`), `DEPLOY_PATH` and `SHA` into the remote command in single quotes, `WEB_DOMAIN` into a URL; each must match a strict pattern. Errors name the variable, not the value.
+- Tests (`scripts/check-deploy-env.test.mjs`; `vitest.config.mts` now also includes `scripts/**/*.test.mjs`): the validator; no `run:` block in any workflow contains `${{`; and the real "Prepare SSH" script from `deploy.yml` run in bash with a hostile multi-line key (quotes, `$(touch …)`, backticks) keeps it byte for byte with mode 600 and runs nothing, while the old pasted form does run the payload. The bash tests need Linux file modes, so they are skipped on Windows and run in CI.
+- Not run against the real server: the first deploy after this reaches `main` is the real check (a bad existing secret would now fail at "Validate configuration" instead of later).
+
+## Cờ Tỷ Phú table effects
+
+- **Date:** 2026-10-29 (branch `claude/dautri-millionaire-flags-ui-664700`, cut from `origin/develop`). No game protocol change; the per-account prefs (below) need be_game's new `/api/auth/prefs` endpoint (older backends answer 404 and the prefs stay on the device).
+- Money flying (`typhu/fx/MoneyFx.tsx`): the server sends no "who paid whom" event, so `fx/moneyFlows.ts` infers it from each player's cash between two state updates. Payers are matched with receivers in turn (rent: tenant → owner); what is left over goes to / comes from the bank (the board centre, `data-bank`). Totals per player are exact, only the pairing is a guess when several payments land in one update. It skips the first state it sees and resets when a new game starts (the game `status` going ended → playing: be_game replaces the game in place, so the last game's cash is never compared with the next one's), and players who just went bankrupt.
+- Positions come from the DOM: `data-token` (board token) falling back to `data-seat` (panel avatar).
+- Turn: `fx/TurnBanner.tsx` (full-width band, loud for me, quiet for others, only on a real turn change) and `fx/turnGlow.module.scss` (pulsing halo on the board token and the panel avatar, still under `prefers-reduced-motion`).
+- Buying land: `OwnerFlag` in `board/Cell.tsx` plants a flag in the owner's colour for about 1.8 s when a square gets its first owner (purchase or auction win; not on a trade or a bankruptcy hand-over); not replayed for owners already there on load.
+- Review round 1: money ± waits until every token has stopped walking (`arrived` from `useWalkingTokens`, then a 250 ms beat); walking is ~2x faster (step 40–110 ms); the turn banner flashes in and fades (1.1 s mine / 0.8 s others); the turn glow is softer.
+- Flag and house drop straight down from above and touch down, no wobble (`fx/DropFx.tsx`). They are drawn in a portal on `document.body`, because a square is `overflow-hidden` and clipped the flag on the side squares. The in-square burst and the new building wait for the touch-down (`LAND_MS`).
+- `Celebration` got an `intensity` prop (default 1, Cờ Tỷ Phú passes 2.2: more particles, more and faster bursts spread wider, a second side volley) and a `confetti` prop (default true; false = banner only). Everything that differs only applies when `intensity > 1` or `confetti={false}`, so other games are unchanged.
+- Leaving: "← Sảnh" asks for confirmation for a seated, non-bankrupt player in a running game, and `beforeunload` warns on closing / refreshing (`preventDefault` + `returnValue = ""`). Browser Back and the site nav are not covered.
+- Review round 2: the effect layers (`MoneyFx` z-46, `DropFx` z-45, `TurnBanner` z-44) sit below dialogs (z-50) and use colocated SCSS Modules; all of them render nothing under `prefers-reduced-motion` (`useReducedMotion`); MoneyFx's clean-up timers are cleared on unmount; dead code in `Cell.tsx` removed.
+- The bankruptcy that ends the game shows "PHÁ SẢN!" to everybody but the winner. The winner gets `fx/VictoryFx.tsx` on top of `Celebration` (playing → ended only, never on reconnect): two trumpets blowing in the lower corners, two flags in the winner's token colour rising on poles at the sides and waving, and fireworks (rockets climbing, then bursting; canvas-confetti, lazily imported). ~4.6 s, z-41.
+- A planted flag makes its square shake for ~320 ms as it touches down (`board/Cell.module.scss`, `.shake`, motion-safe).
+- Effect switches: `typhu:prefs` gains `fx: { money, turn, flag, end }` (default all on; older saves without `fx` = all on, only an explicit `false` turns one off; tests in `prefs.test.ts`). The ⚙ button is now on every screen with a "Hiệu ứng" section of four switches (Tiền bay · Báo lượt · Cắm cờ & rung ô · Phá sản & chiến thắng); Giao diện / Vị trí nút still show on phones held upright only. `end` off = no "PHÁ SẢN!", no VictoryFx and no confetti (the result banner stays).
+- Prefs per account: `useTyPhuPrefs` also keeps `typhu:prefs` on the signed-in account via be_game `GET`/`PATCH /api/auth/prefs` (`{ game: "typhu", prefs }`, ≤ 2000 chars). Local storage stays the first read (no flash); the account's copy is fetched once on mount and applied (validated by `prefsFrom`/`accountPrefs`) unless the viewer already changed something; an account without one gets this device's prefs uploaded once. Changes save after 500 ms, one request at a time; every failure (offline, 401, 404 from an older backend) is silent and keeps the local value. Needs the matching be_game release to take effect; until then it behaves as before. The ⚙ dialog now says the options are saved with the account.
+- Turn banner restyle: the band takes the turn player's token colour darkened with black (`color-mix(in oklab, <colour> 75%, black)` via the `--turn-color` custom property), black borders on its top and bottom edges, text white or dark by contrast (`inkOn` in `typhu/tokens.ts`, tested), and a slower fade-in (about 0.26 s, was 0.13 s; on screen 1.4 s mine / 1.0 s others).
+
+---
+
+## Nối Chữ, the eighth game
+
+- **Date:** 2026-10-29 (branch `feature/noi-chu`; backend be_game `feature/noi-chu` ([be_game #25](https://github.com/ThachHuynhIT/be_game/pull/25)), **deploy it first**).
+- New game at `/noi-chu`, 2–8 players: type a two-syllable word whose first syllable is the last syllable of the previous word (tone marks must match, no repeats); running out of time puts you out, the last one standing wins. Rules, settings and commands: `be_game/docs/games/noichu.md`; UI notes: `docs/GAMES_GUIDE.md` §4.8.
+- First table written with the SCSS Module rule (`NoiChuTable.module.scss`) and the `game-ui` kit instead of long Tailwind class strings.
+- Dictionary check lives on the server (be_game ships a 48,425-word list from Viet74K, GPL-2.0, kept as a separate data file there, plus 606 extra words written for this project such as `con mèo`, `trà sữa`, `đà nẵng`; the licence decision and caveats are in be_game's `src/noichu/dict/README.md`). Known limit: free compound phrases (`đôi mắt`, `giờ học`, `tin nhắn`…) are still often missing (about 81% of a fresh 150-word probe was accepted). So the room setting is two levels, with no way to turn the check off: **strict** (dictionary, the default) and **loose** (dictionary, or both syllables are real Vietnamese; accepts `đôi mắt`, refuses `qqqqq`, but also nonsense like `bàn bàn`). `dictionary` is a string now; the server still reads the old boolean (`false`, the old "off", means loose).
+- Verified against a real be_game with two Playwright browsers (register, create room, settings, refused words, 4 valid words, timeout, result, new game, phone width, hub card, lobby). The Playwright script is not in the repo.
+
+---
+
+## Cờ Tỷ Phú: luật Đấu giá
+
+- **Date:** 2026-10-30 (branch `feature/typhu-auction`; backend [be_game #26](https://github.com/ThachHuynhIT/be_game/pull/26) (đã merge) — **deploy be_game (primary và backup) TRƯỚC**).
+- Luật bàn mới **"Đấu giá"**, mặc định tắt: ô chưa có chủ mà người dừng bỏ qua / hết giờ thì đem ra đấu giá. Khởi điểm **80%** giá đất, ai còn trong ván cũng trả giá được, mỗi lần ≥ giá hiện tại + 10tr và bằng tiền mặt, 15 giây (+5 giây mỗi lần trả, tối đa còn 15 giây); hết giờ người cao nhất trả ngân hàng và nhận đất. Người vừa bỏ qua lượt mua (`floorFor`) chỉ được trả từ **giá đất** (`floor`) trở lên. Nút **"Bỏ cuộc"** (`{type:"fold"}`, phím `Q`): rời phiên, không trả lại được, người dẫn đầu không bỏ cuộc được; mọi người khác bỏ cuộc thì người dẫn đầu thắng ngay, tất cả bỏ cuộc mà chưa ai trả thì đất không bán. Lượt tạm dừng (người tới lượt vẫn xây / bán nhà được); không đổi đất / vay / thế chấp trong phiên. Toast khi phiên đấu giá mở (một lần mỗi phiên).
+- UI: `AuctionPanel` giữa bàn (nút +10…+500tr, "Khởi điểm" / "Giá đất" cho người vừa bỏ qua, "Bỏ cuộc"; phím `Space` / `1`–`6` / `Q`; danh sách người đã bỏ cuộc; gọn hơn khi bảng hẹp ≤ 18rem nhờ container query; màu qua alias `vars.$color-*` mới trong `_variables.scss`), công tắc "Đấu giá" ở tab 🏠 Luật nhà, mô tả trong `RulesDialog`. `protocol.ts` đồng bộ tay với be_game (`TPSettings.auction?`, `Phase "auction"`, `TPGameView.auction?` gồm cả `folded?` / `floor?` / `floorFor?`, `{type:"bid"}`, `{type:"fold"}`; mọi field mới tuỳ chọn — server không gửi `folded` thì không hiện nút Bỏ cuộc). `localizeTPView` (`typhu/clock.ts`) tách khỏi `TyPhuTable` để test, dịch cả `auction.deadline`.
+- Tương thích: server cũ không gửi `auction` → không có bảng đấu giá, công tắc bị khoá và ghi "Máy chủ chưa hỗ trợ" (không bật lạc quan). Client cũ không có UI trả giá: đừng bật luật ở bàn còn tab cũ.
+- Hiệu ứng xu bay khi trả tiền (`fx/MoneyFx`) **không** nằm trong PR này: nó thuộc PR #91 (chưa merge), tự chạy theo thay đổi tiền khi PR đó vào. Rebase lên `develop` mới nhất nếu #91 merge trước (xung đột có thể ở `TyPhuTable.tsx`).
+
+---
+
+## Baloo 2 self-hosted
+
+- **Date:** 2026-10-28 (branch `claude/check-build-error-8dnat2`).
+- Why: a Vercel preview build (`0cb37f0`, docs-only commit) failed with `Can't resolve '@vercel/turbopack-next/internal/font/google/font'` on Baloo 2's generated `@font-face`; a no-cache redeploy of the same commit passed, so it was a flaky `next/font/google` fetch/cache, not the code.
+- `gameFont.ts` now uses `next/font/local` with `components/games/fonts/Baloo2-latin-vietnamese.woff2`: the OFL variable font (wght 400–800) subset to Latin + Vietnamese with `pyftsubset` (56 KB; licence beside it). Same `--font-game` variable, so no call sites changed.
+- It was not a one-off: the next Vercel build of this branch (cache restored) failed the same way on Bricolage Grotesque in `app/layout.tsx`, so the failure follows whichever `next/font/google` font Turbopack resolves first. Bricolage Grotesque, Geist and Geist Mono are now self-hosted too (`app/fonts/`, same CSS variables, same Latin + Vietnamese subset; Bricolage has `wdth` pinned to 100, keeping `opsz` + `wght`, 108 KB). No `next/font/google` is left in the repo. Geist/Bricolage now also cover Vietnamese diacritics (they were `latin` only before).
+- To re-subset or update a font: take the OFL variable TTF from `google/fonts` (`ofl/<family>/`), `pyftsubset --flavor=woff2` with the Latin + Vietnamese ranges (see the Baloo 2 file's glyph set), keep the licence next to it.
+
+---
+
+## Cờ Tỷ Phú auto-play no longer builds
+
+- **Date:** 2026-10-26 (branch `fix/typhu-auto-no-build`; backend be_game `fix/typhu-auto-no-build`, deploy it for the change to take effect).
+- Auto-play (`Ctrl+Shift+Y`) still rolls, buys squares under 300tr keeping 150tr, and handles jail/debt, but it no longer builds houses at the end of the turn; building stays a manual choice. be_game dropped `autoBuild`. The client only had comments/docs to update.
+
+---
+
 ## Account seats and resume banner
 
 - **Date:** 2026-10-23 (branch `feature/account-seats`; depends on [be_game #23](https://github.com/ThachHuynhIT/be_game/pull/23), deploy backend first).

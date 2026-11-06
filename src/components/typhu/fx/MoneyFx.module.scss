@@ -1,0 +1,48 @@
+@use "@styles/variables" as vars;
+@use "@styles/mixins" as mix;
+
+// Coins flying between players. Above the board and the victory layers, below dialogs (z-50).
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 46;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.coin {
+  position: absolute;
+  margin: -0.75rem 0 0 -0.75rem;
+  font-size: 1.5rem;
+  line-height: 2rem;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.5));
+}
+
+// "+200tr" / "-200tr" rising from a token. Centred with `translate` so motion's own transform (y, scale) stays free.
+.amount {
+  position: absolute;
+  translate: -50% 0;
+  white-space: nowrap;
+  padding: 0.125rem vars.$spacing-sm;
+  border-radius: 999px;
+  font-family: vars.$font-family-mono;
+  font-size: vars.$font-size-sm;
+  font-weight: 900;
+  color: #fff;
+
+  @include mix.respond-to(sm) {
+    font-size: vars.$font-size-base;
+  }
+}
+
+$lift: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+
+.gain {
+  background: #10b981;
+  box-shadow: 0 0 0 2px #a7f3d0, $lift;
+}
+
+.loss {
+  background: #e11d48;
+  box-shadow: 0 0 0 2px #fecdd3, $lift;
+}

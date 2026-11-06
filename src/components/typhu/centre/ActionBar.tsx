@@ -21,6 +21,9 @@ const DEBT_MS = 60_000;
 const COUNTDOWN_ON_CREAM =
   "[&_circle:first-child]:stroke-emerald-900/20 [&_circle:last-child:not(.stroke-rose-500)]:stroke-emerald-700 [&>span]:text-emerald-950";
 
+// pr-24 leaves room for the chat / emoji buttons floating in the bottom-right corner.
+const BAR_CLASS = "fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[oklch(0.2_0.03_290)]/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 pr-24 text-white backdrop-blur";
+
 /**
  * The turn line and my controls: in the board centre (`center`) or in a bar stuck to the bottom of the screen
  * (`bottom`, phones held upright). Same buttons and conditions either way; the hotkeys live in `Centre`.
@@ -73,6 +76,15 @@ export function ActionBar({
     ro.observe(el);
     return () => ro.disconnect();
   }, [onHeight, bottom]);
+
+  // The auction has its own panel (and clock) in the board centre: the turn's controls and clock wait for it.
+  if (g.phase === "auction") {
+    return bottom ? (
+      <div ref={barRef} className={BAR_CLASS}>
+        <p className="text-center text-xs sm:text-sm">🔨 Đang đấu giá — trả giá ở giữa bàn cờ</p>
+      </div>
+    ) : null;
+  }
 
   // My turn: a light runs around my controls. In the board centre the border itself is my clock: "Lượt của bạn" on its
   // top-left corner, the seconds on the top-right, and a line along it that shortens as the time runs out.
@@ -162,8 +174,7 @@ export function ActionBar({
 
   if (!bottom) return content;
   return (
-    // pr-24 leaves room for the chat / emoji buttons floating in the bottom-right corner.
-    <div ref={barRef} className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[oklch(0.2_0.03_290)]/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 pr-24 text-white backdrop-blur">
+    <div ref={barRef} className={BAR_CLASS}>
       {content}
     </div>
   );
