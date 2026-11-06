@@ -10,6 +10,13 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Security headers, CSP in Report-Only
+
+- **Date:** 2026-11-06 (branch `feat/security-headers-csp`, from `origin/develop`; T09 of the be_game/zonenop-game hardening plan).
+- Every route now sends `Content-Security-Policy-Report-Only`, `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` (`next.config.ts` → `headers()`, built by `src/lib/security-headers.ts`, tested). Before, the Vercel copy sent none of them; the self-hosted one got nosniff, Referrer-Policy and X-Frame-Options from its proxy.
+- Owner decisions: `script-src` keeps `'unsafe-inline'` (Next and next-themes inline scripts; a per-request nonce would make every page dynamic on the phone server), and violations are only seen in the browser (no report endpoint). The CSP still limits `connect-src` to this origin and the two backends (with ws/wss), and sets `object-src 'none'`, `base-uri`, `form-action`, `frame-ancestors 'none'`. Enforcing is a later, separate PR.
+- Checked in the browser on a production build against a local be_game: home, sign-in/register, lobby, creating a table over WebSocket and the theme script produce no violation; a deliberate fetch to another origin is reported (`connect-src`, disposition "report").
+
 ## Password rules: 8–72, admin 12–72
 
 - **Date:** 2026-11-06 (branch `fix/password-policy-8-12`, from `origin/develop`; T10 part 1 of the be_game/zonenop-game hardening plan, decision D1-b).
