@@ -9,6 +9,7 @@ import { Toaster } from "sonner";
 import { GameButton, GamePanel, GameTabs } from "@/components/game-ui";
 import { authRequest, useSession, type AuthResult } from "@/components/auth/session";
 import { cn } from "@/lib/utils";
+import styles from "./AdminDashboard.module.scss";
 import { Forbidden } from "./Forbidden";
 import { ByGameTable, TopPagesTable, TopPlayersTable } from "./RankTables";
 import { StatCards } from "./StatCards";
@@ -35,10 +36,11 @@ export function AdminDashboard() {
   const router = useRouter();
   const [days, setDays] = useState<StatsDays>(30);
   const [attempt, setAttempt] = useState(0);
-  const [result, setResult] = useState<{ key: string; res: AuthResult<AdminStats> } | null>(null);
+  const [result, setResult] = useState<{ key: string; token: string; res: AuthResult<AdminStats> } | null>(null);
   const token = session?.session ?? null;
   const key = `${days}|${attempt}|${token}`;
-  const status = result?.res.ok === false ? result.res.status : 200;
+  const currentResult = result?.token === token ? result : null;
+  const status = currentResult?.res.ok === false ? currentResult.res.status : 200;
 
   useEffect(() => {
     if (hydrated && (!token || status === 401)) router.replace(SIGN_IN);
@@ -48,7 +50,7 @@ export function AdminDashboard() {
     if (!token) return;
     let live = true;
     void authRequest<AdminStats>("GET", `/api/admin/stats?days=${days}`).then((res) => {
-      if (live) setResult({ key, res });
+      if (live) setResult({ key, token, res });
     });
     return () => {
       live = false;
@@ -66,12 +68,24 @@ export function AdminDashboard() {
     );
   }
 
-  const loading = result?.key !== key;
-  const stats = result?.res.ok ? result.res.data : null;
-  const error = result && !result.res.ok && !loading ? result.res.error : null;
+  const loading = currentResult?.key !== key;
+  const stats = currentResult?.res.ok ? currentResult.res.data : null;
+  const error = currentResult && !currentResult.res.ok && !loading ? currentResult.res.error : null;
 
   return (
     <Shell user={session?.user.username}>
+      <section className={styles.overview} aria-label="Tổng quan">
+        <div className={styles.toolbar}>
+          <div role="group" aria-label="Khoảng thời gian" className={styles.periods}>
+            {PERIODS.map((period) => <button key={period} type="button" aria-pressed={days === period} onClick={() => setDays(period)}>{period} ngày</button>)}
+          </div>
+          {loading && <span role="status" className={styles.status}>Đang tải số liệu…</span>}
+        </div>
+        {error ? <GamePanel className={styles.error}>
+          <h2>Không tải được số liệu</h2><p>{error}</p>
+          <GameButton onClick={() => setAttempt((value) => value + 1)}><RotateCw aria-hidden />Thử lại</GameButton>
+        </GamePanel> : stats ? <div aria-busy={loading || undefined}><StatCards totals={stats.totals} daily={stats.daily} days={stats.days} /></div> : <StatsSkeleton />}
+      </section>
       <GameTabs
         className="bg-transparent"
         tabs={[
@@ -80,12 +94,8 @@ export function AdminDashboard() {
             label: "Thống kê",
             content: (
               <StatsView
-                days={days}
-                onDays={setDays}
                 stats={stats}
                 loading={loading}
-                error={error}
-                onRetry={() => setAttempt((a) => a + 1)}
               />
             ),
           },
@@ -119,64 +129,18 @@ function Shell({ user, children }: { user?: string; children: React.ReactNode })
   );
 }
 
-/** Period picker, totals, daily charts and the three rankings. Prop-driven so it can be rendered with fixture data. */
+/** Daily charts and rankings; the shared overview is rendered above the tabs. */
 export function StatsView({
-  days,
-  onDays,
   stats,
   loading,
-  error,
-  onRetry,
 }: {
-  days: StatsDays;
-  onDays: (d: StatsDays) => void;
   stats: AdminStats | null;
   loading: boolean;
-  error: string | null;
-  onRetry: () => void;
 }) {
   return (
     <div className="space-y-4 py-2 sm:space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <div role="group" aria-label="Khoảng thời gian" className="inline-flex rounded-full bg-black/30 p-1 ring-1 ring-inset ring-white/10">
-          {PERIODS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              aria-pressed={days === p}
-              onClick={() => onDays(p)}
-              className={cn(
-                "h-10 rounded-full px-4 text-sm font-extrabold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-white/70",
-                days === p ? "bg-game-accent text-game-accent-fg" : "text-white/65 hover:text-white",
-              )}
-            >
-              {p} ngày
-            </button>
-          ))}
-        </div>
-        {loading && stats && (
-          <span role="status" className="inline-flex items-center gap-2 text-sm text-white/60">
-            <span aria-hidden className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            Đang cập nhật
-          </span>
-        )}
-      </div>
-
-      {error ? (
-        <GamePanel className="py-10 text-center">
-          <p aria-hidden className="text-4xl">📉</p>
-          <h2 className="mt-2 text-xl font-black">Không tải được số liệu</h2>
-          <p className="mt-1 text-sm text-white/60">{error}</p>
-          <GameButton className="mt-4" variant="primary" onClick={onRetry}>
-            <RotateCw aria-hidden />
-            Thử lại
-          </GameButton>
-        </GamePanel>
-      ) : !stats ? (
-        <StatsSkeleton />
-      ) : (
+      {!stats ? null : (
         <div className={cn("space-y-4 transition-opacity sm:space-y-5", loading && "opacity-60")} aria-busy={loading || undefined}>
-          <StatCards totals={stats.totals} daily={stats.daily} days={stats.days} />
           <div className="grid gap-4 lg:grid-cols-2 sm:gap-5">
             <ChartPanel title="Lượt xem và số máy" legend={[["Lượt xem", 1], ["Số máy", 2]]} daily={stats.daily}>
               <TrafficChart daily={stats.daily} />
@@ -220,19 +184,16 @@ function ChartPanel({ title, legend, daily, children }: { title: string; legend:
 
 function StatsSkeleton() {
   return (
-    <div aria-busy className="space-y-4">
-      <span className="sr-only" role="status">
+    <div aria-busy className={styles.skeleton}>
+      <span className={styles.srOnly} role="status">
         Đang tải số liệu
       </span>
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
+      <div className={styles.skeletonCards}>
         {Array.from({ length: 7 }, (_, i) => (
-          <div key={i} className={cn("h-32 animate-pulse rounded-2xl bg-white/[0.05]", i === 0 && "col-span-2")} />
+          <div key={i} className={styles.skeletonCard} />
         ))}
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className={cn(CHART_H, "animate-pulse rounded-game-card bg-white/[0.05]")} />
-        <div className={cn(CHART_H, "animate-pulse rounded-game-card bg-white/[0.05]")} />
-      </div>
+
     </div>
   );
 }

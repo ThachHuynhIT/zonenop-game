@@ -10,6 +10,16 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## /admin: filters and sorting, cards on phones, confirmations, overview on top
+
+- **Date:** 2026-11-08 (branch `feature/admin-ui-enhancements`, stacked on `feature/admin-owner-and-ui`; Phase 3 of `docs/superpowers/plans/2026-11-08-admin-owner-and-ui.md`; needs be_game #49 on both backends, live since 2026-11-08).
+- Users tab: filter (all / admins / locked / owner), sort (created, last login, games) and order, done by be_game across every account before paging; the client only builds the URL (`admin/usersQuery.ts`, tested). After a successful change the list is fetched again (membership and order may change), and an emptied last page steps back. A slower old response never overwrites a newer one.
+- Below 768 px the users are cards instead of a sideways-scrolling table; both layouts share `UserActionButtons` and one dialog host.
+- Lock, unlock and demote now ask in a dialog (`UserActionDialog`) instead of the two-tap `confirm` button / immediate unlock; promote still uses the password dialog as its confirmation.
+- The period picker and the seven totals moved above the tabs (visible on both); charts and rankings stay under "Thống kê".
+- If a backend is ever rolled back below be_game #49, roll this back too: an older backend ignores `filter`/`sort`/`order` silently.
+- UI by Codex, reviewed by Claude (the component file was renamed `UserActionButtons.tsx`: `UserActions.tsx` collided with `userActions.ts` on case-insensitive file systems). Checked against a local be_game with 59 accounts: params and page reset, page 2/2, owner/admin/locked filters, unlock dialog (Esc sends nothing, a double click sends one PATCH, the list refetches to the empty state), cards only at 375 px without horizontal overflow, 44 px buttons. The browser pane was hidden during part of the check, so dialog clicks were also driven by `element.click()`; a visual pass on a real screen is still worth doing.
+
 ## Owner badge, live password check, sign-out confirmation
 
 - **Date:** 2026-11-08 (branch `feature/admin-owner-and-ui`, from `origin/develop`; Phase 2 of `docs/superpowers/plans/2026-11-08-admin-owner-and-ui.md`; needs be_game #49, live since 2026-11-08).
