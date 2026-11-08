@@ -1,26 +1,37 @@
 "use client";
-
-import { useEffect, useId, useState } from "react";
-import { KeyRound, Lock, LockOpen, Search, Shield, ShieldOff } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 import { GameBadge, GameButton, GameDialog, gameToast } from "@/components/game-ui";
 import { AuthField } from "@/components/auth/fields";
-import { passwordHint, passwordProblem } from "@/components/auth/password";
-import { authRequest } from "@/components/auth/session";
-import { cn } from "@/lib/utils";
+import { passwordHint } from "@/components/auth/password";
+import { authRequest, getSession, useSession } from "@/components/auth/session";
 import { Forbidden } from "./Forbidden";
 import { formatDateTime, formatNumber, pageCount } from "./format";
 import type { AdminUser, AdminUsersPage } from "./types";
+import { getUserActionRules } from "./userActions";
+import { resetPasswordState } from "./resetPassword";
+import {
+  changeUsersQuery,
+  DEFAULT_USERS_QUERY,
+  usersQueryPath,
+  validUsersPage,
+  USERS_FILTER_LABELS,
+  USERS_SORT_LABELS,
+  USERS_ORDER_LABELS,
+  type UsersQuery,
+} from "./usersQuery";
+import { UserActionButtons, type UserAction } from "./UserActionButtons";
+import { UserActionDialog, type UserActionTarget } from "./UserActionDialog";
+import styles from "./ResetPasswordDialog.module.scss";
+import ui from "./UsersTable.module.scss";
 
-// Promoting needs a new password in the same request (be_game: the stored hash cannot tell whether the old one is long enough).
 export type UserPatch = { role: "admin"; password: string } | { role: "user" } | { disabled?: boolean } | { password?: string };
 
-const TH = "whitespace-nowrap px-3 py-2.5 text-left text-xs font-bold text-white/55";
-const TD = "whitespace-nowrap px-3 py-2.5 align-middle";
-
-/** Search box, one page of accounts (scrolls sideways inside its frame on phones) and the pager. Prop-driven. */
+/** Displays account filters, responsive user lists, and account action dialogs. */
 export function UsersTable({
   data,
   query,
+  search,
+  onSearch,
   onQuery,
   onPage,
   onPatch,
@@ -31,210 +42,231 @@ export function UsersTable({
   onRetry,
 }: {
   data: AdminUsersPage | null;
-  query: string;
-  onQuery: (q: string) => void;
+  query: UsersQuery;
+  search: string;
+  onSearch: (q: string) => void;
+  onQuery: (change: Partial<Omit<UsersQuery, "page">>) => void;
   onPage: (page: number) => void;
-  /** Resolves true when the server accepted the change. */
   onPatch: (user: AdminUser, patch: UserPatch) => Promise<boolean>;
   busyId: string | null;
-  /** The signed-in admin: no demoting or locking yourself. */
   selfId: string | null;
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
 }) {
-  const searchId = useId();
-  // Who the password dialog is for; `promote` = granting admin (it sets the new password in the same request).
+  const id = useId();
   const [resetting, setResetting] = useState<{ user: AdminUser; promote: boolean } | null>(null);
-  const [atEnd, setAtEnd] = useState(false);
+  const [pending, setPending] = useState<UserActionTarget | null>(null);
   const pages = data ? pageCount(data.total, data.pageSize) : 1;
 
+  function action(user: AdminUser, next: UserAction) {
+    if (loading || busyId) {
+      return;
+    }
+    if (next === "promote" || next === "resetPassword") {
+      setResetting({ user, promote: next === "promote" });
+    } else {
+      setPending({ user, action: next });
+    }
+  }
+
+  async function confirm() {
+    if (!pending) {
+      return;
+    }
+    const current = data?.users.find((user) => user.id === pending.user.id);
+    const rules = current ? getUserActionRules(current, selfId) : null;
+    const allowed = current && rules && !loading && (
+      pending.action === "demote"
+        ? rules.canChangeRole && current.role === "admin"
+        : pending.action === "lock"
+          ? rules.canLock && !current.disabled
+          : rules.canUnlock && current.disabled
+    );
+    if (!allowed || !current) {
+      setPending(null);
+      return;
+    }
+    const patch: UserPatch = pending.action === "demote" ? { role: "user" } : { disabled: pending.action === "lock" };
+    if (await onPatch(current, patch)) {
+      setPending(null);
+    }
+  }
+
+  const actions = (user: AdminUser) => (
+    <UserActionButtons
+      user={user}
+      selfId={selfId}
+      busy={!!busyId || !!loading}
+      onAction={action}
+    />
+  );
+
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <label htmlFor={searchId} className="sr-only">
-          Tìm người dùng
-        </label>
-        <div className="relative min-w-0 basis-full sm:max-w-sm sm:flex-1 sm:basis-auto">
-          <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-white/45" />
+    <div className={ui.section}>
+      <div className={ui.controls}>
+        <label className={ui.search} htmlFor={`${id}-search`}>
+          Tìm tên đăng nhập
           <input
-            id={searchId}
+            id={`${id}-search`}
             type="search"
-            value={query}
-            onChange={(e) => onQuery(e.target.value)}
-            placeholder="Tìm tên đăng nhập"
+            value={search}
+            onChange={(e) => onSearch(e.target.value)}
+            maxLength={50}
             autoComplete="off"
             spellCheck={false}
-            className="h-11 w-full rounded-full border border-white/15 bg-black/40 pl-10 pr-4 text-base text-white outline-none transition-colors placeholder:text-white/35 focus:border-game-accent"
           />
-        </div>
-        {data && (
-          <p className="text-sm text-white/60" aria-live="polite">
-            {formatNumber(data.total)} tài khoản
-          </p>
-        )}
+        </label>
+        <label htmlFor={`${id}-filter`}>
+          Lọc tài khoản
+          <select
+            id={`${id}-filter`}
+            value={query.filter}
+            onChange={(e) => onQuery({ filter: e.target.value as UsersQuery["filter"] })}
+          >
+            {Object.entries(USERS_FILTER_LABELS).map(([v, label]) => (
+              <option key={v} value={v}>{label}</option>
+            ))}
+          </select>
+        </label>
+        <label htmlFor={`${id}-sort`}>
+          Sắp xếp theo
+          <select
+            id={`${id}-sort`}
+            value={query.sort}
+            onChange={(e) => onQuery({ sort: e.target.value as UsersQuery["sort"] })}
+          >
+            {Object.entries(USERS_SORT_LABELS).map(([v, label]) => (
+              <option key={v} value={v}>{label}</option>
+            ))}
+          </select>
+        </label>
+        <label htmlFor={`${id}-order`}>
+          Thứ tự
+          <select
+            id={`${id}-order`}
+            value={query.order}
+            onChange={(e) => onQuery({ order: e.target.value as UsersQuery["order"] })}
+          >
+            {Object.entries(USERS_ORDER_LABELS).map(([v, label]) => (
+              <option key={v} value={v}>{label}</option>
+            ))}
+          </select>
+        </label>
       </div>
-
+      {data && (
+        <p className={ui.count} aria-live="polite">{formatNumber(data.total)} tài khoản</p>
+      )}
       {error ? (
-        <div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm">
-          <p className="font-bold text-rose-200">Không tải được danh sách người dùng</p>
-          <p className="mt-1 text-rose-100/70">{error}</p>
-          {onRetry && (
-            <GameButton size="sm" className="mt-3 h-10" onClick={onRetry}>
-              Thử lại
-            </GameButton>
-          )}
+        <div role="alert" className={ui.message}>
+          <p>Không tải được danh sách người dùng</p>
+          <p>{error}</p>
+          {onRetry && <GameButton onClick={onRetry}>Thử lại</GameButton>}
         </div>
       ) : (
-        <div className="relative">
-          <div
-            className={cn("overflow-x-auto rounded-2xl border border-white/10 bg-game-surface-sunken transition-opacity", loading && data && "opacity-60")}
-            aria-busy={loading || undefined}
-            onScroll={(e) => {
-              const el = e.currentTarget;
-              setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
-            }}
-          >
-          <table className="w-full min-w-[52rem] text-sm">
-            <thead className="bg-game-surface">
-              <tr className="border-b border-white/10">
-                <th className={cn(TH, "sticky left-0 z-10 bg-game-surface")}>Tên đăng nhập</th>
-                <th className={TH}>Trạng thái</th>
-                <th className={cn(TH, "text-right")}>Số ván</th>
-                <th className={TH}>Tạo lúc</th>
-                <th className={TH}>Đăng nhập cuối</th>
-                <th className={cn(TH, "text-right")}>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {!data &&
-                Array.from({ length: 6 }, (_, i) => (
-                  <tr key={i}>
-                    <td colSpan={6} className="px-3 py-3">
-                      <span className="block h-5 animate-pulse rounded-full bg-white/8" />
-                    </td>
-                  </tr>
+        <div aria-busy={loading || undefined}>
+          {!data ? (
+            <p role="status" className={ui.message}>Đang tải tài khoản…</p>
+          ) : data.users.length === 0 ? (
+            <p className={ui.message}>Không có tài khoản nào phù hợp.</p>
+          ) : (
+            <>
+              <div className={ui.desktop}>
+                <table className={ui.table}>
+                  <thead>
+                    <tr>
+                      <th>Tên đăng nhập</th>
+                      <th>Trạng thái</th>
+                      <th>Số ván</th>
+                      <th>Ngày tạo</th>
+                      <th>Đăng nhập cuối</th>
+                      <th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.users.map((user) => (
+                      <tr key={user.id}>
+                        <td className={ui.username}>{user.username}</td>
+                        <td><UserBadges user={user} selfId={selfId} /></td>
+                        <td>{formatNumber(user.games)}</td>
+                        <td>{formatDateTime(user.createdAt).slice(0, 10)}</td>
+                        <td>{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "Chưa đăng nhập"}</td>
+                        <td>{actions(user)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <ul className={ui.cards}>
+                {data.users.map((user) => (
+                  <li key={user.id} className={ui.card}>
+                    <h3 className={ui.username}>{user.username}</h3>
+                    <UserBadges user={user} selfId={selfId} />
+                    <dl className={ui.details}>
+                      <div>
+                        <dt>Số ván</dt>
+                        <dd>{formatNumber(user.games)}</dd>
+                      </div>
+                      <div>
+                        <dt>Ngày tạo</dt>
+                        <dd>{formatDateTime(user.createdAt).slice(0, 10)}</dd>
+                      </div>
+                      <div>
+                        <dt>Đăng nhập cuối</dt>
+                        <dd>{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "Chưa đăng nhập"}</dd>
+                      </div>
+                    </dl>
+                    {actions(user)}
+                  </li>
                 ))}
-              {data?.users.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-3 py-10 text-center text-white/55">
-                    {query.trim() ? `Không có tài khoản nào khớp "${query.trim()}".` : "Chưa có tài khoản nào."}
-                  </td>
-                </tr>
-              )}
-              {data?.users.map((u) => (
-                <UserRow key={u.id} user={u} self={u.id === selfId} busy={busyId === u.id} onPatch={onPatch} onReset={() => setResetting({ user: u, promote: false })} onPromote={() => setResetting({ user: u, promote: true })} />
-              ))}
-            </tbody>
-          </table>
-          </div>
-          {/* Phones: a fade on the right edge says the table scrolls sideways (the actions start off-screen). */}
-          <span
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-y-px right-px w-12 rounded-r-2xl bg-gradient-to-l from-game-surface-sunken to-transparent transition-opacity sm:hidden",
-              atEnd && "opacity-0",
-            )}
-          />
+              </ul>
+            </>
+          )}
         </div>
       )}
-
       {data && pages > 1 && (
-        <nav aria-label="Phân trang" className="flex items-center justify-center gap-3">
-          <GameButton size="sm" className="h-10" disabled={data.page <= 1 || loading} onClick={() => onPage(data.page - 1)}>
+        <nav aria-label="Phân trang" className={ui.pager}>
+          <GameButton disabled={loading || data.page <= 1} onClick={() => onPage(data.page - 1)}>
             Trang trước
           </GameButton>
-          <span className="text-sm tabular-nums text-white/70">
-            Trang {data.page}/{pages}
-          </span>
-          <GameButton size="sm" className="h-10" disabled={data.page >= pages || loading} onClick={() => onPage(data.page + 1)}>
+          <span>Trang {data.page}/{pages}</span>
+          <GameButton disabled={loading || data.page >= pages} onClick={() => onPage(data.page + 1)}>
             Trang sau
           </GameButton>
         </nav>
       )}
-
-      <ResetPasswordDialog target={resetting} onClose={() => setResetting(null)} onPatch={onPatch} />
+      <UserActionDialog target={pending} onClose={() => setPending(null)} onConfirm={confirm} />
+      <ResetPasswordDialog
+        target={resetting}
+        onClose={() => setResetting(null)}
+        onPatch={async (user, patch) => {
+          const current = data?.users.find((item) => item.id === user.id);
+          if (!current || loading) {
+            setResetting(null);
+            return false;
+          }
+          const rules = getUserActionRules(current, selfId);
+          if (!rules.canResetPassword || ("role" in patch && !rules.canChangeRole)) {
+            setResetting(null);
+            return false;
+          }
+          return onPatch(current, patch);
+        }}
+      />
     </div>
   );
 }
 
-function UserRow({
-  user,
-  self,
-  busy,
-  onPatch,
-  onReset,
-  onPromote,
-}: {
-  user: AdminUser;
-  self: boolean;
-  busy: boolean;
-  onPatch: (u: AdminUser, p: UserPatch) => Promise<boolean>;
-  onReset: () => void;
-  onPromote: () => void;
-}) {
-  const admin = user.role === "admin";
+function UserBadges({ user, selfId }: { user: AdminUser; selfId: string | null }) {
   return (
-    <tr className={cn("transition-colors hover:bg-white/[0.03]", user.disabled && "text-white/55")}>
-      <td className={cn(TD, "sticky left-0 z-10 bg-game-surface-sunken font-bold")}>
-        <span className="flex items-center gap-2">
-          <span className="max-w-40 truncate">{user.username}</span>
-          {self && <span className="text-xs font-normal text-white/50">(bạn)</span>}
-        </span>
-      </td>
-      <td className={TD}>
-        <span className="flex gap-1.5">
-          {admin ? <GameBadge tone="accent">Quản trị</GameBadge> : <GameBadge>Người chơi</GameBadge>}
-          {user.disabled && <GameBadge tone="danger">Đã khoá</GameBadge>}
-        </span>
-      </td>
-      <td className={cn(TD, "text-right tabular-nums")}>{formatNumber(user.games)}</td>
-      <td className={cn(TD, "tabular-nums text-white/70")}>{formatDateTime(user.createdAt).slice(0, 10)}</td>
-      <td className={cn(TD, "tabular-nums text-white/70")}>{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "Chưa đăng nhập"}</td>
-      <td className={cn(TD, "text-right")}>
-        <span className="inline-flex gap-2">
-          <GameButton
-            size="sm"
-            className="h-10"
-            variant="ghost"
-            disabled={self || busy}
-            // Granting opens the password dialog (its submit is the confirmation); removing asks here.
-            confirm={admin ? "Bỏ quyền?" : undefined}
-            title={self ? "Không thể tự đổi quyền của mình" : admin ? "Bỏ quyền quản trị" : "Cấp quyền quản trị (đặt mật khẩu mới)"}
-            onClick={() => (admin ? void onPatch(user, { role: "user" }) : onPromote())}
-          >
-            {admin ? <ShieldOff aria-hidden /> : <Shield aria-hidden />}
-            {admin ? "Bỏ quyền" : "Cấp quyền"}
-          </GameButton>
-          {user.disabled ? (
-            <GameButton size="sm" className="h-10" variant="ghost" disabled={busy} onClick={() => void onPatch(user, { disabled: false })}>
-              <LockOpen aria-hidden />
-              Mở khoá
-            </GameButton>
-          ) : (
-            <GameButton
-              size="sm"
-              className="h-10"
-              variant="ghost"
-              disabled={self || busy}
-              confirm="Khoá thật?"
-              title={self ? "Không thể tự khoá mình" : "Khoá tài khoản và đăng xuất mọi máy"}
-              onClick={() => void onPatch(user, { disabled: true })}
-            >
-              <Lock aria-hidden />
-              Khoá
-            </GameButton>
-          )}
-          <GameButton size="sm" className="h-10" variant="ghost" disabled={busy} title="Đặt lại mật khẩu" onClick={onReset}>
-            <KeyRound aria-hidden />
-            Mật khẩu
-          </GameButton>
-        </span>
-      </td>
-    </tr>
+    <div className={ui.badges}>
+      {user.id === selfId && <GameBadge>Bạn</GameBadge>}
+      {user.role === "admin" ? <GameBadge tone="accent">Quản trị</GameBadge> : <GameBadge>Người chơi</GameBadge>}
+      {user.isOwner === true && <GameBadge tone="warning">Chủ sở hữu</GameBadge>}
+      {user.disabled && <GameBadge tone="danger">Đã khoá</GameBadge>}
+    </div>
   );
 }
-
 /** Sets a new password; with `promote`, also grants admin in the same request (admin minimum applies). */
 function ResetPasswordDialog({
   target,
@@ -252,29 +284,28 @@ function ResetPasswordDialog({
   const promote = shownTarget?.promote ?? false;
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  // Set by a submit attempt: the length rule is shown then, not on every keystroke (an alert while typing would be
-  // announced by screen readers before the admin has finished).
-  const [tried, setTried] = useState(false);
   // Every open and every close starts from an empty field: a typed password never lingers in state.
   if (target !== prev) {
     setPrev(target);
     setPassword("");
-    setTried(false);
-    if (target) setShownTarget(target);
+    if (target) {
+      setShownTarget(target);
+    }
   }
   // The role the account ends up with sets the minimum (be_game checks the same).
-  const role = promote ? "admin" : (shown?.role ?? "user");
-  const problem = password === "" ? null : passwordProblem(password, role);
-  const ready = password !== "";
+  const { role, problem, ready } = resetPasswordState(password, shown?.role ?? "user", promote);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!shown || !ready || busy) return;
-    if (problem) return setTried(true);
+    if (!target || !shown || !ready || busy) {
+      return;
+    }
     setBusy(true);
     const ok = await onPatch(shown, promote ? { role: "admin", password } : { password });
     setBusy(false);
-    if (ok) onClose();
+    if (ok) {
+      onClose();
+    }
   }
 
   return (
@@ -291,17 +322,22 @@ function ResetPasswordDialog({
       }
     >
       <form onSubmit={submit} className="space-y-4">
-        <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} autoComplete="off" autoFocus hint={`${passwordHint(role)} Nhớ gửi mật khẩu này cho người dùng.`} />
-        {tried && problem && (
-          <p role="alert" className="text-sm text-rose-300">
-            {problem}
-          </p>
-        )}
+        <AuthField
+          label="Mật khẩu mới"
+          value={password}
+          onChange={setPassword}
+          type="password"
+          autoComplete="off"
+          autoFocus
+          error={problem ?? undefined}
+          errorClassName={styles.error}
+          hint={`${passwordHint(role)} Nhớ gửi mật khẩu này cho người dùng.`}
+        />
         <div className="flex justify-end gap-2">
-          <GameButton type="button" size="sm" className="h-10" onClick={onClose}>
+          <GameButton type="button" size="sm" className={styles.actionButton} onClick={onClose}>
             Huỷ
           </GameButton>
-          <GameButton type="submit" size="sm" className="h-10" variant="primary" loading={busy} disabled={!ready}>
+          <GameButton type="submit" size="sm" className={styles.actionButton} variant="primary" loading={busy} disabled={!ready || busy}>
             {promote ? "Cấp quyền" : "Đặt mật khẩu"}
           </GameButton>
         </div>
@@ -316,64 +352,100 @@ const PATCH_DONE: Record<string, (u: AdminUser) => string> = {
   password: (u) => `Đã đặt mật khẩu mới cho ${u.username}`,
 };
 
-/** The "Người dùng" tab: debounced search (300 ms), paging, and the PATCH calls behind the row buttons. */
 export function UsersSection({ selfId }: { selfId: string | null }) {
-  const [query, setQuery] = useState("");
-  const [q, setQ] = useState("");
-  const [page, setPage] = useState(1);
+  const session = useSession();
+  const token = session?.session ?? null;
+  return <UsersQuerySection key={token} selfId={selfId} token={token} />;
+}
+/** Fetches the current users query and applies account updates for this session. */
+function UsersQuerySection({ selfId, token }: { selfId: string | null; token: string | null }) {
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState<UsersQuery>(DEFAULT_USERS_QUERY);
   const [attempt, setAttempt] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [result, setResult] = useState<{ key: string; data: AdminUsersPage | null; error: string | null; status: number } | null>(null);
-  const key = `${q}|${page}|${attempt}`;
+  const submitting = useRef(false);
+  const [result, setResult] = useState<{
+    key: string;
+    data: AdminUsersPage | null;
+    error: string | null;
+    status: number;
+  } | null>(null);
+  const path = usersQueryPath(query);
+  const key = JSON.stringify([path, attempt, token]);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setQ(query.trim());
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [query]);
+    const timeout = setTimeout(() => setQuery((current) => changeUsersQuery(current, {
+      q: search.normalize("NFC").trim().replace(/\s+/gu, " "),
+    })), 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
 
   useEffect(() => {
+    if (!token) {
+      return;
+    }
     let live = true;
-    void authRequest<AdminUsersPage>("GET", `/api/admin/users?q=${encodeURIComponent(q)}&page=${page}`).then((res) => {
-      if (!live) return;
-      setResult((prev) => (res.ok ? { key, data: res.data, error: null, status: 200 } : { key, data: prev?.data ?? null, error: res.error, status: res.status }));
+    void authRequest<AdminUsersPage>("GET", path).then((res) => {
+      if (!live || getSession()?.session !== token) {
+        return;
+      }
+      if (res.ok) {
+        const page = validUsersPage(res.data.total, res.data.pageSize, query.page);
+        if (page !== query.page) {
+          setQuery((current) => ({ ...current, page }));
+          return;
+        }
+        setResult({ key, data: res.data, error: null, status: 200 });
+      } else {
+        setResult((prev) => ({ key, data: prev?.data ?? null, error: res.error, status: res.status }));
+      }
     });
     return () => {
       live = false;
     };
-  }, [key, q, page]);
+  }, [key, path, token, query.page]);
 
   async function patch(user: AdminUser, body: UserPatch): Promise<boolean> {
-    setBusyId(user.id);
-    const res = await authRequest<{ ok: true; user: AdminUser }>("PATCH", `/api/admin/users/${encodeURIComponent(user.id)}`, body);
-    setBusyId(null);
-    if (!res.ok) {
-      gameToast.error(res.error);
+    if (submitting.current || !token || getSession()?.session !== token) {
       return false;
     }
-    const updated = res.data.user;
-    setResult((prev) => (prev?.data ? { ...prev, data: { ...prev.data, users: prev.data.users.map((u) => (u.id === updated.id ? updated : u)) } } : prev));
-    gameToast.success(PATCH_DONE[Object.keys(body)[0]]?.(updated) ?? "Đã lưu");
-    return true;
+    submitting.current = true;
+    setBusyId(user.id);
+    try {
+      const res = await authRequest<{ ok: true; user: AdminUser }>("PATCH", `/api/admin/users/${encodeURIComponent(user.id)}`, body);
+      if (getSession()?.session !== token) {
+        return false;
+      }
+      if (!res.ok) {
+        gameToast.error(res.error);
+        return false;
+      }
+      setAttempt((value) => value + 1);
+      gameToast.success(PATCH_DONE[Object.keys(body)[0]]?.(res.data.user) ?? "Đã lưu");
+      return true;
+    } finally {
+      submitting.current = false;
+      setBusyId(null);
+    }
   }
 
-  // Lost admin rights since the page loaded (401 is handled by the dashboard, which sends the visitor to sign in).
-  if (result?.status === 403) return <Forbidden />;
-
+  if (result?.key === key && result.status === 403) {
+    return <Forbidden />;
+  }
   return (
     <UsersTable
       data={result?.data ?? null}
       query={query}
-      onQuery={setQuery}
-      onPage={setPage}
+      search={search}
+      onSearch={setSearch}
+      onQuery={(change) => setQuery((current) => changeUsersQuery(current, change))}
+      onPage={(page) => setQuery((current) => ({ ...current, page }))}
       onPatch={patch}
       busyId={busyId}
       selfId={selfId}
       loading={result?.key !== key}
       error={result?.key === key ? result.error : null}
-      onRetry={() => setAttempt((a) => a + 1)}
+      onRetry={() => setAttempt((value) => value + 1)}
     />
   );
 }

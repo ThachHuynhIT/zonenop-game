@@ -1,0 +1,84 @@
+@use "@styles/variables" as vars;
+.overview {
+  display: grid;
+  gap: vars.$spacing-md;
+  margin-bottom: vars.$spacing-lg;
+  min-width: 0;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: vars.$spacing-md;
+}
+.periods {
+  display: flex;
+  padding: vars.$spacing-xs;
+  border: 1px solid rgb(255 255 255 / .1);
+  border-radius: 999px;
+  background: rgb(0 0 0 / .3);
+}
+.periods button {
+  min-height: 44px;
+  padding: vars.$spacing-sm vars.$spacing-md;
+  border-radius: 999px;
+  font-size: vars.$font-size-sm;
+  font-weight: 800;
+  color: inherit;
+}
+.periods button[aria-pressed="true"] {
+  background: vars.$game-accent;
+  color: #102019;
+}
+.periods button:focus-visible {
+  outline: 2px solid vars.$color-white;
+  outline-offset: 2px;
+}
+.status {
+  font-size: vars.$font-size-sm;
+  opacity: .65;
+}
+.error {
+  display: grid;
+  justify-items: center;
+  gap: vars.$spacing-md;
+  text-align: center;
+  padding: vars.$spacing-xl;
+}
+.error h2 {
+  font-size: vars.$font-size-xl;
+  font-weight: 800;
+}
+.skeleton {
+  display: grid;
+  gap: vars.$spacing-md;
+}
+.skeletonCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: vars.$spacing-sm;
+}
+.skeletonCard {
+  height: 8rem;
+  border-radius: vars.$radius-xl;
+  background: rgb(255 255 255 / .05);
+}
+.skeletonCard:first-child {
+  grid-column: span 2;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+@media (min-width: vars.$breakpoint-sm) {
+  .skeletonCards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

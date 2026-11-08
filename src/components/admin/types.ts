@@ -28,6 +28,8 @@ export interface AdminUser {
   createdAt: string;
   lastLoginAt: string | null;
   games: number;
+  /** The account named by be_game's OWNER_USERNAME; missing on older backends (treat as false). */
+  isOwner?: boolean;
 }
 
 export interface AdminUsersPage {

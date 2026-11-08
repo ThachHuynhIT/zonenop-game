@@ -1,0 +1,130 @@
+@use "@styles/variables" as vars;
+.section {
+  display: grid;
+  gap: vars.$spacing-md;
+  min-width: 0;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: vars.$spacing-md;
+}
+.controls label {
+  display: grid;
+  gap: vars.$spacing-sm;
+  flex: 1 1 9rem;
+  min-width: 0;
+  font-size: vars.$font-size-sm;
+  font-weight: 700;
+}
+.controls .search {
+  flex-basis: 16rem;
+}
+.controls input, .controls select {
+  width: 100%;
+  min-height: 44px;
+  padding: vars.$spacing-sm vars.$spacing-md;
+  border: 1px solid rgb(255 255 255 / .2);
+  border-radius: vars.$radius-lg;
+  background: #18212b;
+  color: vars.$color-white;
+  font-size: vars.$font-size-base;
+}
+.controls input:focus-visible, .controls select:focus-visible {
+  outline: 2px solid vars.$game-accent;
+  outline-offset: 2px;
+}
+.count {
+  font-size: vars.$font-size-sm;
+  opacity: .7;
+}
+.desktop {
+  display: none;
+}
+.cards {
+  display: grid;
+  gap: vars.$spacing-md;
+  list-style: none;
+  padding: 0;
+}
+.card {
+  display: grid;
+  gap: vars.$spacing-md;
+  padding: vars.$spacing-md;
+  border: 1px solid rgb(255 255 255 / .12);
+  border-radius: vars.$radius-xl;
+  background: rgb(0 0 0 / .2);
+  min-width: 0;
+}
+.username {
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: vars.$spacing-xs;
+}
+.details {
+  display: grid;
+  gap: vars.$spacing-sm;
+  font-size: vars.$font-size-sm;
+}
+.details div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: vars.$spacing-sm;
+}
+.details dt {
+  opacity: .65;
+}
+.details dd {
+  font-variant-numeric: tabular-nums;
+}
+.message {
+  display: grid;
+  justify-items: center;
+  gap: vars.$spacing-md;
+  padding: vars.$spacing-xl;
+  text-align: center;
+}
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: vars.$spacing-sm;
+  font-size: vars.$font-size-sm;
+}
+@media (min-width: vars.$breakpoint-md) {
+  .cards {
+    display: none;
+  }
+  .desktop {
+    display: block;
+    border: 1px solid rgb(255 255 255 / .12);
+    border-radius: vars.$radius-xl;
+    overflow: hidden;
+  }
+  .table {
+    width: 100%;
+    table-layout: fixed;
+    font-size: vars.$font-size-sm;
+    border-collapse: collapse;
+  }
+  .table th, .table td {
+    padding: vars.$spacing-sm;
+    text-align: left;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+    border-bottom: 1px solid rgb(255 255 255 / .08);
+  }
+  .table th {
+    font-size: vars.$font-size-xs;
+    opacity: .65;
+  }
+  .table th:last-child {
+    width: 28%;
+  }
+}
