@@ -4,12 +4,15 @@ import { useEffect, useId, useState } from "react";
 import { KeyRound, Lock, LockOpen, Search, Shield, ShieldOff } from "lucide-react";
 import { GameBadge, GameButton, GameDialog, gameToast } from "@/components/game-ui";
 import { AuthField } from "@/components/auth/fields";
-import { passwordHint, passwordProblem } from "@/components/auth/password";
+import { passwordHint } from "@/components/auth/password";
 import { authRequest } from "@/components/auth/session";
 import { cn } from "@/lib/utils";
 import { Forbidden } from "./Forbidden";
 import { formatDateTime, formatNumber, pageCount } from "./format";
 import type { AdminUser, AdminUsersPage } from "./types";
+import { getUserActionRules } from "./userActions";
+import { resetPasswordState } from "./resetPassword";
+import styles from "./ResetPasswordDialog.module.scss";
 
 // Promoting needs a new password in the same request (be_game: the stored hash cannot tell whether the old one is long enough).
 export type UserPatch = { role: "admin"; password: string } | { role: "user" } | { disabled?: boolean } | { password?: string };
@@ -123,7 +126,7 @@ export function UsersTable({
                 </tr>
               )}
               {data?.users.map((u) => (
-                <UserRow key={u.id} user={u} self={u.id === selfId} busy={busyId === u.id} onPatch={onPatch} onReset={() => setResetting({ user: u, promote: false })} onPromote={() => setResetting({ user: u, promote: true })} />
+                <UserRow key={u.id} user={u} selfId={selfId} busy={busyId === u.id} onPatch={onPatch} onReset={() => getUserActionRules(u, selfId).canResetPassword && setResetting({ user: u, promote: false })} onPromote={() => getUserActionRules(u, selfId).canChangeRole && setResetting({ user: u, promote: true })} />
               ))}
             </tbody>
           </table>
@@ -153,27 +156,35 @@ export function UsersTable({
         </nav>
       )}
 
-      <ResetPasswordDialog target={resetting} onClose={() => setResetting(null)} onPatch={onPatch} />
+      <ResetPasswordDialog target={resetting} onClose={() => setResetting(null)} onPatch={async (user, patch) => {
+        const current = data?.users.find((u) => u.id === user.id);
+        if (!current) return false;
+        const rules = getUserActionRules(current, selfId);
+        if (!rules.canResetPassword || ("role" in patch && !rules.canChangeRole)) return false;
+        return onPatch(current, patch);
+      }} />
     </div>
   );
 }
 
 function UserRow({
   user,
-  self,
+  selfId,
   busy,
   onPatch,
   onReset,
   onPromote,
 }: {
   user: AdminUser;
-  self: boolean;
+  selfId: string | null;
   busy: boolean;
   onPatch: (u: AdminUser, p: UserPatch) => Promise<boolean>;
   onReset: () => void;
   onPromote: () => void;
 }) {
   const admin = user.role === "admin";
+  const self = user.id === selfId;
+  const rules = getUserActionRules(user, selfId);
   return (
     <tr className={cn("transition-colors hover:bg-white/[0.03]", user.disabled && "text-white/55")}>
       <td className={cn(TD, "sticky left-0 z-10 bg-game-surface-sunken font-bold")}>
@@ -185,6 +196,7 @@ function UserRow({
       <td className={TD}>
         <span className="flex gap-1.5">
           {admin ? <GameBadge tone="accent">Quản trị</GameBadge> : <GameBadge>Người chơi</GameBadge>}
+          {user.isOwner === true && <GameBadge tone="warning">Chủ sở hữu</GameBadge>}
           {user.disabled && <GameBadge tone="danger">Đã khoá</GameBadge>}
         </span>
       </td>
@@ -193,9 +205,10 @@ function UserRow({
       <td className={cn(TD, "tabular-nums text-white/70")}>{user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "Chưa đăng nhập"}</td>
       <td className={cn(TD, "text-right")}>
         <span className="inline-flex gap-2">
-          <GameButton
+          {user.isOwner === true && !self && <span className={styles.protectedNote}>Tài khoản chủ sở hữu được bảo vệ</span>}
+          {rules.canChangeRole && <GameButton
             size="sm"
-            className="h-10"
+            className={styles.actionButton}
             variant="ghost"
             disabled={self || busy}
             // Granting opens the password dialog (its submit is the confirmation); removing asks here.
@@ -205,16 +218,16 @@ function UserRow({
           >
             {admin ? <ShieldOff aria-hidden /> : <Shield aria-hidden />}
             {admin ? "Bỏ quyền" : "Cấp quyền"}
-          </GameButton>
-          {user.disabled ? (
-            <GameButton size="sm" className="h-10" variant="ghost" disabled={busy} onClick={() => void onPatch(user, { disabled: false })}>
+          </GameButton>}
+          {user.disabled && rules.canUnlock ? (
+            <GameButton size="sm" className={styles.actionButton} variant="ghost" disabled={busy} onClick={() => void onPatch(user, { disabled: false })}>
               <LockOpen aria-hidden />
               Mở khoá
             </GameButton>
-          ) : (
+          ) : rules.canLock ? (
             <GameButton
               size="sm"
-              className="h-10"
+              className={styles.actionButton}
               variant="ghost"
               disabled={self || busy}
               confirm="Khoá thật?"
@@ -224,11 +237,11 @@ function UserRow({
               <Lock aria-hidden />
               Khoá
             </GameButton>
-          )}
-          <GameButton size="sm" className="h-10" variant="ghost" disabled={busy} title="Đặt lại mật khẩu" onClick={onReset}>
+          ) : null}
+          {rules.canResetPassword && <GameButton size="sm" className={styles.actionButton} variant="ghost" disabled={busy} title="Đặt lại mật khẩu" onClick={onReset}>
             <KeyRound aria-hidden />
             Mật khẩu
-          </GameButton>
+          </GameButton>}
         </span>
       </td>
     </tr>
@@ -252,25 +265,18 @@ function ResetPasswordDialog({
   const promote = shownTarget?.promote ?? false;
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  // Set by a submit attempt: the length rule is shown then, not on every keystroke (an alert while typing would be
-  // announced by screen readers before the admin has finished).
-  const [tried, setTried] = useState(false);
   // Every open and every close starts from an empty field: a typed password never lingers in state.
   if (target !== prev) {
     setPrev(target);
     setPassword("");
-    setTried(false);
     if (target) setShownTarget(target);
   }
   // The role the account ends up with sets the minimum (be_game checks the same).
-  const role = promote ? "admin" : (shown?.role ?? "user");
-  const problem = password === "" ? null : passwordProblem(password, role);
-  const ready = password !== "";
+  const { role, problem, ready } = resetPasswordState(password, shown?.role ?? "user", promote);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!shown || !ready || busy) return;
-    if (problem) return setTried(true);
+    if (!target || !shown || !ready || busy) return;
     setBusy(true);
     const ok = await onPatch(shown, promote ? { role: "admin", password } : { password });
     setBusy(false);
@@ -291,17 +297,12 @@ function ResetPasswordDialog({
       }
     >
       <form onSubmit={submit} className="space-y-4">
-        <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} autoComplete="off" autoFocus hint={`${passwordHint(role)} Nhớ gửi mật khẩu này cho người dùng.`} />
-        {tried && problem && (
-          <p role="alert" className="text-sm text-rose-300">
-            {problem}
-          </p>
-        )}
+        <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} type="password" autoComplete="off" autoFocus error={problem ?? undefined} errorClassName={styles.error} hint={`${passwordHint(role)} Nhớ gửi mật khẩu này cho người dùng.`} />
         <div className="flex justify-end gap-2">
-          <GameButton type="button" size="sm" className="h-10" onClick={onClose}>
+          <GameButton type="button" size="sm" className={styles.actionButton} onClick={onClose}>
             Huỷ
           </GameButton>
-          <GameButton type="submit" size="sm" className="h-10" variant="primary" loading={busy} disabled={!ready}>
+          <GameButton type="submit" size="sm" className={styles.actionButton} variant="primary" loading={busy} disabled={!ready || busy}>
             {promote ? "Cấp quyền" : "Đặt mật khẩu"}
           </GameButton>
         </div>

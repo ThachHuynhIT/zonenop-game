@@ -7,10 +7,10 @@ Bang!, Ô Ăn Quan, Cờ Cá Ngựa, Nối Chữ) plus offline Contra. The hub i
 at its own route (`/tien-len`, `/meo-no`, …, `/contra`). There is no database here:
 rooms, game state, WebSockets, accounts, sessions, leaderboards and admin stats live in the separate **be_game** repo,
 reached via `NEXT_PUBLIC_TIENLEN_SERVER_URL`, with an optional backup backend in
-`NEXT_PUBLIC_TIENLEN_FALLBACK_URL` (lobbies and new rooms fail over to it; each room is pinned to the
+`NEXT_PUBLIC_TIENLEN_FALLBACK_URL` (supported by the code but currently set in neither live build, so each site talks only to its own backend; when set, lobbies and new rooms fail over to it; each room is pinned to the
 backend it was joined on and reconnects there first, falling through to the other only when the pinned one is unreachable, while the pinned backend saying "not found" is final. The two backends do not share a store yet, so a running game only resumes on the backup after the shared-store cutover; `docs/GAMES_GUIDE.md` §1.2). It is self-hosted with Docker
 (`compose.selfhost.yml`, deployed by `.github/workflows/deploy.yml`), like be_game: live at `https://play.fudio101.com`,
-backend `https://play-api.fudio101.com` (backup `https://be-game-omega.vercel.app`); a Vercel copy lives at `https://zonenop-game.vercel.app`. `/api/health` returns `{ ok, commit }` and the deploy waits for the shipped commit on both (repo variable `VERCEL_HEALTH_URL`). The server is shared with its owner: build only in our own BuildKit builder
+backend `https://play-api.fudio101.com`; a Vercel copy (backend `https://be-game-omega.vercel.app`) lives at `https://zonenop-game.vercel.app`. `/api/health` returns `{ ok, commit }` and the deploy waits for the shipped commit on both (repo variable `VERCEL_HEALTH_URL`). The server is shared with its owner: build only in our own BuildKit builder
 `zonenop-game` and never run a global `prune` (README, Deployment).
 
 (History: this repo started as a portfolio with a self-built CMS, abandoned in

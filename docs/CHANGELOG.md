@@ -10,6 +10,16 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Owner badge, live password check, sign-out confirmation
+
+- **Date:** 2026-11-08 (branch `feature/admin-owner-and-ui`, from `origin/develop`; Phase 2 of `docs/superpowers/plans/2026-11-08-admin-owner-and-ui.md`; needs be_game #49, live since 2026-11-08).
+- `/admin` user rows read be_game's `isOwner` (the account named by its `OWNER_USERNAME`): a "Chủ sở hữu" badge, and for other admins the role, lock and password buttons are hidden (unlock stays) with "Tài khoản chủ sở hữu được bảo vệ" (`getUserActionRules`, `admin/userActions.ts`). Cosmetic: be_game refuses those changes with 403. An older backend without `isOwner` is treated as "not the owner"; the owner is never guessed from the name. Your own row no longer shows the disabled role/lock buttons (they are hidden).
+- The reset / promote password dialog checks while typing (`resetPasswordState`, `admin/resetPassword.ts`): the length hint shows from the start, the error as soon as the value is invalid, and the submit button and Enter stay blocked until it fits (8–72, 12–72 for admins and promotions). `AuthField` gained optional `error` with `aria-describedby` / `aria-invalid` and is now a password field in this dialog. This replaces the 2026-11-06 "message only after a submit attempt" behaviour.
+- "Đăng xuất" in the account menu now switches the same dialog to "Đăng xuất?" with Huỷ / Đăng xuất (`canConfirmLogout`, `auth/logoutConfirm.ts`); cancel, Esc or dismiss returns to the account view, and a confirmation opened for a session that was meanwhile replaced does nothing. Automatic sign-outs (revoked or expired session) are unchanged.
+- Docs: GAMES_GUIDE §10.5/10.6, README, `.env.example` and `CLAUDE.md` no longer say `ADMIN_USERNAMES` grants admin (be_game grants by user id with `bootstrap-admin.ts`), and say that `NEXT_PUBLIC_TIENLEN_FALLBACK_URL` is set in neither live build.
+- The "admin set a one-character password" report: be_game allowed 1–72 characters from 2026-10-17 until #28 (2026-11-06); current code refuses it (regression tests in be_game #49). Not re-tested on production yet.
+- UI by Codex, reviewed by Claude; checked in the browser against a local be_game (memory accounts, an owner admin, a second admin, a user, a locked user): badge and hidden actions, live error and blocked Enter at 1 character, one PATCH at 8, the sign-out confirmation (focus on Huỷ, Esc back with focus restored, one POST then `/dang-nhap`) at desktop and 375 px.
+
 ## Security headers, CSP in Report-Only
 
 - **Date:** 2026-11-06 (branch `feat/security-headers-csp`, from `origin/develop`; T09 of the be_game/zonenop-game hardening plan).

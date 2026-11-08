@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GameButton, GameDialog, GameTabs, gameToast } from "@/components/game-ui";
@@ -10,6 +10,8 @@ import { AuthField } from "./fields";
 import { type PasswordRole, passwordHint, passwordProblem } from "./password";
 import { usernameProblem } from "./username";
 import { authRequest, clearSession, saveSession, updateProfile, useSession, type PublicUser } from "./session";
+import { canConfirmLogout, type LogoutConfirmState } from "./logoutConfirm";
+import styles from "./AccountMenu.module.scss";
 
 type MeData = { user: PublicUser; session?: string };
 
@@ -18,8 +20,34 @@ export function AccountMenu({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const current = useSession();
   const [signingOut, setSigningOut] = useState(false);
+  const [pending, setPending] = useState<LogoutConfirmState>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const logoutRef = useRef<HTMLButtonElement>(null);
+  const wasConfirming = useRef(false);
+  const logoutStarted = useRef(false);
+  const confirming = pending !== null && pending.session === current?.session;
+  if (pending && pending.session !== current?.session) setPending(null);
+
+  useEffect(() => {
+    if (confirming) cancelRef.current?.focus();
+    else if (wasConfirming.current) logoutRef.current?.focus();
+    wasConfirming.current = confirming;
+  }, [confirming]);
+
   if (!current) return null;
   const { user } = current;
+
+  function dismiss() {
+    if (signingOut) return;
+    if (confirming) setPending(null);
+    else onClose();
+  }
+
+  function confirmLogout() {
+    if (logoutStarted.current || !canConfirmLogout(pending, current?.session ?? null, signingOut)) return;
+    logoutStarted.current = true;
+    void signOut();
+  }
 
   async function signOut() {
     setSigningOut(true);
@@ -33,31 +61,44 @@ export function AccountMenu({ onClose }: { onClose: () => void }) {
   return (
     <GameDialog
       open
-      onOpenChange={(o) => !o && onClose()}
-      title={user.username}
-      description={user.role === "admin" ? "Tài khoản quản trị" : "Tài khoản của bạn"}
+      onOpenChange={(o) => !o && dismiss()}
+      title={confirming ? "Đăng xuất?" : user.username}
+      description={confirming ? "Bạn có chắc muốn đăng xuất khỏi tài khoản này?" : user.role === "admin" ? "Tài khoản quản trị" : "Tài khoản của bạn"}
       footer={
-        <>
-          {user.role === "admin" && (
-            <Link href="/admin" onClick={onClose} className="mr-auto inline-flex h-11 items-center rounded-full px-3 text-sm font-bold text-game-accent hover:bg-white/10">
-              Quản trị
-            </Link>
-          )}
-          <GameButton onClick={onClose}>
-            Đóng
-          </GameButton>
-          <GameButton variant="danger" loading={signingOut} onClick={() => void signOut()}>
-            Đăng xuất
-          </GameButton>
-        </>
+        confirming ? (
+          <div className={styles.confirmActions}>
+            <GameButton ref={cancelRef} autoFocus disabled={signingOut} onClick={dismiss}>
+              Huỷ
+            </GameButton>
+            <GameButton variant="danger" loading={signingOut} disabled={!canConfirmLogout(pending, current.session, signingOut)} onClick={confirmLogout}>
+              Đăng xuất
+            </GameButton>
+          </div>
+        ) : (
+          <>
+            {user.role === "admin" && (
+              <Link href="/admin" onClick={onClose} className="mr-auto inline-flex h-11 items-center rounded-full px-3 text-sm font-bold text-game-accent hover:bg-white/10">
+                Quản trị
+              </Link>
+            )}
+            <GameButton onClick={onClose}>
+              Đóng
+            </GameButton>
+            <GameButton ref={logoutRef} variant="danger" loading={signingOut} onClick={() => setPending({ session: current.session })}>
+              Đăng xuất
+            </GameButton>
+          </>
+        )
       }
     >
-      <GameTabs
-        tabs={[
-          { id: "profile", label: "Hồ sơ", content: <ProfileSection user={user} /> },
-          { id: "password", label: "Mật khẩu", content: <PasswordSection role={user.role} /> },
-        ]}
-      />
+      {confirming ? null : (
+        <GameTabs
+          tabs={[
+            { id: "profile", label: "Hồ sơ", content: <ProfileSection user={user} /> },
+            { id: "password", label: "Mật khẩu", content: <PasswordSection role={user.role} /> },
+          ]}
+        />
+      )}
     </GameDialog>
   );
 }
