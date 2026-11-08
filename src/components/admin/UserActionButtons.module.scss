@@ -1,0 +1,22 @@
+@use "@styles/variables" as vars;
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: vars.$spacing-sm;
+}
+.button {
+  min-height: 44px;
+  white-space: normal;
+}
+.note {
+  flex-basis: 100%;
+  font-size: vars.$font-size-xs;
+  opacity: .65;
+}
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: vars.$spacing-sm;
+}
