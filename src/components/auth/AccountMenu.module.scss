@@ -1,0 +1,9 @@
+@use "@styles/variables" as vars;
+
+.confirmActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  color: vars.$color-white;
+}
