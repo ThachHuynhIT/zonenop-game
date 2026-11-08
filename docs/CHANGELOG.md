@@ -10,6 +10,14 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Next.js 16.4.5 security upgrade
+
+- **Date:** 2026-11-08 (PR #102, branch `fix/next-security-upgrade`).
+- Dependabot (turned on 2026-11-08) flagged next 16.3.0 with two critical remote-code-execution advisories, fixed in 16.4.1: one through the Image Optimization API with SVG images (`/_next/image` is in use on production), one through `use cache` (not used here). `next` and `eslint-config-next` are now 16.4.5 (still pinned), `zod` ^4.6.7 (high advisory below 4.6.6).
+- Transitive fixes inside existing ranges, among them undici, proxy-addr, body-parser, fast-uri, js-yaml, systeminformation; `shadcn` moved 4.16.2 → 4.23.0. `npm audit fix` with npm 11.3.0 crashes (`Cannot read properties of null (reading edgesOut)`); npm 11.21.2 (`npx npm@11.21.2 audit fix`) worked.
+- Left on purpose (dev / build tools only, not in the standalone server): `deepmerge` and `minimatch` under the `shadcn` CLI (npm only offers a downgrade to shadcn 1.0.0), and the `sharp` devDependency 0.34.5 used by `scripts/card-art.mjs` on our own art (Next uses its own sharp 0.35.5). `npm audit --omit=dev` after the change: 6 low/moderate, 0 high/critical.
+- Checked: lint, typecheck, 262 tests, build; `next start` served the sign-in page, the hub, `/api/health` and `/_next/image` (200).
+
 ## /admin: filters and sorting, cards on phones, confirmations, overview on top
 
 - **Date:** 2026-11-08 (branch `feature/admin-ui-enhancements`, stacked on `feature/admin-owner-and-ui`; Phase 3 of `docs/superpowers/plans/2026-11-08-admin-owner-and-ui.md`; needs be_game #49 on both backends, live since 2026-11-08).
