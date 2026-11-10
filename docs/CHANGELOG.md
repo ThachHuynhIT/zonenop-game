@@ -10,6 +10,13 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Weekly dependency audit
+
+- **Date:** 2026-11-10 (branch `chore/dependency-audit`).
+- Dependabot alerts were turned off again on 2026-11-10 (the owner gets too much email), so `.github/workflows/audit.yml` now runs `npm run audit:check` (`scripts/audit-check.mjs`, copied from be_game) on pushes and PRs to `develop`/`main`, every Monday 02:41 UTC and by hand. It fails on any moderate-or-worse advisory not listed in `audit-exceptions.json` (owner, reason, expiry YYYY-MM-DD; empty today). It is a separate workflow so Deploy (which waits for CI) is never blocked by an advisory published overnight. GitHub runs the schedule from the default branch, so the weekly run starts only after the next release to `main`.
+- To make it green from the start: the `sharp` devDependency (only `scripts/card-art.mjs`) 0.34.5 → ^0.35.5 (high advisories below 0.35.5; it now dedupes with Next's own copy), and `overrides` pin `minimatch` ^11.0.5 under `@typescript-eslint/typescript-estree` and `@ts-morph/common` only (GHSA-g3hv-75wg-m249, `>=7 <11.0.1`; their latest releases still ask for ^10). Both call only the named `minimatch(path, pattern, opts)` export, which v11 keeps; ESLint 9's own minimatch 3 is untouched. Remaining: one low `deepmerge` advisory under the `shadcn` CLI (below the threshold).
+- The section "Left on purpose" of the Next.js 16.4.5 entry below is now resolved, except `deepmerge`.
+
 ## Next.js 16.4.5 security upgrade
 
 - **Date:** 2026-11-08 (PR #102, branch `fix/next-security-upgrade`).
