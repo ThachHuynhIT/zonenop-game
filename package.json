@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "art:meono": "node scripts/card-art.mjs meono",
-    "art:bang": "node scripts/card-art.mjs bang"
+    "art:bang": "node scripts/card-art.mjs bang",
+    "audit:check": "node scripts/audit-check.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -43,10 +44,18 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
     "sass": "^1.102.0",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
     "typescript": "^5",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.5"
+    },
+    "@ts-morph/common": {
+      "minimatch": "^11.0.5"
+    }
   }
 }
