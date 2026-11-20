@@ -1,0 +1,9 @@
+@use "@styles/variables" as vars;
+.ring { position: absolute; inset: -.375rem; pointer-events: none; border: 3px solid vars.$pixel-gold; box-shadow: 4px 4px 0 vars.$pixel-ink; }
+.badge { display: inline-flex; align-items: center; gap: .25rem; padding: .25rem .5rem; border: 2px solid vars.$pixel-ink; background: vars.$pixel-gold; color: vars.$pixel-ink; font: 800 .75rem vars.$font-family-mono; white-space: nowrap; }
+.timer { position: absolute; inset: 0; z-index: 10; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.timerLine { stroke: vars.$pixel-gold; transition: stroke-dashoffset 200ms linear; }
+.urgentLine { stroke: vars.$pixel-coral; }
+.seconds { position: absolute; top: -.875rem; right: 1rem; z-index: 20; padding: .125rem .5rem; border: 2px solid vars.$pixel-gold; background: vars.$pixel-ink; color: vars.$pixel-gold; font: 900 1rem vars.$font-family-mono; font-variant-numeric: tabular-nums; pointer-events: none; }
+.urgent { background: vars.$pixel-coral; border-color: vars.$pixel-ink; color: vars.$pixel-ink; }
+@media (prefers-reduced-motion: reduce) { .timerLine { transition: none; } }

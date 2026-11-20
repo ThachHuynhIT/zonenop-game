@@ -1,0 +1,18 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+
+.table { color: vars.$pixel-text; }
+.identity { width: 1.25rem; height: 1.25rem; flex-shrink: 0; color: vars.$pixel-gold; }
+.panel.panel { @include pixel.frame; }
+.control.control { @include pixel.control; background-image: none; }
+
+.panel.panel { border-top-color: #83e0bb; }
+
+.hud.hud { @include pixel.frame; }
+
+.board.board { border-radius: 0; outline: 3px solid vars.$pixel-ink; box-shadow: 5px 5px 0 vars.$pixel-ink; }
+.die.die { border: 2px solid vars.$pixel-ink; border-radius: 0; box-shadow: 3px 3px 0 vars.$pixel-ink; }
+.pip.pip { border-radius: 0; }
+.horseChip.horseChip { border-radius: 0; box-shadow: 2px 2px 0 vars.$pixel-ink; }
+
+.primary.primary { background-color: vars.$pixel-gold; color: vars.$pixel-ink; }

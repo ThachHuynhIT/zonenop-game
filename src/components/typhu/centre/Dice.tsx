@@ -2,6 +2,7 @@
 
 // `m` (not `motion`): the root LazyMotion is strict, which throws on the full `motion` component.
 import { m as motion } from "motion/react";
+import styles from "../TyPhuTable.module.scss";
 import { cn } from "@/lib/utils";
 
 // ─── Centre controls ────────────────────────────────────────────────
@@ -15,10 +16,10 @@ export function Die({ value, rolling }: { value: number; rolling: number }) {
       initial={{ rotate: -200, scale: 0.4, opacity: 0 }}
       animate={{ rotate: 0, scale: 1, opacity: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 16 }}
-      className="grid h-10 w-10 grid-cols-3 grid-rows-3 gap-[2px] rounded-lg bg-white p-1.5 shadow-lg sm:h-14 sm:w-14 sm:p-2 short:h-8 short:w-8 short:p-1"
+      className={cn(styles.die, "grid h-10 w-10 grid-cols-3 grid-rows-3 gap-[2px] rounded-lg bg-white p-1.5 shadow-lg sm:h-14 sm:w-14 sm:p-2 short:h-8 short:w-8 short:p-1")}
     >
       {Array.from({ length: 9 }, (_, i) => (
-        <span key={i} className={cn("rounded-full", PIPS[value]?.includes(i) && "bg-emerald-950")} />
+        <span key={i} className={cn(styles.pip, "rounded-full", PIPS[value]?.includes(i) && "bg-emerald-950")} />
       ))}
     </motion.div>
   );

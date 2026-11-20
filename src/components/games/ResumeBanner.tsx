@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { PixelIcon } from "@/components/game-ui";
 import { authRequest, getSession, useSession } from "@/components/auth/session";
 import type { GameId } from "./gamesRegistry";
 import { resumeRooms } from "./resumeRooms";
@@ -53,7 +54,7 @@ export function ResumeBanner({ game }: { game?: GameId }) {
       {rooms.map((room) => (
         <div className={styles.room} key={room.href}>
           <p>
-            <span aria-hidden>{room.game.emoji}</span>{" "}
+            <PixelIcon name={room.game.id} className={styles.icon} />{" "}
             Bạn đang có ván <strong>{room.game.title}</strong> dở · phòng <strong>{room.code}</strong>
           </p>
           <Link href={room.href} className={styles.resume}>Vào lại</Link>

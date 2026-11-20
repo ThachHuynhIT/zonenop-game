@@ -1,6 +1,7 @@
 "use client";
 
 import { type Card, RANK_LABELS, SUIT_SYMBOLS, isRed, rankOf, suitOf } from "@/lib/tienlen";
+import styles from "./TienLenTable.module.scss";
 import { cn } from "@/lib/utils";
 
 interface PlayingCardProps {
@@ -51,6 +52,7 @@ export function CardBack({ className }: { className?: string }) {
   return (
     <div
       className={cn(
+        styles.cardBack,
         "aspect-[5/7] w-[var(--cw-back)] rounded-[4px] border border-white/30 shadow-md",
         "bg-[repeating-linear-gradient(45deg,#7f1d1d_0_4px,#991b1b_4px_8px)]",
         className,

@@ -1,0 +1,18 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+
+.table { color: vars.$pixel-text; }
+.identity { width: 1.25rem; height: 1.25rem; flex-shrink: 0; color: vars.$pixel-gold; }
+.panel.panel { @include pixel.frame; }
+.control.control { @include pixel.control; background-image: none; }
+.felt.felt {
+  @include pixel.frame;
+  border-width: 4px;
+  background: #42271e;
+}
+
+.hud.hud { @include pixel.frame; }
+
+.primary.primary { background-color: vars.$pixel-gold; color: vars.$pixel-ink; }
+.draw.draw { background-color: vars.$pixel-mint; color: vars.$pixel-ink; }
+.danger.danger { background-color: vars.$pixel-coral; color: vars.$pixel-ink; }

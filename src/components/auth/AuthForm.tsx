@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { GameButton, GamePanel, GameTabs } from "@/components/game-ui";
+import { GameButton, GamePanel, GameTabs, PixelIcon } from "@/components/game-ui";
 import { DEFAULT_PROFILE, type PlayerProfile } from "@/components/games/gameClient";
 import { ProfilePicker } from "@/components/games/PlayerAvatar";
 import styles from "./AuthForm.module.scss";
@@ -34,12 +34,10 @@ export function AuthForm() {
   }, [session, next, router]);
 
   return (
-    <GamePanel className="w-full">
-      <p className="mb-3 whitespace-nowrap text-center text-2xl leading-none sm:text-3xl" aria-hidden>
-        🃏 😼 🎩 💎 🤠 🪨 🐴
-      </p>
-      <h1 className="text-center font-heading text-2xl font-black tracking-tight text-game-accent">Chào mừng tới Games!</h1>
-      <p className="mb-4 mt-2 text-center text-sm text-white/65">Đăng nhập để chơi, giữ điểm và xếp hạng cùng bạn bè.</p>
+    <GamePanel className={styles.panel}>
+      <div className={styles.brand}><PixelIcon name="controller" /><span>Games</span></div>
+      <h1 className={styles.title}>Hẹn nhau một ván nhé!</h1>
+      <p className={styles.intro}>Đăng nhập để chơi, giữ điểm và xếp hạng cùng bạn bè.</p>
       {notice && <p role="status" className={styles.notice}>{notice}</p>}
       <GameTabs
         tabs={[
@@ -75,7 +73,7 @@ function LoginTab() {
   const ready = username.trim() !== "" && password !== "";
   return (
     <form
-      className="space-y-3"
+      className={styles.form}
       onSubmit={(e) => {
         e.preventDefault();
         if (ready && !busy) void run("/api/auth/login", { username, password });
@@ -84,11 +82,11 @@ function LoginTab() {
       <AuthField label="Tên đăng nhập" value={username} onChange={setUsername} autoComplete="username" autoFocus maxLength={20} />
       <AuthField label="Mật khẩu" value={password} onChange={setPassword} type="password" autoComplete="current-password" />
       {error && (
-        <p role="alert" className="text-sm text-rose-300">
+        <p role="alert" className={styles.error}>
           {error}
         </p>
       )}
-      <GameButton type="submit" variant="primary" className="w-full" loading={busy} disabled={!ready}>
+      <GameButton type="submit" variant="primary" className={styles.submit} loading={busy} disabled={!ready}>
         Đăng nhập
       </GameButton>
     </form>
@@ -107,7 +105,7 @@ function RegisterTab() {
   const message = local ?? error;
   return (
     <form
-      className="space-y-3"
+      className={styles.form}
       onSubmit={(e) => {
         e.preventDefault();
         if (!ready || busy) return;
@@ -129,11 +127,11 @@ function RegisterTab() {
       <AuthField label="Nhập lại mật khẩu" value={again} onChange={setAgain} type="password" autoComplete="new-password" />
       <ProfilePicker name={username.trim()} value={look} onChange={setLook} />
       {message && (
-        <p role="alert" className="text-sm text-rose-300">
+        <p role="alert" className={styles.error}>
           {message}
         </p>
       )}
-      <GameButton type="submit" variant="primary" className="w-full" loading={busy} disabled={!ready}>
+      <GameButton type="submit" variant="primary" className={styles.submit} loading={busy} disabled={!ready}>
         Tạo tài khoản
       </GameButton>
     </form>

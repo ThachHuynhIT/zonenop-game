@@ -1,5 +1,6 @@
 "use client";
 
+import styles from "./CaNguaTable.module.scss";
 import { useEffect, useRef, useState } from "react";
 // `m` (not `motion`): the root LazyMotion is strict, which throws on the full `motion` component.
 import { AnimatePresence, m as motion } from "motion/react";
@@ -151,7 +152,7 @@ export function CaNguaBoard({
   });
 
   return (
-    <div className="relative aspect-square w-full select-none rounded-[4%] bg-[#e9dcbc] p-[1.5%] shadow-[0_10px_40px_rgba(0,0,0,0.55),inset_0_0_0_3px_#b89a5e] [container-type:inline-size]">
+    <div className={cn(styles.board, "relative aspect-square w-full select-none bg-[#e9dcbc] p-[1.5%] [container-type:inline-size]")}>
       <div className="grid h-full w-full" style={{ gridTemplateColumns: `repeat(${GRID}, 1fr)`, gridTemplateRows: `repeat(${GRID}, 1fr)` }}>
         {STABLE_ORIGIN.map(([r, c], color) => {
           const col = HORSE_COLORS[color];
@@ -352,15 +353,15 @@ export function RollingDie({ value, seq, color, size = "md" }: { value: number |
       animate={{ rotate: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 240, damping: 14 }}
       className={cn(
-        "grid shrink-0 grid-cols-3 grid-rows-3 gap-[2px] rounded-xl bg-white shadow-[0_6px_18px_rgba(0,0,0,0.5),inset_0_-3px_0_rgba(0,0,0,0.15)]",
+        styles.die, "grid shrink-0 grid-cols-3 grid-rows-3 gap-[2px] rounded-xl bg-white shadow-[0_6px_18px_rgba(0,0,0,0.5),inset_0_-3px_0_rgba(0,0,0,0.15)]",
         size === "lg" ? "h-16 w-16 p-2.5" : "h-12 w-12 p-2",
         rolling && "motion-safe:animate-bounce",
       )}
-      style={color ? { boxShadow: `0 0 0 3px ${color}, 0 6px 18px rgba(0,0,0,0.5)` } : undefined}
+      style={color ? { boxShadow: `0 0 0 3px ${color}, 4px 4px 0 #070d19` } : undefined}
       aria-label={value ? `Xúc xắc: ${value}` : "Xúc xắc"}
     >
       {Array.from({ length: 9 }, (_, i) => (
-        <span key={i} className={cn("rounded-full", PIPS[face]?.includes(i) && (face === 1 || face === 4 ? "bg-red-600" : "bg-stone-900"))} />
+        <span key={i} className={cn(styles.pip, "rounded-full", PIPS[face]?.includes(i) && (face === 1 || face === 4 ? "bg-red-600" : "bg-stone-900"))} />
       ))}
     </motion.div>
   );
@@ -371,7 +372,7 @@ export function HorseChip({ color, className }: { color: number; className?: str
   const col = HORSE_COLORS[color] ?? HORSE_COLORS[0];
   return (
     <span
-      className={cn("inline-flex aspect-square w-7 shrink-0 items-center justify-center rounded-full border-2 border-white text-sm leading-none shadow", className)}
+      className={cn(styles.horseChip, "inline-flex aspect-square w-7 shrink-0 items-center justify-center rounded-full border-2 border-white text-sm leading-none shadow", className)}
       style={{ background: `radial-gradient(circle at 35% 30%, ${col.soft}, ${col.fill} 45%, ${col.deep})` }}
     >
       🐴

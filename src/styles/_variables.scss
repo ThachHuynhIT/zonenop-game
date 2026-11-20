@@ -105,3 +105,15 @@ $marker-current: var(--marker-current);
 
 // Game shell accent (globals.css `--game-accent`, set per game by GameThemeScope).
 $game-accent: var(--game-accent);
+
+// Runtime pixel palette shared by shell, controls and portalled game dialogs.
+$pixel-bg: var(--pixel-bg);
+$pixel-ink: var(--pixel-ink);
+$pixel-panel: var(--pixel-panel);
+$pixel-panel-raised: var(--pixel-panel-raised);
+$pixel-outline: var(--pixel-outline);
+$pixel-text: var(--pixel-text);
+$pixel-muted: var(--pixel-muted);
+$pixel-gold: var(--pixel-gold);
+$pixel-mint: var(--pixel-mint);
+$pixel-coral: var(--pixel-coral);

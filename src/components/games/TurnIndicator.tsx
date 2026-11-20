@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import styles from "./TurnIndicator.module.scss";
 
 /**
  * "It's your turn" highlight shared by the game tables: a softly pulsing
@@ -15,7 +16,7 @@ export function TurnRing({ active, className }: { active: boolean; className?: s
     <span
       aria-hidden
       className={cn(
-        "pointer-events-none absolute -inset-1.5 rounded-2xl ring-2 ring-rose-400 shadow-[0_0_18px_3px_rgba(251,146,60,0.45),inset_0_0_14px_rgba(251,113,133,0.2)] motion-safe:animate-pulse",
+        styles.ring,
         className,
       )}
     />
@@ -28,7 +29,7 @@ export function MyTurnBadge({ className, children = "Lượt của bạn" }: { c
     <span
       role="status"
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-gradient-to-r from-amber-400 to-rose-500 px-2.5 py-0.5 text-xs font-bold text-black shadow-[0_0_12px_rgba(251,113,133,0.5)]",
+        styles.badge,
         className,
       )}
     >
@@ -61,7 +62,7 @@ export function TurnTimerBorder({ deadline, totalMs, now, radius = 16 }: { deadl
   const inset = 2;
   return (
     <>
-      <svg ref={ref} aria-hidden className="pointer-events-none absolute inset-0 z-10 h-full w-full overflow-visible">
+      <svg ref={ref} aria-hidden className={styles.timer}>
         {size.w > 0 && (
           <rect
             x={inset}
@@ -75,16 +76,15 @@ export function TurnTimerBorder({ deadline, totalMs, now, radius = 16 }: { deadl
             strokeLinecap="round"
             strokeDasharray="100 100"
             strokeDashoffset={100 - frac * 100}
-            className={cn("transition-[stroke-dashoffset] duration-200 ease-linear", urgent ? "stroke-red-500" : "stroke-rose-400")}
-            style={{ filter: `drop-shadow(0 0 6px ${urgent ? "rgba(239,68,68,0.9)" : "rgba(251,113,133,0.7)"})` }}
+            className={cn(styles.timerLine, urgent && styles.urgentLine)}
           />
         )}
       </svg>
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute -top-3.5 right-4 z-20 rounded-full px-3 py-0.5 font-mono text-lg font-black tabular-nums shadow-lg ring-2",
-          urgent ? "bg-red-600 text-white ring-red-300 motion-safe:animate-pulse" : "bg-black/85 text-rose-200 ring-rose-400/70",
+          styles.seconds,
+          urgent && styles.urgent,
         )}
       >
         ⏱ {secs}s

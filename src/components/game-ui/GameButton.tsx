@@ -5,9 +5,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CONFIRM_RESET_MS, confirmStep } from "./logic";
+import styles from "./PixelPrimitives.module.scss";
 
 export const gameButtonVariants = cva(
-  "relative inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-full font-heading font-extrabold tracking-tight outline-none transition-[transform,box-shadow,background-color] duration-75 focus-visible:ring-3 focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:size-[1.1em] [&_svg]:shrink-0",
+  cn("relative inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap font-extrabold tracking-tight outline-none disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:size-[1.1em] [&_svg]:shrink-0", styles.button),
   {
     variants: {
       variant: {

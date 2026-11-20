@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import styles from "./GameHeader.module.scss";
 
 /** Id of the element in the games top bar that a table's header is moved into. */
 export const GAME_HEADER_SLOT_ID = "games-header-slot";
@@ -17,51 +18,58 @@ export function GameHeader({ primary, extra, status }: { primary: React.ReactNod
   useEffect(() => setSlot(document.getElementById(GAME_HEADER_SLOT_ID)), []);
 
   const content = (
-    <div className="flex min-w-0 flex-1 items-center gap-1 text-xs sm:gap-1.5">
+    <div className={styles.header}>
       {primary}
       {extra && (
         <>
-          <span className="hidden items-center gap-1.5 sm:flex">{extra}</span>
+          <span className={styles.extra}>{extra}</span>
           <MoreMenu>{extra}</MoreMenu>
         </>
       )}
-      {status && <span className="ml-auto flex min-w-0 items-center gap-2 text-white/70">{status}</span>}
+      {status && <span className={styles.status}>{status}</span>}
     </div>
   );
-  return slot ? createPortal(content, slot) : <div className="flex shrink-0 items-center px-3 pt-2">{content}</div>;
+  return slot ? createPortal(content, slot) : <div className={styles.fallback}>{content}</div>;
 }
 
 function MoreMenu({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const popup = useRef<HTMLDivElement>(null);
+  const id = useId();
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+      trigger.current?.focus();
+    };
+    // This is a disclosure of ordinary controls, so retain their native keyboard behavior.
+    popup.current?.querySelector<HTMLElement>('button:not([disabled]),a[href],input:not([disabled]),[tabindex="0"]')?.focus();
     document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", escape);
+    };
   }, [open]);
   return (
-    <div ref={ref} className="relative sm:hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-label="Thêm"
-        className="grid h-7 min-w-8 place-items-center rounded-md border border-white/20 px-2 text-sm leading-5 hover:bg-white/10 max-sm:h-9 max-sm:min-w-9"
-      >
-        ⋯
-      </button>
-      {open && (
-        // Buttons inside close the menu once used.
-        <div
-          onClick={() => setOpen(false)}
-          className="absolute left-0 top-full z-50 mt-1 flex min-w-[11rem] flex-col items-stretch gap-1 rounded-xl border border-white/15 bg-[#14100c]/95 p-1.5 text-sm shadow-2xl backdrop-blur [&>*]:min-h-9 [&>*]:justify-start [&>*]:py-1.5 [&>*]:text-left"
-        >
-          {children}
-        </div>
-      )}
+    <div ref={ref} className={styles.more} onBlur={(e) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false);
+    }}>
+      <button ref={trigger} type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls={id} aria-label="Thêm thao tác bàn chơi" className={styles.moreButton}>⋯</button>
+      {open && <div id={id} ref={popup} role="group" aria-label="Thao tác bàn chơi" onClick={(e) => {
+        if (!(e.target as HTMLElement).closest('button,a')) return;
+        setOpen(false);
+        // Dialog actions handle their own focus on mount; ordinary actions return here.
+        trigger.current?.focus();
+      }} className={styles.popup}>{children}</div>}
     </div>
   );
 }
@@ -71,13 +79,12 @@ function MoreMenu({ children }: { children: React.ReactNode }) {
  * between (sm–lg) where the bar only has room for the button's icon (keep a `title` on the button).
  */
 export function HeaderLabel({ children }: { children: React.ReactNode }) {
-  return <span className="hidden max-sm:inline lg:inline">{children}</span>;
+  return <span className={styles.label}>{children}</span>;
 }
 
 /** Standard look for a header button (use for links too via className). */
 /** Phones (portrait `max-sm`, sideways `short`) get finger-sized targets; the bar grows to fit. */
-export const headerBtn =
-  "flex items-center justify-center gap-1 whitespace-nowrap rounded-md border border-white/20 px-2 py-0.5 leading-5 hover:bg-white/10 max-sm:min-h-9 max-sm:min-w-9 max-sm:px-2.5 short:min-h-9 short:min-w-9";
+export const headerBtn = styles.button;
 
 /** Toggle browser fullscreen; hidden where the browser can't (iPhone Safari). */
 export function FullscreenButton({ className }: { className?: string }) {
@@ -102,7 +109,7 @@ export function FullscreenButton({ className }: { className?: string }) {
       title={on ? "Thoát toàn màn hình" : "Toàn màn hình"}
       aria-label={on ? "Thoát toàn màn hình" : "Toàn màn hình"}
       aria-pressed={on}
-      className={cn("grid size-8 shrink-0 place-items-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white max-sm:size-9 short:size-9", className)}
+      className={cn(styles.fullscreen, className)}
     >
       <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         {on ? (

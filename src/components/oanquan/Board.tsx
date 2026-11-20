@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SEGMENT, quanIndex, rowOf } from "@/lib/oanquan/board";
 import type { OQGameView, OQMove } from "@/lib/oanquan/protocol";
+import styles from "./OAnQuanTable.module.scss";
 import { cn } from "@/lib/utils";
 
 /** What the board shows while a move is being replayed stone by stone. */
@@ -243,7 +244,7 @@ export function OQBoard({
   );
   return (
     <div
-      className={cn("relative grid w-full select-none grid-cols-[1.35fr_repeat(5,minmax(0,1fr))_1.35fr] grid-rows-2 gap-[1.2%] rounded-[1.6rem] p-[2.2%] sm:rounded-[2.4rem]", shadow)}
+      className={cn(styles.board, "relative grid w-full select-none grid-cols-[1.35fr_repeat(5,minmax(0,1fr))_1.35fr] grid-rows-2 gap-[1.2%] rounded-[1.6rem] p-[2.2%] sm:rounded-[2.4rem]", shadow)}
       style={woodStyle}
     >
       {quanCup(left, "left")}
@@ -316,7 +317,7 @@ function RingBoard({
   };
   return (
     <div
-      className={cn("relative w-full select-none rounded-[1.6rem] sm:rounded-[2.4rem]", shadow)}
+      className={cn(styles.board, "relative w-full select-none rounded-[1.6rem] sm:rounded-[2.4rem]", shadow)}
       style={{ ...woodStyle, aspectRatio: `100 / ${h}` }}
     >
       {/* Coloured track + name tag per player. */}

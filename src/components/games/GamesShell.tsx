@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { AllRoomsPanel } from "./AllRoomsPanel";
 import { FullscreenButton, GAME_HEADER_SLOT_ID } from "./GameHeader";
 import { Toaster } from "sonner";
+import { PixelIcon } from "@/components/game-ui";
+import styles from "./GamesShell.module.scss";
 import { gameFont } from "./gameFont";
 import { AccountMenu } from "@/components/auth/AccountMenu";
 import { refreshMe, useSession } from "@/components/auth/session";
@@ -79,10 +81,10 @@ export function GamesShell({ children }: { children: React.ReactNode }) {
     body = children;
   } else {
     body = (
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-0 pb-6 xl:grid-cols-[minmax(0,1fr)_21rem] xl:px-4">
-        <div className="min-w-0">{children}</div>
-        <aside className="min-w-0 px-4 xl:px-0 xl:pt-4">
-          <div className="xl:sticky xl:top-16 xl:max-h-[calc(100dvh-5rem)] xl:overflow-y-auto xl:[scrollbar-width:thin]">
+      <div className={styles.columns}>
+        <div className={styles.content}>{children}</div>
+        <aside className={styles.aside}>
+          <div className={styles.rooms}>
             <AllRoomsPanel currentGame={game?.id} />
           </div>
         </aside>
@@ -93,10 +95,10 @@ export function GamesShell({ children }: { children: React.ReactNode }) {
   return (
     <ShellContext.Provider value={{ openAccount: () => setRenaming(true) }}>
       <Toaster theme="dark" position="top-center" richColors visibleToasts={3} toastOptions={{ duration: 2800 }} />
-      <div className={cn("flex min-h-[100dvh] flex-col [&_h1]:[font-family:var(--font-game)] [&_h2]:[font-family:var(--font-game)] [&_h3]:[font-family:var(--font-game)]", gameFont.variable, table && "games-shell-table")}>
+      <div className={cn(styles.shell, gameFont.variable, table && "games-shell-table")}>
         <GamesTopBar compact={table} name={signedIn ? name : null} onRename={() => setRenaming(true)} />
         {/* The bar is taller on phones (finger-sized buttons): keep the table exactly one screen tall. */}
-        <div className={cn("flex-1", table && "games-table max-sm:[--games-bar-h:calc(2.75rem_+_1px)] short:[--games-bar-h:calc(2.75rem_+_1px)]")}>{body}</div>
+        <div className={cn(styles.body, table && ["games-table", styles.tableBody])}>{body}</div>
         {!table && <GamesFooter />}
       </div>
       {renaming && signedIn && <AccountMenu onClose={() => setRenaming(false)} />}
@@ -108,97 +110,23 @@ function GamesTopBar({ compact, name, onRename }: { compact: boolean; name: stri
   const pathname = usePathname();
   const active = gameOfPath(pathname);
   const profile = usePlayerProfile();
-
   return (
-    <header
-      className={cn(
-        "z-40 w-full border-b border-white/10 bg-black/60 text-white backdrop-blur-xl",
-        // Tables: slim; the table's own header (room code, invite…) lives in here too.
-        compact ? "relative" : "sticky top-0",
-      )}
-    >
-      <nav className={cn("mx-auto flex max-w-7xl items-center gap-2 px-3 sm:px-4", compact ? "h-9 max-sm:h-11 short:h-11" : "h-12")} aria-label="Games">
-        <Link
-          href="/"
-          className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-lg px-1.5 py-1 font-black tracking-tight transition-colors hover:bg-white/10 max-sm:min-h-9 short:min-h-9",
-            !active && "text-amber-300",
-          )}
-          aria-current={!active ? "page" : undefined}
-        >
-          <span className={cn("grid place-items-center rounded-md bg-gradient-to-br from-amber-400 to-rose-500 text-black", compact ? "size-6 text-sm" : "size-7")} aria-hidden>
-            🎮
-          </span>
-          <span className={cn("hidden", compact ? "text-sm xl:inline" : "text-base sm:inline")}>Games</span>
+    <header className={cn(styles.topbar, compact && styles.compact)}>
+      <nav className={styles.nav} aria-label="Điều hướng game">
+        <Link href="/" className={styles.brand} aria-label="Games — tất cả game" aria-current={!active ? "page" : undefined}>
+          <PixelIcon name="controller" /><span>Games</span>
         </Link>
-
-        <span className="h-5 w-px shrink-0 bg-white/10" aria-hidden />
-
-        <ul className={cn("flex min-w-0 items-center gap-0.5 overflow-x-auto [scrollbar-width:none]", compact ? "hidden shrink-0 lg:flex" : "flex-1")}>
-          {ONLINE_GAMES.map((g) => {
-            const on = active?.id === g.id;
-            return (
-              <li key={g.id} className="shrink-0">
-                <Link
-                  href={g.href}
-                  title={g.title}
-                  aria-current={on ? "page" : undefined}
-                  className={cn(
-                    "flex items-center gap-1 rounded-lg px-2 transition-colors",
-                    compact ? "py-0.5 text-xs" : "py-1 text-sm max-sm:min-h-9 max-sm:min-w-9 max-sm:justify-center",
-                    on ? "bg-amber-400/15 text-amber-200 ring-1 ring-amber-300/40" : "text-white/70 hover:bg-white/10 hover:text-white",
-                  )}
-                >
-                  <span aria-hidden>{g.emoji}</span>
-                  {/* Tables: icons only, so the table header portalled next to them always has room.
-                      Hub / lobbies: the current game's label from sm, every label once all of them fit. */}
-                  {!compact && <span className={cn("hidden", on ? "sm:inline" : "xl:inline")}>{g.short}</span>}
-                </Link>
-              </li>
-            );
-          })}
+        <ul className={styles.links}>
+          {ONLINE_GAMES.map(g => <li key={g.id}><Link href={g.href} title={g.title} aria-label={g.title} aria-current={active?.id === g.id ? "page" : undefined}><PixelIcon name={g.id} /><span>{g.short}</span></Link></li>)}
         </ul>
-
-        {compact && <div id={GAME_HEADER_SLOT_ID} className="flex min-w-0 flex-1 items-center" />}
+        {compact && <div id={GAME_HEADER_SLOT_ID} className={styles.headerSlot} />}
         <FullscreenButton />
-
-        {name && (
-          <button
-            onClick={onRename}
-            title="Tài khoản"
-            aria-label="Tài khoản"
-            className={cn(
-              "flex min-w-0 shrink items-center gap-1.5 rounded-full border border-white/15 bg-white/5 pl-1 pr-2.5 transition-colors hover:border-amber-300/50 hover:bg-white/10 max-sm:min-h-9 max-sm:pl-1.5 short:min-h-9",
-              compact ? "py-0.5 text-xs" : "py-1 text-sm",
-            )}
-          >
-            <PlayerAvatar name={name} profile={profile} className={compact ? "size-5 text-[10px]" : "size-6 text-xs"} />
-            {/* Tables: the name only on wide screens, the table header needs the room. */}
-            <span className={cn("max-w-[10rem] truncate font-medium max-sm:hidden", compact && "hidden xl:inline")}>{name}</span>
-            <span className={cn("text-white/50 max-sm:hidden", compact && "hidden xl:inline")} aria-hidden>
-              ▾
-            </span>
-          </button>
-        )}
+        {name && <button type="button" onClick={onRename} aria-label={`Tài khoản của ${name}`} className={styles.account}><PlayerAvatar name={name} profile={profile} className={styles.avatar} /><span>{name}</span><span aria-hidden>▾</span></button>}
       </nav>
     </header>
   );
 }
 
 function GamesFooter() {
-  return (
-    <footer className="border-t border-white/10 bg-black/40 text-xs text-white/50">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <p>
-          🎮 <span className="font-semibold text-white/70">Games</span> · chơi online cùng bạn bè, ngay trên trình duyệt
-        </p>
-        <p className="flex items-center gap-3">
-          <Link href="/" className="hover:text-white max-sm:py-2">
-            Tất cả game
-          </Link>
-          <span>© {new Date().getFullYear()} ThachHuynh</span>
-        </p>
-      </div>
-    </footer>
-  );
+  return <footer className={styles.footer}><div><p><strong>Games</strong> / Chơi cùng nhau, ngay trên trình duyệt.</p><Link href="/">Tất cả game</Link><span>© {new Date().getFullYear()} ThachHuynh</span></div></footer>;
 }

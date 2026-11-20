@@ -1,0 +1,8 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+.page { min-height: 100dvh; background: vars.$pixel-bg; }
+.navigation { position: absolute; inset: 1rem 1rem auto; z-index: 10; display: flex; }
+.back { @include pixel.control; display: inline-flex; min-height: 44px; align-items: center; gap: .5rem; padding: .5rem .75rem; background: vars.$pixel-panel; color: vars.$pixel-text; font-size: .8125rem; }
+.back:hover { background: vars.$pixel-panel-raised; }
+.loading { @include pixel.frame; display: flex; min-height: 60dvh; width: min(100% - 2rem, 800px); margin: 0 auto; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; color: vars.$pixel-muted; font-family: vars.$font-family-mono; }
+.loading p:first-child { color: vars.$pixel-coral; font-weight: 800; }

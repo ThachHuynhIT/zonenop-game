@@ -1,12 +1,10 @@
 @use "@styles/variables" as vars;
-
-.notice {
-  margin-bottom: vars.$spacing-md;
-  padding: vars.$spacing-md;
-  border: 1px solid #fbbf2460;
-  border-radius: vars.$radius-lg;
-  color: #fde68a;
-  background: #fbbf2410;
-  font-size: vars.$font-size-sm;
-  line-height: vars.$leading-normal;
-}
+@use "@styles/pixel" as pixel;
+.panel { width: 100%; }
+.brand { display: flex; align-items: center; gap: .75rem; padding-bottom: 1.25rem; margin-bottom: 1.5rem; border-bottom: 2px solid vars.$pixel-outline; color: vars.$pixel-gold; font: 900 1.5rem vars.$font-family-mono; svg { width: 2.75rem; height: 2.75rem; } }
+.title { font: 800 clamp(1.25rem,4vw,1.75rem)/1.4 vars.$font-family-mono; color: vars.$pixel-text; letter-spacing: -.04em; }
+.intro { margin: .75rem 0 1.5rem; font-size: .875rem; line-height: 1.6; color: vars.$pixel-muted; }
+.form { display: grid; gap: 1rem; }
+.submit { width: 100%; }
+.error { font-size: .875rem; color: vars.$pixel-coral; }
+.notice { @include pixel.inset; margin-bottom: 1rem; padding: .75rem; border-color: vars.$pixel-gold; color: vars.$pixel-gold; font-size: .875rem; line-height: 1.6; }

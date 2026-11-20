@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { GameThemeScope } from "@/components/game-ui";
 import { AuthForm } from "@/components/auth/AuthForm";
-import { gameFont } from "@/components/games/gameFont";
+import styles from "./page.module.scss";
 
 export const metadata: Metadata = {
   title: "Đăng nhập",
@@ -14,9 +14,9 @@ export default function SignInPage() {
   return (
     <GameThemeScope
       game={null}
-      className={`game-shell relative z-10 grid min-h-[100dvh] place-items-center bg-[radial-gradient(ellipse_at_top,#2a1b4d_0%,#0d0818_70%)] px-4 py-10 text-white ${gameFont.variable}`}
+      className={`game-shell ${styles.page}`}
     >
-      <main className="w-full max-w-sm">
+      <main className={styles.main}>
         <Suspense fallback={null}>
           <AuthForm />
         </Suspense>

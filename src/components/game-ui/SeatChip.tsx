@@ -4,6 +4,7 @@ import NumberFlow from "@number-flow/react";
 import { cn } from "@/lib/utils";
 import type { PlayerProfile } from "@/components/games/gameClient";
 import { GameAvatar } from "./GameAvatar";
+import styles from "./PixelPrimitives.module.scss";
 
 /** A player at the table: avatar, name, live points, online dot, host crown, and a running light on their turn. */
 export function SeatChip({
@@ -31,8 +32,10 @@ export function SeatChip({
 }) {
   return (
     <div
+      data-turn={isTurn || undefined}
       className={cn(
-        "relative inline-flex min-w-0 max-w-full items-center rounded-full border bg-black/35",
+        "relative inline-flex min-w-0 max-w-full items-center",
+        styles.seat,
         size === "sm" ? "gap-1.5 py-0.5 pl-0.5 pr-2 text-xs" : "gap-2 py-1 pl-1 pr-3 text-sm",
         isTurn ? "border-transparent" : "border-white/10",
         !online && "opacity-60",

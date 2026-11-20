@@ -1,5 +1,8 @@
 "use client";
 
+import styles from "./MeoTable.module.scss";
+import { PixelIcon } from "@/components/game-ui";
+
 import { SeatAvatar } from "@/components/games/PlayerAvatar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -164,7 +167,7 @@ export default function MeoTable({ code, name, watch }: { code: string; name: st
     );
   }
   if (!view) {
-    return <p className="flex min-h-[70vh] animate-pulse items-center justify-center text-orange-100/80">Đang kết nối bàn {code}…</p>;
+    return <p className="flex min-h-[70vh] motion-safe:animate-pulse items-center justify-center text-orange-100/80">Đang kết nối bàn {code}…</p>;
   }
   return (
     <>
@@ -420,13 +423,14 @@ function Board({
 
   return (
     // One screen tall: the hand + Đánh / Rút always stay in view; the table and the feed scroll inside the middle instead.
-    <div className="relative mx-auto flex h-[calc(100dvh-var(--games-bar-h,0px))] w-full max-w-6xl flex-col lg:max-w-[112rem] gap-2 overflow-hidden px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 sm:gap-3 sm:px-4 sm:pt-3 short:gap-1.5 short:pt-1.5">
+    <div className={cn(styles.table, "relative mx-auto flex h-[calc(100dvh-var(--games-bar-h,0px))] w-full max-w-6xl flex-col lg:max-w-[112rem] gap-2 overflow-hidden px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 sm:gap-3 sm:px-4 sm:pt-3 short:gap-1.5 short:pt-1.5")}>
       {/* The table's own header lives in the games top bar. */}
       <WinCelebration show={g?.status === "ended"} playing={g?.status === "playing"} won={!!view.meId && g?.finished[0] === view.meId} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
       <GameHeader
         primary={
           <>
-            <Link href="/meo-no" className={headerBtn} title="Về sảnh Mèo Nổ">
+            <PixelIcon name="meono" className={styles.identity} />
+            <Link href="/meo-no" className={cn(styles.control, headerBtn)} title="Về sảnh Mèo Nổ">
               ←<span className="max-[359px]:hidden"> Sảnh</span>
             </Link>
             <span className="rounded-md bg-black/30 px-1.5 font-mono text-sm font-bold tracking-[0.15em] text-amber-300" title="Mã bàn">
@@ -436,13 +440,13 @@ function Board({
         }
         extra={
           <>
-            <button onClick={copyInvite} className={headerBtn} title="Chép link mời">
+            <button onClick={copyInvite} className={cn(styles.control, headerBtn)} title="Chép link mời">
               {copied ? "✓ Đã chép link" : "🔗 Chép link mời"}
             </button>
-            <button onClick={() => setShowScores(true)} className={headerBtn} title="Bảng điểm">
+            <button onClick={() => setShowScores(true)} className={cn(styles.control, headerBtn)} title="Bảng điểm">
               🏆 Bảng điểm
             </button>
-            <button onClick={() => setShowGuide(true)} className={headerBtn} title="Hướng dẫn lá bài">
+            <button onClick={() => setShowGuide(true)} className={cn(styles.control, headerBtn)} title="Hướng dẫn lá bài">
               📖 Lá bài
             </button>
             {(g?.expansions ?? view.expansions).length > 0 && (
@@ -465,7 +469,7 @@ function Board({
               </span>
             )}
             {reconnecting && (
-              <span className="animate-pulse truncate text-amber-300" title="Đang kết nối lại…">
+              <span className="motion-safe:animate-pulse truncate text-amber-300" title="Đang kết nối lại…">
                 ⟳<span className="max-sm:hidden"> Đang kết nối lại…</span>
               </span>
             )}
@@ -474,7 +478,7 @@ function Board({
       />
 
       {spectator && (
-        <div className="flex shrink-0 flex-wrap items-center justify-center gap-3 rounded-xl bg-black/30 px-3 py-2 text-sm text-orange-100/80">
+        <div className={cn(styles.panel, "flex shrink-0 flex-wrap items-center justify-center gap-3 rounded-xl bg-black/30 px-3 py-2 text-sm text-orange-100/80")}>
           <span>👀 Bạn đang xem với tư cách khán giả</span>
           {view.seats.some((s) => s === null) && !playing && (
             <Link href={`/meo-no/${view.code}`} className="rounded-md bg-amber-400 px-3 py-1 font-semibold text-black">
@@ -494,7 +498,7 @@ function Board({
         )}
       >
         {/* Table */}
-        <div className="relative flex min-h-[300px] shrink-0 flex-col rounded-[2rem] border-[6px] border-[#4a2412] bg-[radial-gradient(ellipse_at_center,#7c2d12_0%,#431407_60%,#26100a_100%)] p-3 shadow-[inset_0_0_60px_rgba(0,0,0,0.55)] sm:min-h-[340px] sm:p-4 lg:min-h-0 lg:overflow-y-auto short:min-h-0 short:overflow-y-auto short:rounded-3xl short:border-4 short:p-2">
+        <div className={cn(styles.felt, "relative flex min-h-[300px] shrink-0 flex-col rounded-[2rem] border-[6px] border-[#4a2412] bg-[radial-gradient(ellipse_at_center,#7c2d12_0%,#431407_60%,#26100a_100%)] p-3 shadow-[inset_0_0_60px_rgba(0,0,0,0.55)] sm:min-h-[340px] sm:p-4 lg:min-h-0 lg:overflow-y-auto short:min-h-0 short:overflow-y-auto short:rounded-3xl short:border-4 short:p-2")}>
           <SpectatorReactions reactions={live.filter((r) => !r.playerId)} />
           <BoomOverlay fx={fx} />
 
@@ -532,7 +536,7 @@ function Board({
                   <button
                     onClick={() => void run({ type: "draw" })}
                     disabled={!canDraw}
-                    className="group relative flex flex-col items-center gap-1 disabled:cursor-default"
+                    className={cn(styles.control, "group relative flex flex-col items-center gap-1 disabled:cursor-default")}
                     aria-label="Rút bài"
                   >
                     <div className="relative">
@@ -544,7 +548,7 @@ function Board({
                   <button
                     onClick={() => setShowDiscard(true)}
                     disabled={!g.discard.length}
-                    className="group flex flex-col items-center gap-1 disabled:cursor-default"
+                    className={cn(styles.control, "group flex flex-col items-center gap-1 disabled:cursor-default")}
                     aria-label="Xem các lá đã đánh"
                   >
                     {g.discard.length ? (
@@ -637,7 +641,7 @@ function Board({
         </div>
 
         {/* Side: Diễn biến — plays (clickable cards) and every other event in one timeline. */}
-        <aside className="flex h-72 min-h-0 shrink-0 flex-col rounded-2xl border border-white/10 bg-black/30 p-3 sm:h-96 lg:h-auto short:h-auto short:p-2">
+        <aside className={cn(styles.panel, "flex h-72 min-h-0 shrink-0 flex-col rounded-2xl border border-white/10 bg-black/30 p-3 sm:h-96 lg:h-auto short:h-auto short:p-2")}>
           <h2 className="mb-2 flex shrink-0 items-center justify-between text-sm font-bold text-amber-200">
             📜 Diễn biến
             {!!g?.plays?.length && <span className="text-[11px] font-normal text-orange-100/50">🃏 {g.plays.length} lượt đánh</span>}
@@ -672,7 +676,7 @@ function Board({
               <button
                 type="button"
                 onClick={() => setHandPref(true)}
-                className="flex h-12 min-w-0 flex-1 items-start overflow-hidden pl-1 pt-1.5"
+                className={cn(styles.control, "flex h-12 min-w-0 flex-1 items-start overflow-hidden pl-1 pt-1.5")}
                 aria-label={`Mở bài trên tay (${hand.length} lá)`}
               >
                 {orderedIds.map((id, i) => {
@@ -693,7 +697,7 @@ function Board({
                 <button
                   type="button"
                   onClick={() => void run({ type: "nope", card: myNope.id })}
-                  className="min-h-9 shrink-0 animate-pulse rounded-lg bg-gradient-to-b from-red-500 to-red-800 px-3 text-sm font-black text-white shadow-[0_3px_0_#450a0a]"
+                  className={cn(styles.control, styles.danger, "min-h-9 shrink-0 motion-safe:animate-pulse rounded-lg bg-gradient-to-b from-red-500 to-red-800 px-3 text-sm font-black text-white shadow-[0_3px_0_#450a0a]")}
                 >
                   🚫 KHÔNG!
                 </button>
@@ -701,7 +705,7 @@ function Board({
               <button
                 type="button"
                 onClick={() => setHandPref(true)}
-                className="min-h-9 shrink-0 rounded-lg border border-amber-300/50 bg-amber-400/15 px-3 text-sm font-semibold text-amber-100"
+                className={cn(styles.control, "min-h-9 shrink-0 rounded-lg border border-amber-300/50 bg-amber-400/15 px-3 text-sm font-semibold text-amber-100")}
                 aria-expanded={false}
               >
                 ▲ Mở bài
@@ -720,7 +724,7 @@ function Board({
                     <button
                       key={s.id}
                       onClick={() => setTarget(s.id)}
-                      className={cn(
+                      className={cn(styles.control,
                         "flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-left text-sm transition-all",
                         target === s.id
                           ? "scale-105 border-rose-300 bg-rose-500 text-white shadow-[0_0_18px_rgba(244,63,94,0.5)]"
@@ -827,7 +831,7 @@ function Board({
                       onClick={toggleCompact}
                       aria-pressed={compact}
                       title="Gộp các lá giống nhau thành một chồng"
-                      className={cn(
+                      className={cn(styles.control,
                         "hidden rounded-xl border px-2.5 text-sm short:inline-flex short:items-center",
                         compact ? "border-amber-300 bg-amber-400/20" : "border-white/20 bg-white/5",
                       )}
@@ -840,7 +844,7 @@ function Board({
                     onClick={() => setHandPref(false)}
                     aria-expanded
                     title="Thu gọn bài trên tay"
-                    className="hidden rounded-xl border border-white/20 bg-white/5 px-2.5 text-sm font-semibold short:inline-flex short:items-center"
+                    className={cn(styles.control, "hidden rounded-xl border border-white/20 bg-white/5 px-2.5 text-sm font-semibold short:inline-flex short:items-center")}
                   >
                     ▼<span className="sr-only"> Thu gọn</span>
                   </button>
@@ -871,7 +875,7 @@ function Board({
               </p>
               <span className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 text-[11px] sm:gap-2">
                 {handOrder.isCustom && !cursed && (
-                  <button onClick={handOrder.reset} className="underline hover:text-orange-50 max-sm:min-h-8">
+                  <button onClick={handOrder.reset} className={cn(styles.control, "underline hover:text-orange-50 max-sm:min-h-8")}>
                     ↺ Xếp tự động
                   </button>
                 )}
@@ -880,7 +884,7 @@ function Board({
                     onClick={toggleCompact}
                     aria-pressed={compact}
                     title="Gộp các lá giống nhau thành một chồng"
-                    className={cn(
+                    className={cn(styles.control,
                       "rounded-full border px-2 py-0.5 max-sm:min-h-8",
                       compact ? "border-amber-300 bg-amber-400/20 text-amber-100" : "border-white/20 hover:bg-white/10",
                     )}
@@ -893,7 +897,7 @@ function Board({
                   type="button"
                   onClick={() => setHandPref(false)}
                   aria-expanded
-                  className="hidden min-h-8 rounded-full border border-white/20 px-2 font-semibold hover:bg-white/10 max-sm:inline-flex max-sm:items-center short:inline-flex short:items-center"
+                  className={cn(styles.control, "hidden min-h-8 rounded-full border border-white/20 px-2 font-semibold hover:bg-white/10 max-sm:inline-flex max-sm:items-center short:inline-flex short:items-center")}
                 >
                   ▼ Thu gọn
                 </button>
@@ -950,7 +954,7 @@ function Board({
                         {picked > 0 && ids.length > 1 && !singlePick && (
                           <button
                             onClick={() => unpickOne(ids)}
-                            className="absolute -bottom-1 -left-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-black/85 text-xs font-black text-amber-200 ring-1 ring-amber-300/60 hover:bg-black"
+                            className={cn(styles.control, "absolute -bottom-1 -left-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-black/85 text-xs font-black text-amber-200 ring-1 ring-amber-300/60 hover:bg-black")}
                             aria-label={`Bỏ chọn 1 lá ${CARDS[c.type]?.name ?? ""}`}
                           >
                             −
@@ -1017,14 +1021,17 @@ function DockBtn({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={cn(
+      className={cn(styles.control,
         "whitespace-nowrap rounded-xl font-black tracking-wide transition-all enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 max-sm:tracking-normal",
+        tone === "play" && styles.primary,
         tone === "play" &&
           "min-w-[7.5rem] bg-gradient-to-b from-amber-300 to-orange-500 px-4 py-2.5 text-base max-sm:min-w-0 max-sm:flex-1 max-sm:px-2 max-sm:py-2 max-sm:text-sm sm:min-w-[9rem] sm:px-6 sm:py-3 sm:text-lg short:py-1.5 short:text-base text-black shadow-[0_4px_0_#9a3412,0_0_24px_rgba(251,191,36,0.35)] enabled:hover:brightness-110",
+        tone === "draw" && styles.draw,
         tone === "draw" &&
           "min-w-[7rem] bg-gradient-to-b from-emerald-400 to-emerald-700 px-4 py-2.5 text-base max-sm:min-w-0 max-sm:flex-1 max-sm:px-2 max-sm:py-2 max-sm:text-sm sm:min-w-[8rem] sm:px-5 sm:py-3 sm:text-lg short:py-1.5 short:text-base text-white shadow-[0_4px_0_#064e3b] enabled:hover:brightness-110",
+        tone === "nope" && styles.danger,
         tone === "nope" &&
-          "min-w-[7.5rem] animate-pulse bg-gradient-to-b from-red-500 to-red-800 px-4 py-2.5 text-lg max-sm:min-w-0 max-sm:flex-1 max-sm:basis-full max-sm:px-2 max-sm:py-2 max-sm:text-sm sm:min-w-[9rem] sm:px-6 sm:py-3 sm:text-xl short:py-1.5 short:text-base text-white shadow-[0_4px_0_#450a0a,0_0_28px_rgba(239,68,68,0.6)]",
+          "min-w-[7.5rem] motion-safe:animate-pulse bg-gradient-to-b from-red-500 to-red-800 px-4 py-2.5 text-lg max-sm:min-w-0 max-sm:flex-1 max-sm:basis-full max-sm:px-2 max-sm:py-2 max-sm:text-sm sm:min-w-[9rem] sm:px-6 sm:py-3 sm:text-xl short:py-1.5 short:text-base text-white shadow-[0_4px_0_#450a0a,0_0_28px_rgba(239,68,68,0.6)]",
         tone === "ghost" && "border border-white/20 bg-white/5 px-3 py-2 text-sm sm:px-4 short:py-1 font-semibold enabled:hover:bg-white/10",
       )}
     >
@@ -1087,7 +1094,7 @@ function DiscardViewer({
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={cn("min-h-9 rounded-t-md px-3 py-1.5", tab === id ? "bg-amber-400 text-black" : "text-orange-100/70 hover:bg-white/10")}
+              className={cn(styles.control, "min-h-9 rounded-t-md px-3 py-1.5", tab === id ? "bg-amber-400 text-black" : "text-orange-100/70 hover:bg-white/10")}
             >
               {label}
             </button>
@@ -1144,6 +1151,7 @@ function Seat({
     <Tag
       onClick={selectable ? onSelect : undefined}
       className={cn(
+        styles.hud,
         "relative flex min-w-[4rem] flex-col items-center gap-1 rounded-xl px-1 py-1.5 transition-all sm:min-w-[5.5rem] sm:px-2 short:gap-0.5 short:py-1",
         selectable && !selected && "cursor-pointer outline-dashed outline-2 outline-offset-2 outline-amber-300/70 hover:bg-amber-400/15 motion-safe:animate-pulse",
         selected && "scale-105 bg-rose-500/25 outline outline-2 outline-offset-2 outline-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.45)]",
@@ -1240,7 +1248,7 @@ function PendingBar({
   const label = PENDING_LABEL[pending.kind] ?? cardName(pending.kind as CardType);
   const blocked = pending.nopes % 2 === 1;
   return (
-    <div className="w-full max-w-md rounded-xl border border-red-400/40 bg-black/50 p-3 text-center">
+    <div className={cn(styles.panel, "w-full max-w-md rounded-xl border border-red-400/40 bg-black/50 p-3 text-center")}>
       <p className="text-sm">
         <b>{nameOf(pending.by)}</b> đánh <b className="text-amber-200">{label}</b>
         {pending.target && (
@@ -1324,7 +1332,7 @@ function ChoicePanel({
           <b>{nameOf(who)}</b> {what}…{timer}
         </p>
         {seer && (
-          <button onClick={() => void run({ type: "see", card: seer.id })} className="min-h-9 rounded-lg bg-indigo-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-400">
+          <button onClick={() => void run({ type: "see", card: seer.id })} className={cn(styles.control, "min-h-9 rounded-lg bg-indigo-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-400")}>
             👁️ Dùng Thấu thị — xem họ nhét ở đâu
           </button>
         )}
@@ -1334,14 +1342,14 @@ function ChoicePanel({
 
   if (choice.kind === "favor") {
     return (
-      <div className="rounded-xl border border-amber-300/40 bg-black/50 p-3 text-center text-sm">
+      <div className={cn(styles.panel, "rounded-xl border border-amber-300/40 bg-black/50 p-3 text-center text-sm")}>
         <p>
           🙏 <b>{nameOf(choice.to)}</b> xin bạn 1 lá — chọn 1 lá trên tay rồi bấm Đưa{timer}
         </p>
         <button
           disabled={selected.length !== 1}
           onClick={() => void run({ type: "give", card: selected[0] })}
-          className="mt-2 min-h-9 rounded-lg bg-amber-400 px-4 py-1.5 font-semibold text-black disabled:opacity-40"
+          className={cn(styles.control, "mt-2 min-h-9 rounded-lg bg-amber-400 px-4 py-1.5 font-semibold text-black disabled:opacity-40")}
         >
           Đưa lá đã chọn
         </button>
@@ -1351,7 +1359,7 @@ function ChoicePanel({
 
   if (choice.kind === "offer") {
     return (
-      <div className="rounded-xl border border-amber-300/40 bg-black/50 p-3 text-center text-sm">
+      <div className={cn(styles.panel, "rounded-xl border border-amber-300/40 bg-black/50 p-3 text-center text-sm")}>
         <p>
           {choice.mode === "potluck"
             ? "🍲 Góp nồi — chọn 1 lá đặt lên đầu chồng bài"
@@ -1363,7 +1371,7 @@ function ChoicePanel({
         <button
           disabled={selected.length !== 1}
           onClick={() => void run({ type: "give", card: selected[0] })}
-          className="mt-2 min-h-9 rounded-lg bg-amber-400 px-4 py-1.5 font-semibold text-black disabled:opacity-40"
+          className={cn(styles.control, "mt-2 min-h-9 rounded-lg bg-amber-400 px-4 py-1.5 font-semibold text-black disabled:opacity-40")}
         >
           {choice.mode === "potluck" ? "Góp lá đã chọn" : "Bỏ lá đã chọn"}
         </button>
@@ -1373,14 +1381,14 @@ function ChoicePanel({
 
   if (choice.kind === "dig") {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-amber-500/40 bg-black/50 p-3 text-center text-sm">
+      <div className={cn(styles.panel, "flex flex-col items-center gap-2 rounded-xl border border-amber-500/40 bg-black/50 p-3 text-center text-sm")}>
         <p>⛏️ Lá trên cùng là (chỉ bạn thấy):{timer}</p>
         {view.dig && <MeoCard type={view.dig} size="md" />}
         <div className="flex flex-wrap justify-center gap-2">
-          <button onClick={() => void run({ type: "dig", keep: true })} className="min-h-9 rounded-md bg-amber-400 px-3 py-1 font-semibold text-black">
+          <button onClick={() => void run({ type: "dig", keep: true })} className={cn(styles.control, "min-h-9 rounded-md bg-amber-400 px-3 py-1 font-semibold text-black")}>
             Giữ lá này
           </button>
-          <button onClick={() => void run({ type: "dig", keep: false })} className="min-h-9 rounded-md border border-white/20 px-3 py-1 hover:bg-white/10">
+          <button onClick={() => void run({ type: "dig", keep: false })} className={cn(styles.control, "min-h-9 rounded-md border border-white/20 px-3 py-1 hover:bg-white/10")}>
             Bỏ qua, lấy lá bên dưới
           </button>
         </div>
@@ -1391,7 +1399,7 @@ function ChoicePanel({
   if (choice.kind === "bury") {
     const buryPos = Math.min(deckCount, Math.max(0, pos));
     return (
-      <div className="w-full max-w-md rounded-xl border border-zinc-300/40 bg-black/50 p-3 text-center text-sm">
+      <div className={cn(styles.panel, "w-full max-w-md rounded-xl border border-zinc-300/40 bg-black/50 p-3 text-center text-sm")}>
         <p>
           ⚰️ Chôn lá trên cùng (không ai biết là lá gì) vào đâu?{timer}
         </p>
@@ -1399,7 +1407,7 @@ function ChoicePanel({
         <p className="text-amber-200">
           {buryPos === 0 ? "Trên cùng" : buryPos === deckCount ? "Dưới cùng" : `Lá thứ ${buryPos + 1}`} <span className="text-xs text-orange-100/50">/ {deckCount + 1} lá</span>
         </p>
-        <button onClick={() => void run({ type: "insert", position: buryPos })} className="mt-2 min-h-9 rounded-md bg-amber-400 px-3 py-1 font-semibold text-black">
+        <button onClick={() => void run({ type: "insert", position: buryPos })} className={cn(styles.control, "mt-2 min-h-9 rounded-md bg-amber-400 px-3 py-1 font-semibold text-black")}>
           Chôn ở đây
         </button>
       </div>
@@ -1416,7 +1424,7 @@ function ChoicePanel({
         return a;
       });
     return (
-      <div className="rounded-xl border border-purple-300/40 bg-black/50 p-3 text-center text-sm">
+      <div className={cn(styles.panel, "rounded-xl border border-purple-300/40 bg-black/50 p-3 text-center text-sm")}>
         <p className="mb-2">
           🪄 Sắp xếp lại tương lai (trái = lá trên cùng){"share" in choice && choice.share ? " — người kế tiếp sẽ được xem" : ""}
           {timer}
@@ -1426,17 +1434,17 @@ function ChoicePanel({
             <div key={c.id} className="flex flex-col items-center gap-1">
               <MeoCard type={c.type} size="sm" />
               <div className="flex gap-1">
-                <button onClick={() => move(i, -1)} disabled={i === 0} className="min-h-9 min-w-9 rounded bg-white/10 px-1.5 disabled:opacity-30">
+                <button onClick={() => move(i, -1)} disabled={i === 0} className={cn(styles.control, "min-h-9 min-w-9 rounded bg-white/10 px-1.5 disabled:opacity-30")}>
                   ◀
                 </button>
-                <button onClick={() => move(i, 1)} disabled={i === order.length - 1} className="min-h-9 min-w-9 rounded bg-white/10 px-1.5 disabled:opacity-30">
+                <button onClick={() => move(i, 1)} disabled={i === order.length - 1} className={cn(styles.control, "min-h-9 min-w-9 rounded bg-white/10 px-1.5 disabled:opacity-30")}>
                   ▶
                 </button>
               </div>
             </div>
           ))}
         </div>
-        <button onClick={() => void run({ type: "alter", order: order.map((c) => c.id) })} className="mt-2 min-h-9 rounded-lg bg-amber-400 px-4 py-1.5 font-semibold text-black">
+        <button onClick={() => void run({ type: "alter", order: order.map((c) => c.id) })} className={cn(styles.control, "mt-2 min-h-9 rounded-lg bg-amber-400 px-4 py-1.5 font-semibold text-black")}>
           Xong
         </button>
       </div>
@@ -1447,7 +1455,7 @@ function ChoicePanel({
   const label = (i: number) => (i === 0 ? "Trên cùng" : i === deckCount ? "Dưới cùng" : `Lá thứ ${i + 1}`);
   const limited = minPos > 0;
   return (
-    <div className="w-full max-w-md rounded-xl border border-emerald-300/40 bg-black/50 p-3 text-center text-sm">
+    <div className={cn(styles.panel, "w-full max-w-md rounded-xl border border-emerald-300/40 bg-black/50 p-3 text-center text-sm")}>
       <p>
         {choice.kind === "implode" ? "🌀 Đặt Mèo Tự Huỷ (ngửa, ai cũng thấy) vào đâu?" : "🧯 Gỡ bom thành công! Bí mật nhét Mèo Nổ vào đâu?"}
         {timer}
@@ -1470,19 +1478,19 @@ function ChoicePanel({
         </p>
       )}
       <div className="mt-2 flex flex-wrap justify-center gap-2">
-        <button onClick={() => void run({ type: "insert", position: minPos })} className="min-h-9 rounded-md border border-white/20 px-2 py-1 hover:bg-white/10">
+        <button onClick={() => void run({ type: "insert", position: minPos })} className={cn(styles.control, "min-h-9 rounded-md border border-white/20 px-2 py-1 hover:bg-white/10")}>
           {limited ? "Cao nhất" : "Trên cùng"}
         </button>
         <button
           onClick={() => void run({ type: "insert", position: minPos + Math.floor(Math.random() * (maxPos - minPos + 1)) })}
-          className="min-h-9 rounded-md border border-white/20 px-2 py-1 hover:bg-white/10"
+          className={cn(styles.control, "min-h-9 rounded-md border border-white/20 px-2 py-1 hover:bg-white/10")}
         >
           Ngẫu nhiên
         </button>
-        <button onClick={() => void run({ type: "insert", position: maxPos })} className="min-h-9 rounded-md border border-white/20 px-2 py-1 hover:bg-white/10">
+        <button onClick={() => void run({ type: "insert", position: maxPos })} className={cn(styles.control, "min-h-9 rounded-md border border-white/20 px-2 py-1 hover:bg-white/10")}>
           {limited ? "Thấp nhất" : "Dưới cùng"}
         </button>
-        <button onClick={() => void run({ type: "insert", position: safePos })} className="min-h-9 rounded-md bg-amber-400 px-3 py-1 font-semibold text-black">
+        <button onClick={() => void run({ type: "insert", position: safePos })} className={cn(styles.control, "min-h-9 rounded-md bg-amber-400 px-3 py-1 font-semibold text-black")}>
           Nhét vào {label(safePos).toLowerCase()}
         </button>
       </div>
@@ -1515,7 +1523,7 @@ function Waiting({
     void act({ type: "settings", expansions: view.expansions.includes(e) ? view.expansions.filter((x) => x !== e) : [...view.expansions, e] });
 
   return (
-    <div className="w-full max-w-md rounded-2xl bg-black/45 p-4 backdrop-blur-sm">
+    <div className={cn(styles.panel, "w-full max-w-md rounded-2xl bg-black/45 p-4 backdrop-blur-sm")}>
       {ended && g ? (
         <>
           <h2 className="mb-2 text-lg font-bold text-amber-300">🏁 {nameOf(g.finished[0])} sống sót cuối cùng!</h2>
@@ -1563,7 +1571,7 @@ function Waiting({
                     <button
                       key={grp.id}
                       onClick={() => setGroup(grp.id)}
-                      className={cn(
+                      className={cn(styles.control,
                         "min-h-9 flex-1 rounded-full px-2 py-1 text-[11px] font-semibold leading-tight",
                         group === grp.id ? "bg-orange-200 text-black" : "bg-black/30 text-orange-100/70 hover:bg-black/50",
                       )}
@@ -1583,7 +1591,7 @@ function Waiting({
                           disabled={!isHost}
                           onClick={() => void act({ type: "settings", preset: p.id })}
                           title={p.packs.length ? p.packs.map((x) => PACKS[x].name).join(" + ") : "Bộ cơ bản, không gói mở rộng"}
-                          className={cn(
+                          className={cn(styles.control,
                             "flex flex-col items-start rounded-lg px-2 py-1.5 text-left text-xs transition-colors",
                             on ? "bg-amber-400 text-black" : "bg-white/5 text-orange-50",
                             isHost && !on && "hover:bg-white/10",
@@ -1606,7 +1614,7 @@ function Waiting({
                       <button
                         disabled={!isHost}
                         onClick={() => void act({ type: "settings", preset: "custom" })}
-                        className="w-full rounded-lg bg-white/5 px-2 py-1.5 text-xs font-semibold hover:bg-white/10 disabled:opacity-50"
+                        className={cn(styles.control, "w-full rounded-lg bg-white/5 px-2 py-1.5 text-xs font-semibold hover:bg-white/10 disabled:opacity-50")}
                       >
                         🧩 Dùng chế độ tuỳ chỉnh
                       </button>
@@ -1706,7 +1714,7 @@ function Waiting({
           onClick={() => void act({ type: "start" })}
           disabled={count < minP || count > view.maxPlayers}
           // Sideways phones scroll this long panel inside the short table: the button stays pinned at the bottom.
-          className="w-full rounded-lg bg-amber-400 px-4 py-2 font-semibold text-black transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-700 disabled:text-black/70 short:sticky short:bottom-0 short:z-10 short:shadow-[0_-6px_14px_rgba(0,0,0,0.55)]"
+          className={cn(styles.control, "w-full rounded-lg bg-amber-400 px-4 py-2 font-semibold text-black transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-700 disabled:text-black/70 short:sticky short:bottom-0 short:z-10 short:shadow-[0_-6px_14px_rgba(0,0,0,0.55)]")}
         >
           {count < minP ? `Cần ít nhất ${minP} người` : count > view.maxPlayers ? `Tối đa ${view.maxPlayers} người` : ended ? "Ván mới" : "Bắt đầu"}
         </button>

@@ -1,9 +1,7 @@
 @use "@styles/variables" as vars;
-
-.confirmActions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  color: vars.$color-white;
-}
+.confirmActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; color: vars.$pixel-text; }
+.admin { display: inline-flex; align-items: center; min-height: 2.75rem; margin-right: auto; padding: .5rem .75rem; color: vars.$pixel-gold; font-size: .875rem; font-weight: 700; &:hover { background: vars.$pixel-panel; } }
+.form { display: grid; gap: 1rem; }
+.hint { font-size: .75rem; color: vars.$pixel-muted; line-height: 1.6; }
+.success,.error { margin-top: .5rem; font-size: .875rem; line-height: 1.6; }
+.success { color: vars.$pixel-mint; } .error { color: vars.$pixel-coral; }

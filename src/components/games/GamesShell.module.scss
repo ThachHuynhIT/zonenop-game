@@ -1,0 +1,22 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+.shell { display: flex; min-height: 100dvh; flex-direction: column; background: vars.$pixel-bg; color: vars.$pixel-text; h1,h2,h3 { font-family: vars.$font-family-mono; } }
+.columns { display: grid; width: 100%; max-width: 90rem; grid-template-columns: minmax(0,1fr); gap: 1.5rem; margin: auto; padding-bottom: 1.5rem; }
+.content,.aside { min-width: 0; } .aside { padding: 0 1rem; }
+.topbar { position: sticky; top: 0; z-index: 40; border-bottom: 2px solid vars.$pixel-outline; background: vars.$pixel-ink; }
+.nav { display: flex; max-width: 90rem; min-width: 0; min-height: 3.5rem; align-items: center; gap: .5rem; padding: .25rem .75rem; margin: auto; }
+.brand { display: flex; flex-shrink: 0; align-items: center; gap: .5rem; color: vars.$pixel-gold; font: 900 1rem vars.$font-family-mono; min-height: 2.75rem; svg { width: 2rem; height: 2rem; } }
+.links { display: flex; min-width: 0; flex: 1; align-items: center; gap: .25rem; margin: 0; padding: 0 .5rem; list-style: none; overflow-x: auto; scrollbar-width: none;
+ li { flex-shrink: 0; } a { display: flex; align-items: center; justify-content: center; gap: .375rem; min-height: 2.75rem; padding: .375rem .5rem; border: 2px solid transparent; color: vars.$pixel-muted; font-size: .75rem; white-space: nowrap; } svg { width: 1.25rem; height: 1.25rem; } a[aria-current] { border-color: vars.$pixel-gold; color: vars.$pixel-gold; background: vars.$pixel-panel; } a:hover { color: vars.$pixel-text; background: vars.$pixel-panel; } span { display: none; }
+}
+.account { @include pixel.control; display: flex; align-items: center; gap: .5rem; min-width: 0; min-height: 2.75rem; padding: .25rem .5rem; background: vars.$pixel-panel; font-size: .75rem; > span:not(:first-child) { max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+.avatar { width: 1.75rem; height: 1.75rem; }
+.headerSlot { display: flex; flex: 1; min-width: 0; align-items: center; }
+.compact { position: relative; .nav { min-height: 2.25rem; padding-top: 0; padding-bottom: 0; } .brand { min-height: 2rem; span { display: none; } svg { width: 1.5rem; height: 1.5rem; } } .links { display: none; flex: 0 0 auto; a { min-height: 2rem; padding: .125rem .25rem; } } .account { min-height: 2rem; > span:not(:first-child) { display: none; } } .avatar { width: 1.25rem; height: 1.25rem; } }
+.footer { margin-top: auto; border-top: 2px solid vars.$pixel-outline; color: vars.$pixel-muted; background: vars.$pixel-ink; font-size: .75rem; > div { display: flex; max-width: 90rem; margin: auto; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 1rem; } p { flex: 1; min-width: 14rem; } a { padding: .5rem 0; color: vars.$pixel-text; } }
+@media (min-width: 1280px) { .columns { grid-template-columns: minmax(0,1fr) 20rem; padding: 0 1rem 1.5rem; } .aside { padding: 2rem 0 0; } .rooms { position: sticky; top: 5rem; max-height: calc(100dvh - 6rem); overflow-y: auto; scrollbar-width: thin; padding: 0 4px 4px 0; } .links span { display: inline; } .compact .links { display: flex; span { display: none; } } }
+@media (max-width: 639px), (max-height: 500px) { .nav { gap: .25rem; padding-left: .5rem; padding-right: .5rem; } .brand span,.account > span:not(:first-child) { display: none; } .compact .nav { min-height: 2.75rem; } .compact .brand,.compact .account { min-height: 2.5rem; } .compact .avatar { width: 1.5rem; height: 1.5rem; } .links { padding: 0; } }
+
+.body { flex: 1; }
+.tableBody { --games-bar-h: calc(2.25rem + 2px); }
+@media (max-width: 639px), (max-height: 500px) { .tableBody { --games-bar-h: calc(2.75rem + 2px); } }

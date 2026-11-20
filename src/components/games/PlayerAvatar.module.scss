@@ -1,0 +1,13 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+.avatar { display: grid; flex-shrink: 0; place-items: center; border: 2px solid vars.$pixel-ink; border-radius: 0; color: vars.$pixel-ink; font-weight: 800; }
+.seatAvatar { color: vars.$pixel-ink; font-weight: 800; }
+.picker { display: grid; gap: .75rem; margin-top: 1rem; }
+.preview { display: flex; align-items: center; gap: .75rem; }
+.large { width: 2.75rem; height: 2.75rem; font-size: 1.25rem; }
+.hint { color: vars.$pixel-muted; font-size: .8rem; }
+.icons,.colors { display: flex; flex-wrap: wrap; gap: .5rem; }
+.icon { @include pixel.control; display: grid; width: 2.75rem; height: 2.75rem; place-items: center; background: vars.$pixel-ink; color: vars.$pixel-text; font-size: 1.125rem; }
+.selected { border-color: vars.$pixel-gold; background: vars.$pixel-panel-raised; box-shadow: inset 0 -3px 0 vars.$pixel-gold; }
+.color { @include pixel.control; width: 2.75rem; height: 2.75rem; border: 3px solid vars.$pixel-ink; }
+.selectedColor { outline: 3px solid vars.$pixel-text; outline-offset: 1px; box-shadow: inset 0 0 0 3px vars.$pixel-ink; }

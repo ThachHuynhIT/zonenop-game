@@ -1,3 +1,4 @@
+@use "@styles/variables" as vars;
 .roster {
   display: flex;
   flex-wrap: wrap;
@@ -14,14 +15,14 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.25rem 0.625rem 0.25rem 0.25rem;
-  border: 1px solid rgb(255 255 255 / 0.1);
-  border-radius: 9999px;
-  background: rgb(255 255 255 / 0.05);
+  border: 2px solid vars.$pixel-outline;
+  border-radius: 0;
+  background: vars.$pixel-panel;
 }
 
 .me {
-  border-color: rgb(252 211 77 / 0.5);
-  background: rgb(251 191 36 / 0.15);
+  border-color: vars.$pixel-gold;
+  background: vars.$pixel-panel-raised;
 }
 
 .offline {
@@ -34,7 +35,7 @@
   height: 1.5rem;
   flex-shrink: 0;
   place-items: center;
-  border-radius: 9999px;
+  border-radius: 0;
   font-size: 0.75rem;
 }
 
@@ -51,26 +52,26 @@
 
 .you {
   font-size: 0.75rem;
-  color: rgb(255 255 255 / 0.6);
+  color: vars.$pixel-muted;
 }
 
 .points {
   font-family: ui-monospace, monospace;
   font-size: 0.75rem;
-  color: rgb(255 255 255 / 0.5);
+  color: vars.$pixel-muted;
 
   &.up {
-    color: rgb(110 231 183);
+    color: vars.$pixel-mint;
   }
 
   &.down {
-    color: rgb(253 164 175);
+    color: vars.$pixel-coral;
   }
 }
 
 .empty {
   padding: 0.25rem 0.625rem;
-  border: 1px dashed rgb(255 255 255 / 0.2);
-  border-radius: 9999px;
-  color: rgb(255 255 255 / 0.45);
+  border: 2px dashed vars.$pixel-outline;
+  border-radius: 0;
+  color: vars.$pixel-muted;
 }

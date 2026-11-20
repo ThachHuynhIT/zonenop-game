@@ -3,6 +3,7 @@
 import { m } from "motion/react";
 import { cn } from "@/lib/utils";
 import { pop } from "./motion";
+import styles from "./PixelPrimitives.module.scss";
 
 const TONES = {
   accent: "bg-game-accent text-game-accent-fg",
@@ -33,7 +34,8 @@ export function GameBadge({
       animate="shown"
       role={role}
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-extrabold",
+        "inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-0.5 font-extrabold",
+        styles.badge,
         TONES[tone],
         pulse && "motion-safe:animate-pulse",
         className,

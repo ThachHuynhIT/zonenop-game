@@ -1,5 +1,8 @@
 "use client";
 
+import styles from "./TyPhuTable.module.scss";
+import { PixelIcon } from "@/components/game-ui";
+
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -97,7 +100,7 @@ export default function TyPhuTable({ code, name, watch }: { code: string; name: 
     );
   }
   if (!view) {
-    return <p className="flex min-h-[70vh] animate-pulse items-center justify-center text-sky-100/80">Đang kết nối bàn {code}…</p>;
+    return <p className="flex min-h-[70vh] motion-safe:animate-pulse items-center justify-center text-sky-100/80">Đang kết nối bàn {code}…</p>;
   }
   return (
     <>
@@ -332,18 +335,14 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
   const showBar = placement === "bottom" && !!g && g.status !== "ended";
   return (
     <GameThemeScope game="typhu" className="contents">
-    <div className={cn("relative isolate mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col gap-3 px-2 xl:max-w-none pt-2 sm:px-4 sm:pt-3 short:gap-2 short:pt-1.5", !showBar && "pb-[max(1rem,env(safe-area-inset-bottom))]")} style={showBar ? { paddingBottom: barHeight + 8 } : undefined}>
-      {/* Whole-screen backdrop: the board-centre picture, blurred and cropped to cover the screen (its longest side fits). */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#0b1d3a]">
-        <div className="absolute inset-0 scale-110 bg-cover bg-center blur-2xl" style={{ backgroundImage: "url(/games/typhu/center.webp)" }} />
-        <div className="absolute inset-0 bg-black/55" />
-      </div>
+    <div className={cn(styles.table, "relative isolate mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col gap-3 px-2 xl:max-w-none pt-2 sm:px-4 sm:pt-3 short:gap-2 short:pt-1.5", !showBar && "pb-[max(1rem,env(safe-area-inset-bottom))]")} style={showBar ? { paddingBottom: barHeight + 8 } : undefined}>
       <GameHeader
         primary={
           <>
+            <PixelIcon name="typhu" className={styles.identity} />
             <Link
               href="/co-ty-phu"
-              className={headerBtn}
+              className={cn(styles.control, headerBtn)}
               onClick={(e) => {
                 if (!inGame) return;
                 e.preventDefault();
@@ -359,19 +358,19 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
         }
         extra={
           <>
-            <button onClick={copyInvite} className={headerBtn} title="Chép link mời">
+            <button onClick={copyInvite} className={cn(styles.control, headerBtn)} title="Chép link mời">
               {copied ? "✓" : "🔗"}
               <HeaderLabel>{copied ? "Đã chép link" : "Chép link mời"}</HeaderLabel>
             </button>
             {g && (
-              <button onClick={() => setShowLog(true)} className={headerBtn} title="Toàn bộ diễn biến ván">
+              <button onClick={() => setShowLog(true)} className={cn(styles.control, headerBtn)} title="Toàn bộ diễn biến ván">
                 📜 <HeaderLabel>Diễn biến</HeaderLabel>
               </button>
             )}
-            <button onClick={() => setShowScores(true)} className={headerBtn} title="Bảng điểm">
+            <button onClick={() => setShowScores(true)} className={cn(styles.control, headerBtn)} title="Bảng điểm">
               🏆 <HeaderLabel>Bảng điểm</HeaderLabel>
             </button>
-            <button onClick={() => setShowRules(true)} className={headerBtn} title="Luật chơi">
+            <button onClick={() => setShowRules(true)} className={cn(styles.control, headerBtn)} title="Luật chơi">
               📖 <HeaderLabel>Luật chơi</HeaderLabel>
             </button>
           </>
@@ -388,13 +387,13 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
                 👀 {view.spectators.length}
               </span>
             )}
-            {reconnecting && <span className="animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
+            {reconnecting && <span className="motion-safe:animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
           </>
         }
       />
 
       {spectator && (
-        <div className="flex flex-wrap items-center justify-center gap-3 rounded-xl bg-black/30 px-3 py-2 text-sm text-sky-100/80">
+        <div className={cn(styles.panel, "flex flex-wrap items-center justify-center gap-3 rounded-xl bg-black/30 px-3 py-2 text-sm text-sky-100/80")}>
           <span>👀 Bạn đang xem với tư cách khán giả</span>
           {view.seats.some((s) => s === null) && !playing && (
             <Link href={`/co-ty-phu/${view.code}`} className="rounded-md bg-amber-400 px-3 py-1 font-semibold text-black">
@@ -414,7 +413,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
           <PinchZoom className="rounded-xl shadow-2xl">
           <div
             ref={boardEl}
-            className="grid aspect-square w-full gap-[2px] rounded-xl border-4 border-[#1e3a2f] bg-[#1e3a2f] shadow-2xl"
+            className={cn(styles.board, "grid aspect-square w-full gap-[2px] rounded-xl border-4 border-[#1e3a2f] bg-[#1e3a2f] shadow-2xl")}
             style={{ gridTemplateColumns: `1.6fr repeat(${boardRef.current.length / 4 - 1}, 1fr) 1.6fr`, gridTemplateRows: `1.6fr repeat(${boardRef.current.length / 4 - 1}, 1fr) 1.6fr` }}
           >
             {boardRef.current.map((sq, i) => {
@@ -442,7 +441,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
               <CardOverlay card={cardFx} nameOf={nameOf} onClose={() => setCardFx(null)} />
               <BuildOverlay fx={buildFx} />
               <BankruptOverlay fx={bankruptFx} />
-              <div className="flex max-h-full min-h-0 w-full max-w-md flex-none flex-col items-center justify-center-safe gap-2 overflow-y-auto rounded-[1.5rem] bg-[#dff1e5]/60 p-1.5 shadow-xl ring-1 ring-amber-300/50 backdrop-blur-[2px] sm:p-2.5 short:gap-1 short:p-1">
+              <div className={cn(styles.bank, "flex max-h-full min-h-0 w-full max-w-md flex-none flex-col items-center justify-center-safe gap-2 overflow-y-auto p-1.5 sm:p-2.5 short:gap-1 short:p-1")}>
               {!g || g.status === "ended" ? (
                 <Waiting view={view} me={me} act={act} nameOf={nameOf} />
               ) : (
@@ -472,7 +471,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
         {g && (
           <div className="flex flex-col gap-2 lg:hidden short:hidden">
             {g.log.length > 0 && (
-              <button type="button" onClick={() => setShowLog(true)} aria-label="Xem toàn bộ diễn biến" className="flex flex-col gap-0.5 rounded-xl text-left text-xs text-white/80">
+              <button type="button" onClick={() => setShowLog(true)} aria-label="Xem toàn bộ diễn biến" className={cn(styles.control, "flex flex-col gap-0.5 rounded-xl text-left text-xs text-white/80")}>
                 {g.log.slice(-3).reverse().map((e) => (
                   <span key={e.id} className="truncate rounded bg-white/10 px-2 py-1">
                     {e.text}
@@ -519,7 +518,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
             </div>
           )}
           {(!g || g.status === "ended") && (
-            <div className="hidden rounded-2xl bg-[#f4efe1] p-3 text-sm text-emerald-950 shadow-xl max-sm:block short:block short:p-2">
+            <div className={cn(styles.paper, "hidden rounded-2xl bg-[#f4efe1] p-3 text-sm text-emerald-950 shadow-xl max-sm:block short:block short:p-2")}>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-900/60">⚙️ Luật bàn</p>
               <Suspense fallback={null}>
                 <TableSettings view={view} isHost={!!me?.isHost && view.role === "player"} act={act} />
@@ -569,7 +568,7 @@ function TableBody({ view, reconnecting, act }: { view: TPRoomView; reconnecting
               title="Diễn biến"
               className="p-3 sm:p-3 max-lg:hidden short:block"
               actions={
-                <button onClick={() => setShowLog(true)} className="rounded px-1.5 py-0.5 text-[11px] font-normal text-sky-200 hover:bg-white/10 max-sm:min-h-8">
+                <button onClick={() => setShowLog(true)} className={cn(styles.control, "rounded px-1.5 py-0.5 text-[11px] font-normal text-sky-200 hover:bg-white/10 max-sm:min-h-8")}>
                   Xem toàn bộ ({g.log.length}) ↗
                 </button>
               }

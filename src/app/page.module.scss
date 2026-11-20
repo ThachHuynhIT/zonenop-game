@@ -1,0 +1,25 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+
+.page { min-height: 100dvh; background: vars.$pixel-bg; color: vars.$pixel-text; }
+.main { max-width: 72rem; margin: auto; padding: 2rem 1rem 3rem; }
+.hero { display: flex; align-items: center; gap: 1.5rem; padding: .5rem 0 2rem; border-bottom: 2px solid vars.$pixel-outline; margin-bottom: 1.5rem;
+  h1 { max-width: 21ch; font-family: vars.$font-family-mono; font-size: clamp(1.5rem, 3vw, 2.75rem); line-height: 1.25; font-weight: 900; letter-spacing: -.05em; }
+  p { max-width: 50ch; margin-top: .75rem; color: vars.$pixel-muted; line-height: 1.6; }
+}
+.heroMark { @include pixel.frame; flex: 0 0 6rem; display: grid; place-items: center; width: 6rem; height: 6rem; background: vars.$pixel-gold; color: vars.$pixel-ink; svg { width: 4rem; height: 4rem; } }
+.libraryHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; h2 { font: 700 1rem vars.$font-family-mono; } span { color: vars.$pixel-muted; font: .7rem vars.$font-family-mono; } }
+.library { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; list-style: none; padding: 0; }
+.cartridge { @include pixel.frame; display: flex; height: 100%; min-width: 0; flex-direction: column; background: vars.$pixel-panel; text-decoration: none; overflow: hidden;
+  &:hover { border-color: vars.$pixel-gold; .play { background: vars.$pixel-text; } }
+  &:focus-visible { outline: 3px solid vars.$pixel-mint; outline-offset: 4px; }
+}
+.art { display: grid; place-items: center; min-height: 8rem; background: vars.$pixel-ink; border-bottom: 2px solid vars.$pixel-outline; color: vars.$pixel-gold; svg { width: 4.5rem; height: 4.5rem; } }
+.info { display: flex; flex: 1; flex-direction: column; padding: 1.25rem; h3 { font: 800 1.05rem/1.4 vars.$font-family-mono; } > p { flex: 1; margin-top: .75rem; color: vars.$pixel-muted; font-size: .875rem; line-height: 1.6; } }
+.tags { display: flex; flex-wrap: wrap; gap: .375rem; margin: 1rem 0; span { padding: .2rem .4rem; border: 1px solid vars.$pixel-outline; color: vars.$pixel-muted; font-size: .7rem; } }
+.play { display: flex; align-items: center; justify-content: space-between; min-height: 2.75rem; background: vars.$pixel-gold; padding: .5rem .75rem; color: vars.$pixel-ink; font: 800 .8rem vars.$font-family-mono; }
+@media (min-width: 1500px) { .library { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media (max-width: 639px) {
+ .main { padding: 1.25rem .75rem 2rem; } .hero { align-items: flex-start; gap: .875rem; padding-bottom: 1.25rem; h1 { font-size: 1.4rem; } p { font-size: .85rem; } } .heroMark { flex-basis: 3rem; width: 3rem; height: 3rem; svg { width: 2rem; height: 2rem; } }
+ .library { grid-template-columns: 1fr; gap: .75rem; } .cartridge { flex-direction: row; } .art { flex: 0 0 4.5rem; min-height: 100%; border-bottom: 0; border-right: 2px solid vars.$pixel-outline; svg { width: 3rem; height: 3rem; } } .info { min-width: 0; padding: .875rem; h3 { font-size: .95rem; } > p { margin-top: .375rem; font-size: .8rem; } } .tags { margin: .625rem 0; } .play { min-height: 2.75rem; } .libraryHeading { flex-wrap: wrap; gap: .375rem; }
+}

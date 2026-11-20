@@ -347,14 +347,32 @@
  * `data-game` (GameThemeScope, and GameDialog's portalled popup) recomputes the derived colours from its own accent.
  */
 :where(.game-shell, [data-game]) {
-  --game-accent: oklch(0.7 0.2 300);
+  /* Scoped to game chrome, including dialog portals. The shadcn/admin theme
+     keeps its independent light/dark token contract. */
+  --pixel-bg: oklch(0.21 0.04 263);
+  --pixel-ink: oklch(0.16 0.028 263);
+  --pixel-panel: oklch(0.285 0.05 260);
+  --pixel-panel-raised: oklch(0.35 0.055 258);
+  --pixel-outline: oklch(0.49 0.065 257);
+  --pixel-text: oklch(0.944 0.028 88);
+  --pixel-muted: oklch(0.79 0.04 251);
+  --pixel-gold: oklch(0.89 0.13 89);
+  --pixel-mint: oklch(0.85 0.1 164);
+  --pixel-coral: oklch(0.78 0.13 32);
+  /* @theme inline substitutes Tailwind utility values; SCSS aliases also
+     need these runtime font properties even when no font-* utility is used. */
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-geist-mono);
+  --game-accent: var(--pixel-gold);
   --game-accent-strong: color-mix(in oklch, var(--game-accent), black 32%);
   --game-accent-soft: color-mix(in oklch, var(--game-accent) 18%, transparent);
   --game-accent-fg: oklch(0.2 0.02 270);
   --game-depth: 4px;
   /* Opaque dark surfaces: dialogs, tooltips, table heads (surface) and table bodies (sunken). */
-  --game-surface: oklch(0.2 0.03 290);
-  --game-surface-sunken: oklch(0.17 0.03 290);
+  --game-surface: var(--pixel-panel);
+  --game-surface-sunken: var(--pixel-ink);
   /* Admin charts (dark surfaces): first series follows the accent, the second is the hub's gold. */
   --game-chart-1: var(--game-accent);
   --game-chart-2: oklch(0.84 0.14 85);
@@ -382,7 +400,7 @@
   --color-game-accent-fg: var(--game-accent-fg);
   --color-game-surface: var(--game-surface);
   --color-game-surface-sunken: var(--game-surface-sunken);
-  --radius-game-card: 1.25rem;
+  --radius-game-card: 0;
 }
 
 /*
@@ -400,7 +418,7 @@
 @utility game-raised {
   --tw-shadow:
     0 var(--game-depth) 0 var(--game-raise-color, var(--game-accent-strong)),
-    0 calc(var(--game-depth) + 4px) 12px -4px oklch(0 0 0 / 45%);
+    3px calc(var(--game-depth) + 3px) 0 0 oklch(0 0 0 / 45%);
   box-shadow:
     var(--tw-inset-shadow, 0 0 transparent), var(--tw-inset-ring-shadow, 0 0 transparent),
     var(--tw-ring-offset-shadow, 0 0 transparent), var(--tw-ring-shadow, 0 0 transparent), var(--tw-shadow);
@@ -410,7 +428,7 @@
   transform: translateY(var(--game-depth));
   --tw-shadow:
     0 0 0 var(--game-raise-color, var(--game-accent-strong)),
-    0 2px 6px -2px oklch(0 0 0 / 45%);
+    1px 1px 0 0 oklch(0 0 0 / 45%);
   box-shadow:
     var(--tw-inset-shadow, 0 0 transparent), var(--tw-inset-ring-shadow, 0 0 transparent),
     var(--tw-ring-offset-shadow, 0 0 transparent), var(--tw-ring-shadow, 0 0 transparent), var(--tw-shadow);

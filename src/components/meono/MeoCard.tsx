@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- small static card art; next/image adds nothing here */
 import { MEO_ART, MEO_ART_VERSION } from "@/lib/meono/art";
 import { CARDS, type CardType, PACKS } from "@/lib/meono/cards";
+import styles from "./MeoCard.module.scss";
 import { cn } from "@/lib/utils";
 
 /** What a card is for, shown as the colour of its name. Few groups on purpose, so the colours stay easy to learn. */
@@ -101,9 +102,13 @@ export function MeoCard({ type, selected, onClick, size = "md", faceDown, classN
     const back = info ? artSrc("back") : null;
     return (
       <Tag
+        type={onClick ? "button" : undefined}
+        aria-label="Lá bài úp"
+        aria-pressed={onClick ? !!selected : undefined}
         onClick={onClick}
         className={cn(
           "aspect-[5/7] shrink-0 rounded-xl border-2 border-white/20 bg-[repeating-linear-gradient(135deg,#7c2d12_0_6px,#9a3412_6px_12px)] shadow-md transition-transform",
+          styles.back,
           SIZES[size],
           onClick && "hover:-translate-y-1",
           selected && "-translate-y-3 ring-2 ring-amber-300",
@@ -113,7 +118,7 @@ export function MeoCard({ type, selected, onClick, size = "md", faceDown, classN
         {back ? (
           <img src={back} alt="" draggable={false} className="h-full w-full rounded-[10px] object-cover" />
         ) : (
-          <div className="flex h-full items-center justify-center text-[length:var(--emoji)] opacity-80">{info ? "🐱" : "🍑"}</div>
+          <div aria-hidden className="flex h-full items-center justify-center text-[length:var(--emoji)] opacity-80">{info ? "🐱" : "🍑"}</div>
         )}
       </Tag>
     );

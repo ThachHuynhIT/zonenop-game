@@ -1,5 +1,6 @@
 "use client";
 
+import styles from "../TyPhuTable.module.scss";
 import NumberFlow from "@number-flow/react";
 import { SeatBubble } from "@/components/tienlen/Effects";
 import { signed } from "@/components/tienlen/Scoreboard";
@@ -40,7 +41,7 @@ export function PlayerRow({
 }) {
   const owned = g ? Object.entries(g.deeds).filter(([, d]) => d.owner === seat.id).map(([pos]) => Number(pos)) : [];
   return (
-    <li className={cn("relative rounded-xl p-2", isTurn ? "bg-amber-400/15 ring-1 ring-amber-300/60" : "bg-white/5", p?.bankrupt && "opacity-50")}>
+    <li className={cn(styles.player, "relative rounded-xl p-2", isTurn ? "bg-amber-400/15 ring-1 ring-amber-300/60" : "bg-white/5", p?.bankrupt && "opacity-50")}>
       <div className="flex items-center gap-2">
         <span className="relative">
           <SeatBubble reactions={reactions} />

@@ -209,6 +209,8 @@ function rememberRoomServer(wsPath: string, code: string, base: string) {
  * the all-rooms panel poll the same `/rooms` endpoint, and every request costs the backend Redis reads.
  */
 const SHARED_GET_MS = 4_000;
+/** Includes consuming the response body so one stalled endpoint cannot hold a room-list refresh open. */
+const PUBLIC_GET_TIMEOUT_MS = 12_000;
 const sharedGets = new Map<string, { at: number; promise: Promise<unknown> }>();
 
 /**
@@ -223,15 +225,33 @@ export function fetchApi<T>(path: string): Promise<T> {
   if (hit && now - hit.at < SHARED_GET_MS) return hit.promise as Promise<T>;
   const promise = (async () => {
     const base = await activeServerBase();
-    let res: Response;
+    const abort = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => {
+        reject(new Error(REQUEST_TIMEOUT_ERROR));
+        abort.abort();
+        markUnreachable(base);
+      }, PUBLIC_GET_TIMEOUT_MS);
+    });
     try {
-      res = await fetch(base + path, { cache: "no-store" });
-    } catch (err) {
-      markUnreachable(base);
-      throw err;
+      return await Promise.race([
+        (async () => {
+          let res: Response;
+          try {
+            res = await fetch(base + path, { cache: "no-store", signal: abort.signal });
+          } catch (err) {
+            markUnreachable(base);
+            throw err;
+          }
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return (await res.json()) as T;
+        })(),
+        deadline,
+      ]);
+    } finally {
+      clearTimeout(timer);
     }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return (await res.json()) as T;
   })();
   sharedGets.set(key, { at: now, promise });
   // A failed request is not shared: the next caller retries.
@@ -422,13 +442,16 @@ class Channel {
 
   close() {
     this.onClose = () => {};
+    this.onMessage = () => {};
     this.ws.close(1000);
   }
 }
 
 /**
  * Ask a backend for a new room code using a short-lived connection: the active
- * backend first, the next one when it cannot be reached. Remembers where the room lives.
+ * backend first, the next one only when the socket cannot open. Once create has
+ * been sent, even a transport timeout is ambiguous: replay could create a second
+ * room, so surface the failure. Remembers where an acknowledged room lives.
  */
 export async function createGameRoom(wsPath: string): Promise<string> {
   for (const base of await candidateBases()) {
@@ -478,6 +501,10 @@ export function useGameRoom<V>(
     let disposed = false;
     let stopped = false;
     let retry = 0;
+    let opening = false;
+    let revision = 0;
+    let reopenRequested = false;
+    const candidates = new Set<Channel>();
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     const token = getToken();
     /** Backend this room lives on once known. Reconnects try it first, then the others (see basesToTry). */
@@ -487,22 +514,30 @@ export function useGameRoom<V>(
     const tryJoin = async (base: string): Promise<JoinOutcome<Channel>> => {
       if (disposed || stopped) return { kind: "cancelled" };
       const ch = new Channel(wsUrl(base, wsPath));
+      const attemptRevision = revision;
+      candidates.add(ch);
+      const discard = () => { candidates.delete(ch); ch.close(); };
       const sentSession = getSession()?.session;
       ch.onMessage = (msg) => {
-        if (disposed || stopped) return;
+        if (disposed || stopped || (channelRef.current !== ch && !candidates.has(ch))) return;
         if (msg.type === "signedOut") {
           // Revoked by this browser's own newer session (e.g. a password change at the table): join again with it.
           if (hasNewerSession(sentSession)) {
-            const current = channelRef.current === ch;
-            ch.close();
-            if (current) {
-              channelRef.current = null;
-              setStatus("reconnecting");
-              void open();
-            }
+            revision++;
+            candidates.forEach((candidate) => candidate.close());
+            candidates.clear();
+            channelRef.current?.close();
+            channelRef.current = null;
+            setStatus("reconnecting");
+            reopenRequested = true;
+            if (!opening) void open();
             return;
           }
           stopped = true;
+          candidates.forEach((candidate) => candidate.close());
+          candidates.clear();
+          channelRef.current?.close();
+          channelRef.current = null;
           if (retryTimer) clearTimeout(retryTimer);
           setStatus("error");
           setError(signOutMessage(msg.reason));
@@ -523,11 +558,11 @@ export function useGameRoom<V>(
       };
 
       if (!(await ch.opened(CONNECT_TIMEOUT_MS))) {
-        ch.close();
+        discard();
         return { kind: "unreachable" };
       }
-      if (disposed || stopped) {
-        ch.close();
+      if (disposed || stopped || revision !== attemptRevision) {
+        discard();
         return { kind: "cancelled" };
       }
       const res = await ch.request({
@@ -539,12 +574,17 @@ export function useGameRoom<V>(
         session: sentSession,
         device: getDeviceId(),
       });
-      if (disposed || stopped) {
-        ch.close();
+      if (disposed || stopped || revision !== attemptRevision) {
+        discard();
+        return { kind: "cancelled" };
+      }
+      if (hasNewerSession(sentSession)) {
+        discard();
+        reopenRequested = true;
         return { kind: "cancelled" };
       }
       if (res.ok) return { kind: "joined", channel: ch };
-      ch.close();
+      discard();
       if (res.error === NEED_LOGIN) {
         if (sentSession && getSession()?.session === sentSession) {
           setSignOutReason("revoked");
@@ -562,46 +602,68 @@ export function useGameRoom<V>(
      * Each backend is tried in turn, the room's own first once it is known.
      */
     const open = async () => {
-      if (disposed || stopped) return;
-      const bases = basesToTry(roomBase, roomBase ? SERVER_BASES : await candidateBases());
-      const step = await resolveJoin(
-        bases,
-        roomBase,
-        () => channelRef.current !== null,
-        async (base) => {
-          const outcome = await tryJoin(base);
-          if (disposed || stopped) {
-            if (outcome.kind === "joined") outcome.channel.close();
-            return { kind: "cancelled" };
+      if (disposed || stopped || opening) return;
+      opening = true;
+      reopenRequested = false;
+      const attemptRevision = revision;
+      try {
+        const bases = basesToTry(roomBase, roomBase ? SERVER_BASES : await candidateBases());
+        if (disposed || stopped || revision !== attemptRevision) return;
+        const step = await resolveJoin(
+          bases,
+          roomBase,
+          () => channelRef.current !== null,
+          async (base) => {
+            const outcome = await tryJoin(base);
+            if (disposed || stopped || revision !== attemptRevision) {
+              if (outcome.kind === "joined") {
+                candidates.delete(outcome.channel);
+                outcome.channel.close();
+              }
+              return { kind: "cancelled" };
+            }
+            if (outcome.kind === "unreachable" && !roomBase) markUnreachable(base);
+            return outcome;
+          },
+        );
+        if (disposed || stopped || revision !== attemptRevision) {
+          if (step.kind === "join") {
+            candidates.delete(step.channel);
+            step.channel.close();
           }
-          if (outcome.kind === "unreachable" && !roomBase) markUnreachable(base);
-          return outcome;
-        },
-      );
-      switch (step.kind) {
-        case "join": {
-          roomBase = step.base;
-          rememberRoomServer(wsPath, code, step.base);
-          const previous = channelRef.current;
-          channelRef.current = step.channel;
-          previous?.close();
-          retry = 0;
-          setStatus("joined");
-          setError(null);
           return;
         }
-        case "error":
-          setStatus("error");
-          setError(step.error);
-          return;
-        case "retry":
-          // The room may live on the backend that is down: keep retrying.
-          setStatus((s) => (s === "joined" ? "reconnecting" : s));
-          scheduleRetry();
-          return;
-        case "keep": // planned hand-over found nothing joinable: the old channel stays
-        case "cancelled":
-          return;
+        switch (step.kind) {
+          case "join": {
+            candidates.delete(step.channel);
+            roomBase = step.base;
+            rememberRoomServer(wsPath, code, step.base);
+            const previous = channelRef.current;
+            channelRef.current = step.channel;
+            previous?.close();
+            retry = 0;
+            if (retryTimer) clearTimeout(retryTimer);
+            retryTimer = null;
+            setStatus("joined");
+            setError(null);
+            return;
+          }
+          case "error":
+            setStatus("error");
+            setError(step.error);
+            return;
+          case "retry":
+            // The room may live on the backend that is down: keep retrying.
+            setStatus((s) => (s === "joined" ? "reconnecting" : s));
+            scheduleRetry();
+            return;
+          case "keep": // planned hand-over found nothing joinable: the old channel stays
+          case "cancelled":
+            return;
+        }
+      } finally {
+        opening = false;
+        if (reopenRequested && !disposed && !stopped) void open();
       }
     };
 
@@ -626,6 +688,8 @@ export function useGameRoom<V>(
 
     return () => {
       disposed = true;
+      candidates.forEach((candidate) => candidate.close());
+      candidates.clear();
       clearInterval(pinger);
       if (retryTimer) clearTimeout(retryTimer);
       window.removeEventListener("online", wake);

@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- small static card art; next/image adds nothing here */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BANG_ART, BANG_ART_VERSION, type BangArt } from "@/lib/bang/art";
 import {
   CARD_TYPES,
@@ -22,6 +22,8 @@ import {
   rankLabel,
   typeOf,
 } from "@/lib/bang/cards";
+import { LegacyDialog } from "@/components/game-ui";
+import styles from "./BangTable.module.scss";
 import { cn } from "@/lib/utils";
 
 /** Frame colour per card colour: brown = play & discard, blue = stays, green = stays, use later. */
@@ -140,7 +142,7 @@ export function CardFace({
 export function CardBack({ className, count }: { className?: string; count?: number }) {
   const art = artSrc("back");
   return (
-    <div className={cn("relative flex aspect-[5/7] w-10 items-center justify-center rounded-lg border-2 border-amber-900/70 bg-[repeating-linear-gradient(45deg,#7c2d12_0_5px,#92400e_5px_10px)] shadow-md", className)}>
+    <div className={cn(styles.cardBack, "relative flex aspect-[5/7] w-10 items-center justify-center rounded-lg border-2 border-amber-900/70 bg-[repeating-linear-gradient(45deg,#7c2d12_0_5px,#92400e_5px_10px)] shadow-md", className)}>
       {art ? <img src={art} alt="" draggable={false} className="h-full w-full rounded-md object-cover" /> : <span className="text-lg">🤠</span>}
       {count !== undefined && <span className="absolute -right-2 -top-2 rounded-full bg-black/80 px-1.5 font-mono text-[10px] text-amber-200">{count}</span>}
     </div>
@@ -157,6 +159,7 @@ export function PlayChip({ id, cubes, fresh, onClick, active, compact }: { id: n
       onClick={onClick}
       title={`${t.name} ${suitText(id)}\n${t.text}${fresh ? "\n(dùng được từ lượt sau)" : ""}`}
       className={cn(
+        styles.chip,
         "inline-flex items-center gap-0.5 rounded-md border px-1 py-0.5 text-[11px] leading-none",
         t.color === "green" ? "border-emerald-400/50 bg-emerald-500/15" : "border-sky-400/50 bg-sky-500/15",
         fresh && "opacity-60",
@@ -421,45 +424,9 @@ export function BangGuide({ packs, onClose }: { packs: Pack[]; onClose: () => vo
 
 /**
  * Modal that becomes a bottom sheet on phones: the title and ✕ stay put while the body scrolls,
- * plus a big "Đóng" bar on phones (same pattern as the other games' dialogs). Esc closes it.
+ * with focus, Escape and dismissal handled by the shared accessible dialog.
  * `tabs` (e.g. the guide's tab row) sit in the fixed header too.
  */
-export function Sheet({ children, onClose, title, tabs }: { children: React.ReactNode; onClose: () => void; title?: string; tabs?: React.ReactNode }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal
-        aria-label={title}
-        className="relative flex max-h-[88dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#1f140c] text-amber-50 shadow-2xl sm:rounded-2xl short:max-h-[96dvh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute right-2 top-2 z-10 grid size-9 place-items-center rounded-full bg-white/10 text-lg leading-none text-white shadow hover:bg-white/20"
-          aria-label="Đóng"
-        >
-          ✕
-        </button>
-        {(title || tabs) && (
-          <div className="shrink-0 border-b border-white/10 px-4 pb-2 pt-3 pr-12 sm:px-5">
-            {title && <h2 className="mb-2 text-lg font-black leading-tight text-amber-300">{title}</h2>}
-            {tabs}
-          </div>
-        )}
-        <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5", !title && !tabs && "pr-12 sm:pr-12")}>{children}</div>
-        <button
-          onClick={onClose}
-          className="shrink-0 border-t border-white/10 bg-black/20 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sm font-semibold text-amber-100 sm:hidden short:py-2"
-        >
-          Đóng
-        </button>
-      </div>
-    </div>
-  );
+export function Sheet({ children, onClose, title = "Thông tin Đấu Súng", tabs }: { children: React.ReactNode; onClose: () => void; title?: string; tabs?: React.ReactNode }) {
+  return <LegacyDialog title={title} onClose={onClose} header={tabs ? <div className={styles.dialogTabs}>{tabs}</div> : undefined} className="max-w-2xl" bodyClassName="p-4 sm:p-5">{children}</LegacyDialog>;
 }

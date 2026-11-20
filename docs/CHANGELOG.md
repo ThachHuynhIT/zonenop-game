@@ -10,6 +10,16 @@ the `refactor/repurpose-as-games` branch (`git log -- docs/CHANGELOG.md`).
 
 ---
 
+## Pixel arcade UI and client lifecycle fixes
+
+- **Date:** 2026-11-20–21 (branch `feature/pixel-ui-audit`, based on `origin/develop` `09a36b8`). Approved design and task ownership: `docs/superpowers/specs/2026-11-20-pixel-ui-design.md` and `docs/superpowers/plans/2026-11-20-pixel-ui.md`.
+- Reused the existing game-ui foundation for square ink outlines, hard shadows, scoped navy/cream/gold tokens, self-hosted Vietnamese monospace display lettering and nine original pixel SVG game icons. Hub, auth/account, shell/navigation, lobbies/rooms/chat and every game's HUD/actions/dialog chrome now share it. Detailed card illustrations, board geometry, rules, scores and backend protocols remain intact. Contra keeps its canvas simulation and keyboard-only gameplay.
+- Legacy table modals now use one Base UI adapter for naming, focus trapping and restoration. Mobile Vaul drawers explicitly autofocus the header close button and restore their opener: Vaul's default `autoFocus=false` had left Tab behind the drawer. Face-down selectable Mèo Nổ cards have generic labels/pressed state without hidden-card identity. Contra clears held keys on blur/hidden and handles game shortcuts only while its canvas owns focus.
+- Captured initiating auth tokens before asynchronous backend selection; delayed logout/password responses cannot overwrite newer sessions. Auth requests have a 12-second abort deadline; mutations are not replayed automatically across backends. Room reconnect uses one in-flight attempt, cancels stale candidates/retries and cleans pending sockets on unmount/revocation. Ambiguous create acknowledgements remain terminal because the primary may already have created the room.
+- Chat focuses on opening, preserves a reader's scroll position on incoming messages, and keeps a retryable draft after a failed/rejected send. Room-list refreshes keep successful old rows with a warning on failure; overlapping poll/manual triggers share one in-flight request, and effect cleanup invalidates old completions. This also lets slow responses finish instead of discarding every result once another poll starts. Public GETs have a 12-second abort/race deadline covering response headers and JSON consumption, so stalled requests release the refresh slot and permit retry. Poll tooltip now matches 20 seconds. ESLint skips local agent checkouts and browser scratch evidence.
+- Checked using mocked local HTTP/WebSocket fixtures (no production accounts or rooms): all eight online games in waiting/playing/ended and spectator states, 40 table viewport cases at 320/360/390/768px and 844x390, 40 hub/lobby/Contra viewport cases, modal Tab/Escape/return focus, chat focus/reading/retry, hidden-card selection, reconnect recovery and Contra return-link keyboard behavior. Representative screenshots: `docs/screenshots/pixel-ui/`. Full checks: lint, typecheck, 297 passing tests (2 existing skips), production build. Live multiplayer/backend integration and touch controls for Contra are outside these fixture checks.
+- Concurrent `/portfolio` work was kept outside this task's commit, including its footer link; do not stage it accidentally when continuing this branch.
+
 ## Weekly dependency audit
 
 - **Date:** 2026-11-10 (branch `chore/dependency-audit`).

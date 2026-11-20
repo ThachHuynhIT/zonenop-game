@@ -1,0 +1,19 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+
+.arcade { display: flex; min-height: 100dvh; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 5rem 1rem 2rem; color: vars.$pixel-text; }
+.heading { display: flex; align-items: center; gap: 1rem; font-family: vars.$font-family-mono; }
+.heading h1 { color: vars.$pixel-coral; font-size: clamp(1.75rem, 7vw, 2.5rem); font-weight: 900; letter-spacing: .2em; }
+.heading p { font-size: .6875rem; color: vars.$pixel-muted; letter-spacing: .08em; }
+.icon { width: 3rem; height: 3rem; color: vars.$pixel-coral; }
+.notice { @include pixel.frame; max-width: 36rem; padding: .75rem 1rem; color: vars.$pixel-gold; font-size: .875rem; }
+.instructions { max-width: 42rem; color: vars.$pixel-muted; font-size: .8125rem; text-align: center; }
+.cabinet { @include pixel.frame; width: 100%; max-width: 800px; border-width: 4px; padding: 4px; background: vars.$pixel-panel-raised; }
+.canvas { display: block; width: 100%; height: auto; background: #000; image-rendering: pixelated; }
+.canvas:focus-visible { outline: 3px solid vars.$pixel-gold; outline-offset: 2px; }
+.keys, .weapons { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; max-width: 50rem; margin: 0; padding: 0; list-style: none; font-size: .75rem; }
+.keys li { @include pixel.frame; padding: .5rem .75rem; }
+.keys kbd { font-family: vars.$font-family-mono; color: vars.$pixel-gold; }
+.weapons li { @include pixel.inset; padding: .25rem .5rem; color: vars.$pixel-muted; font-family: vars.$font-family-mono; }
+@media (max-width: 390px) { .arcade { padding-inline: .5rem; } .keys { gap: .375rem; } .keys li { padding: .5rem; } }
+@media (orientation: landscape) and (max-height: 500px) { .arcade { padding-top: 4rem; gap: .5rem; } .cabinet { max-width: min(800px, 130dvh); } }
