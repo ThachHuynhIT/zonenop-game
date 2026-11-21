@@ -137,11 +137,20 @@ export type AuthResult<T> = { ok: true; data: T } | { ok: false; status: number;
 const NETWORK_ERROR = "Không kết nối được máy chủ";
 const AUTH_TIMEOUT_MS = 12_000;
 
-/** Call with the initiating session. Only reads can fail over: a lost mutation reply may already have been applied. */
-export async function authRequest<T>(method: "GET" | "POST" | "PATCH", path: string, body?: unknown): Promise<AuthResult<T>> {
+/**
+ * Call with the initiating session. On a network error, reads try the other backends; mutations do not by
+ * default, because a lost reply may already have been applied (a password change must not run twice).
+ * Pass `failover: true` for mutations that are safe to replay, such as sign-in and sign-up.
+ */
+export async function authRequest<T>(
+  method: "GET" | "POST" | "PATCH",
+  path: string,
+  body?: unknown,
+  { failover = method === "GET" }: { failover?: boolean } = {},
+): Promise<AuthResult<T>> {
   const sent = getSession();
   const first = await activeServerBase();
-  const bases = method === "GET" ? [first, ...SERVER_BASES.filter((b) => b !== first)] : [first];
+  const bases = failover ? [first, ...SERVER_BASES.filter((b) => b !== first)] : [first];
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (sent) headers.Authorization = `Bearer ${sent.session}`;

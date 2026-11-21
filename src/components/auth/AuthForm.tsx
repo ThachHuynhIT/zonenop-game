@@ -55,7 +55,8 @@ function useSubmit() {
   async function run(path: string, body: Record<string, unknown>) {
     setBusy(true);
     setError(null);
-    const res = await authRequest<AuthData>("POST", path, body);
+    // Sign-in and sign-up are safe to replay, so they may fall over to the backup backend.
+    const res = await authRequest<AuthData>("POST", path, body, { failover: true });
     if (res.ok) saveSession({ session: res.data.session, user: res.data.user });
     else {
       setError(res.error);

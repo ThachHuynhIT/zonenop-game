@@ -71,3 +71,16 @@ it("aborts a stalled auth mutation and lets logout finish locally", async () => 
   expect(await pending).toMatchObject({ ok: false, applied: true });
   expect(s.getSession()).toBeNull();
 });
+it.each([
+  ["sign-in falls over when asked", "POST", { failover: true }, ["https://a/api/auth/login", "https://b/api/auth/login"]],
+  ["mutations stay on the first backend by default", "POST", undefined, ["https://a/api/auth/login"]],
+  ["reads fall over by default", "GET", undefined, ["https://a/api/auth/login", "https://b/api/auth/login"]],
+] as const)("%s", async (_name, method, opts, expected) => {
+  vi.doMock("../games/gameClient", () => ({ SERVER_BASES: ["https://a", "https://b"], activeServerBase: async () => "https://a" }));
+  const s = await import("./session");
+  const fetcher = vi.fn((url: string) => url.startsWith("https://a") ? Promise.reject(new TypeError("offline")) : Promise.resolve(response({ ok: true, session: "s", user })));
+  vi.stubGlobal("fetch", fetcher);
+  await s.authRequest(method, "/api/auth/login", {}, opts);
+  expect(fetcher.mock.calls.map(c => c[0])).toEqual(expected);
+  vi.doUnmock("../games/gameClient");
+});
