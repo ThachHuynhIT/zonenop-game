@@ -11,3 +11,5 @@ export { gameToast } from "./toast";
 export { GameThemeScope, useGameTheme, CONFETTI_COLORS, type GameId } from "./theme";
 export { useIsMobile } from "./useIsMobile";
 export { pop, winBanner } from "./motion";
+export { PixelIcon, type PixelIconName } from "./PixelIcon";
+export { LegacyDialog } from "./LegacyDialog";

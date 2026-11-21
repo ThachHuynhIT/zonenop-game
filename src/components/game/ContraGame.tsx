@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
+import { PixelIcon } from "@/components/game-ui";
+import { bindContraInput } from "./contraInput";
+import styles from "./ContraGame.module.scss";
 
 // ═══════════════════════════════════════════════════
 // TYPES & INTERFACES
@@ -71,12 +74,6 @@ const TILE = 32;
 // Fixed simulation step (ms) — decouples game physics from display refresh rate.
 const FIXED_DT = 1000 / 60;
 const MAX_FRAME_DELTA = 250; // clamp huge gaps (tab was backgrounded/lagged) to avoid a "spiral of death"
-// Keys the game actually cares about — only these get preventDefault(), and only without a modifier held.
-const GAME_KEYS = new Set([
-  "arrowleft", "arrowright", "arrowup", "arrowdown",
-  "a", "d", "w", "s", " ", "j", "z", "x", "enter", "escape",
-]);
-
 const WEAPON_DATA: Record<string, { rate: number; speed: number; damage: number; spread: number; count: number; color: string }> = {
   default: { rate: 12, speed: 8, damage: 1, spread: 0, count: 1, color: "#FFFF00" },
   M: { rate: 5, speed: 10, damage: 1, spread: 0, count: 1, color: "#FF8800" },
@@ -613,10 +610,6 @@ export default function ContraGame() {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent, down: boolean) => {
       const key = e.key.toLowerCase();
-      // Only swallow the keys the game actually uses, and never while a modifier is held —
-      // this keeps browser/OS shortcuts (Ctrl+R, Ctrl+Tab, etc.) working while the game is mounted.
-      if (GAME_KEYS.has(key) && !e.ctrlKey && !e.metaKey && !e.altKey) e.preventDefault();
-
       if (down && key === "enter") {
         if (!gameRef.current || gameRef.current.gameState === "menu" || gameRef.current.gameState === "gameover" || gameRef.current.gameState === "victory") {
           initGame(0); return;
@@ -631,11 +624,9 @@ export default function ContraGame() {
         else if (gameRef.current.gameState === "paused") gameRef.current.gameState = "playing";
       }
     };
-    const onKD = (e: KeyboardEvent) => handleKey(e, true);
-    const onKU = (e: KeyboardEvent) => handleKey(e, false);
-    window.addEventListener("keydown", onKD);
-    window.addEventListener("keyup", onKU);
-    return () => { window.removeEventListener("keydown", onKD); window.removeEventListener("keyup", onKU); };
+    return bindContraInput(window, document, () => document.activeElement === canvasRef.current, handleKey, () => {
+      if (gameRef.current) gameRef.current.keys = {};
+    });
   }, [initGame]);
 
   // ── Game Loop ──
@@ -1778,47 +1769,39 @@ export default function ContraGame() {
   // RENDER
   // ═══════════════════════════════════════════════════
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-black p-4">
-      <div className="mb-4 text-center">
-        <h1 className="text-3xl font-bold text-red-500 font-mono tracking-[0.3em] drop-shadow-[0_0_10px_rgba(255,50,50,0.5)]">CONTRA</h1>
-        <p className="text-gray-600 text-xs font-mono tracking-widest mt-1">WEB EDITION</p>
-      </div>
-
+    <section className={styles.arcade} aria-label="Trò chơi Contra">
+      <header className={styles.heading}>
+        <PixelIcon name="contra" className={styles.icon} />
+        <div><h1>CONTRA</h1><p>WEB EDITION · CHƠI NGOẠI TUYẾN</p></div>
+      </header>
       {isTouchDevice && (
-        <div className="mb-4 max-w-md text-center text-xs font-mono text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded-md px-4 py-2">
-          ⌨️ Trò chơi này chỉ hỗ trợ điều khiển bằng bàn phím — trải nghiệm tốt nhất trên máy tính.
-        </div>
+        <p className={styles.notice}>Trò chơi điều khiển bằng bàn phím. Hãy mở trên máy tính để chơi.</p>
       )}
-
-      <div className="relative w-full max-w-[800px] border-2 border-gray-800 rounded-lg overflow-hidden shadow-[0_0_40px_rgba(255,50,50,0.1)]">
+      <p id="contra-instructions" className={styles.instructions}>Bấm vào màn hình rồi nhấn Enter để bắt đầu. Tab để rời trò chơi.</p>
+      <div className={styles.cabinet}>
         <canvas
           ref={canvasRef}
           width={CANVAS_W}
           height={CANVAS_H}
-          className="block w-full h-auto bg-black"
-          style={{ imageRendering: "pixelated" }}
+          className={styles.canvas}
           tabIndex={0}
-        />
+          aria-label="Màn hình Contra"
+          aria-describedby="contra-instructions contra-keys"
+          onPointerDown={() => canvasRef.current?.focus()}
+          onBlur={() => { if (gameRef.current) gameRef.current.keys = {}; }}
+        >Contra cần trình duyệt hỗ trợ canvas và bàn phím.</canvas>
       </div>
-
-      <div className="mt-4 flex flex-wrap justify-center gap-3 text-xs font-mono text-gray-500 max-w-2xl">
-        <span className="px-3 py-1.5 bg-gray-900/50 border border-gray-800 rounded-md">← → ↑ ↓ Move/Aim</span>
-        <span className="px-3 py-1.5 bg-gray-900/50 border border-gray-800 rounded-md">SPACE Jump</span>
-        <span className="px-3 py-1.5 bg-gray-900/50 border border-gray-800 rounded-md">Z / X / J Shoot</span>
-        <span className="px-3 py-1.5 bg-gray-900/50 border border-gray-800 rounded-md">ESC Pause</span>
-        <span className="px-3 py-1.5 bg-gray-900/50 border border-gray-800 rounded-md">↓ + SPACE Drop</span>
-      </div>
-
-      <div className="mt-3 text-xs font-mono text-gray-600 max-w-lg text-center space-y-1">
-        <p className="flex flex-wrap justify-center gap-2">
-          <span className="text-red-400 bg-red-400/10 px-2 py-0.5 rounded">S Spread</span>
-          <span className="text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded">M Machine</span>
-          <span className="text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">L Laser</span>
-          <span className="text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded">R Rapid</span>
-          <span className="text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded">F Flame</span>
-          <span className="text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded">B Barrier</span>
-        </p>
-      </div>
-    </div>
+      <ul id="contra-keys" className={styles.keys} aria-label="Điều khiển bàn phím">
+        <li><kbd>← → ↑ ↓</kbd> Di chuyển / ngắm</li>
+        <li><kbd>Space</kbd> Nhảy</li>
+        <li><kbd>Z / X / J</kbd> Bắn</li>
+        <li><kbd>Esc</kbd> Tạm dừng</li>
+        <li><kbd>↓ + Space</kbd> Đi xuống</li>
+      </ul>
+      <ul className={styles.weapons} aria-label="Vật phẩm">
+        <li>S · Spread</li><li>M · Machine</li><li>L · Laser</li>
+        <li>R · Rapid</li><li>F · Flame</li><li>B · Barrier</li>
+      </ul>
+    </section>
   );
 }

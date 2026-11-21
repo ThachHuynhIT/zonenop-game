@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "../TyPhuTable.module.scss";
+import { cn } from "@/lib/utils";
 import { lazy, Suspense } from "react";
 import { DeltaBadge } from "@/components/tienlen/Scoreboard";
 import { type TPRoomView, type TPSeatView } from "@/lib/typhu/protocol";
@@ -18,7 +20,7 @@ export function Waiting({ view, me, act, nameOf }: { view: TPRoomView; me: TPSea
   const isHost = !!me?.isHost && view.role === "player";
 
   return (
-    <div className="w-full max-w-sm rounded-2xl bg-white/80 p-3 text-sm shadow-xl sm:p-4">
+    <div className={cn(styles.paper, "w-full max-w-sm p-3 text-sm sm:p-4")}>
       {ended && g ? (
         <>
           <h2 className="mb-2 text-base font-black text-emerald-800 sm:text-lg">🏆 {nameOf(g.finished[0])} là tỷ phú!</h2>
@@ -60,7 +62,7 @@ export function Waiting({ view, me, act, nameOf }: { view: TPRoomView; me: TPSea
         <button
           onClick={() => void act({ type: "start" })}
           disabled={count < 2}
-          className="w-full rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+          className={cn(styles.control, "w-full rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40")}
         >
           {count < 2 ? "Cần ít nhất 2 người" : ended ? "Ván mới" : "Bắt đầu"}
         </button>

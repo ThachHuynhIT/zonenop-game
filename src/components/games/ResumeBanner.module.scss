@@ -1,14 +1,14 @@
 @use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
 
 .banner {
   display: grid;
   gap: vars.$spacing-md;
   margin-bottom: vars.$spacing-lg;
   padding: vars.$spacing-md;
-  border: 1px solid #fbbf2450;
-  border-radius: vars.$radius-xl;
-  background: #fbbf2410;
-  color: #fff;
+  @include pixel.frame;
+  border-color: vars.$pixel-gold;
+  color: vars.$pixel-text;
 }
 
 .room {
@@ -26,7 +26,7 @@
     overflow-wrap: anywhere;
   }
 
-  strong { color: #fde68a; }
+  strong { color: vars.$pixel-gold; }
 }
 
 .resume {
@@ -36,16 +36,16 @@
   justify-content: center;
   min-height: 44px;
   padding: vars.$spacing-sm vars.$spacing-md;
-  border-radius: vars.$radius-md;
-  background: #fbbf24;
-  color: #17120a;
+  @include pixel.control;
+  background: vars.$pixel-gold;
+  color: vars.$pixel-ink;
   font-size: vars.$font-size-sm;
   font-weight: 700;
   text-decoration: none;
 
-  &:hover { background: #fcd34d; }
+  &:hover { background: vars.$pixel-text; }
   &:focus-visible {
-    outline: 2px solid #fff;
+    outline: 2px solid vars.$pixel-mint;
     outline-offset: 3px;
   }
 }
@@ -59,3 +59,5 @@
 
   .resume { align-self: flex-start; }
 }
+
+.icon { display: inline-block; width: 1.5rem; height: 1.5rem; vertical-align: middle; color: vars.$pixel-gold; }

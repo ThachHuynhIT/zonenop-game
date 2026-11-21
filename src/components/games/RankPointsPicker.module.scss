@@ -1,0 +1,8 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+.picker { display: grid; gap: .5rem; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+.values { display: flex; align-items: center; gap: .375rem; }
+.select { @include pixel.inset; min-width: 3.25rem; min-height: 2.75rem; padding: .375rem; color: vars.$pixel-text; font-family: vars.$font-family-mono; &:focus-visible { outline: 2px solid vars.$pixel-gold; outline-offset: 2px; } &:disabled { opacity: .65; } }
+// The picker is shared by dark tables and the cream TyPhu settings surface.
+.divider,.preview { color: inherit; }

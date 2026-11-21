@@ -1,5 +1,8 @@
 "use client";
 
+import styles from "./CaNguaTable.module.scss";
+import { LegacyDialog, PixelIcon } from "@/components/game-ui";
+
 import { SeatAvatar } from "@/components/games/PlayerAvatar";
 import { RoomRoster } from "@/components/games/RoomRoster";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -84,7 +87,7 @@ export default function CaNguaTable({ code, name, watch }: { code: string; name:
       </div>
     );
   }
-  if (!view) return <p className="flex min-h-[70vh] animate-pulse items-center justify-center text-amber-100/80">Đang kết nối bàn {code}…</p>;
+  if (!view) return <p className="flex min-h-[70vh] motion-safe:animate-pulse items-center justify-center text-amber-100/80">Đang kết nối bàn {code}…</p>;
   return (
     <>
       <Table view={view} reconnecting={status === "reconnecting"} act={act} toast={toast} />
@@ -156,12 +159,13 @@ function Table({ view, reconnecting, act, toast }: { view: CNRoomView; reconnect
   const canMove = myTurn && g?.phase === "move";
 
   return (
-    <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col gap-3 px-2 pb-24 pt-2 sm:px-4 sm:pt-3 lg:pb-3 short:gap-2 short:pb-2 short:pt-1.5">
+    <div className={cn(styles.table, "relative mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col gap-3 px-2 pb-24 pt-2 sm:px-4 sm:pt-3 lg:pb-3 short:gap-2 short:pb-2 short:pt-1.5")}>
       <WinCelebration show={g?.status === "ended"} playing={!!playing} won={!!view.meId && g?.finished[0] === view.meId} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
       <GameHeader
         primary={
           <>
-            <Link href="/co-ca-ngua" className={headerBtn}>
+            <PixelIcon name="cangua" className={styles.identity} />
+            <Link href="/co-ca-ngua" className={cn(styles.control, headerBtn)}>
               ← Sảnh
             </Link>
             <span className="font-mono text-sm font-bold tracking-[0.2em] text-amber-300">{view.code}</span>
@@ -169,14 +173,14 @@ function Table({ view, reconnecting, act, toast }: { view: CNRoomView; reconnect
         }
         extra={
           <>
-            <button onClick={copyInvite} className={headerBtn} title="Chép link mời">
+            <button onClick={copyInvite} className={cn(styles.control, headerBtn)} title="Chép link mời">
               {copied ? "✓" : "🔗"}
               <HeaderLabel>{copied ? "Đã chép link" : "Chép link mời"}</HeaderLabel>
             </button>
-            <button onClick={() => setShowScores(true)} className={headerBtn} title="Bảng điểm">
+            <button onClick={() => setShowScores(true)} className={cn(styles.control, headerBtn)} title="Bảng điểm">
               🏆 <HeaderLabel>Bảng điểm</HeaderLabel>
             </button>
-            <button onClick={() => setShowRules(true)} className={headerBtn} title="Luật chơi">
+            <button onClick={() => setShowRules(true)} className={cn(styles.control, headerBtn)} title="Luật chơi">
               📖 <HeaderLabel>Luật chơi</HeaderLabel>
             </button>
           </>
@@ -188,7 +192,7 @@ function Table({ view, reconnecting, act, toast }: { view: CNRoomView; reconnect
                 👀 {view.spectators.length}
               </span>
             )}
-            {reconnecting && <span className="animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
+            {reconnecting && <span className="motion-safe:animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
           </>
         }
       />
@@ -237,7 +241,7 @@ function Table({ view, reconnecting, act, toast }: { view: CNRoomView; reconnect
                 );
               })}
             </div>
-            <div className="rounded-2xl bg-black/35 p-3">
+            <div className={cn(styles.panel, "rounded-2xl bg-black/35 p-3")}>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-100/60">Diễn biến</p>
               <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto text-xs short:max-h-32">
                 {g.log
@@ -275,8 +279,7 @@ function Table({ view, reconnecting, act, toast }: { view: CNRoomView; reconnect
 
       {showScores && <ScoreboardModal view={view} onClose={() => setShowScores(false)} note={SCORE_NOTE} />}
       {showRules && (
-        <Modal onClose={() => setShowRules(false)}>
-          <h2 className="mb-3 text-lg font-bold text-amber-300">📖 Luật Cờ Cá Ngựa</h2>
+        <Modal title="Luật Cờ Cá Ngựa" onClose={() => setShowRules(false)}>
           <CaNguaRules settings={view.settings} />
         </Modal>
       )}
@@ -314,7 +317,7 @@ function TurnPanel({
   useHotkeys({ " ": doRoll ?? onlyMove, Enter: doRoll ?? onlyMove, r: doRoll, "1": moveKey(0), "2": moveKey(1), "3": moveKey(2), "4": moveKey(3) });
 
   return (
-    <div className={cn("relative rounded-2xl border border-amber-200/15 bg-black/40 p-3 pt-4", myTurn && "bg-rose-500/10")}>
+    <div className={cn(styles.panel, "relative rounded-2xl border border-amber-200/15 bg-black/40 p-3 pt-4", myTurn && "bg-rose-500/10")}>
       <TurnTimerBorder deadline={g.deadline} totalMs={view.settings.turnSeconds * 1000} now={now} />
       <TurnRing active={myTurn} className="inset-0" />
       {view.auto && (
@@ -351,7 +354,7 @@ function TurnPanel({
         <button
           onClick={() => void run({ type: "roll" })}
           disabled={busy}
-          className="mt-3 w-full rounded-xl bg-gradient-to-b from-amber-300 to-amber-500 px-4 py-2.5 text-base font-black text-black shadow-[0_4px_0_#92400e] transition active:translate-y-0.5 active:shadow-[0_2px_0_#92400e] disabled:opacity-50"
+          className={cn(styles.control, styles.primary, "mt-3 w-full rounded-xl bg-gradient-to-b from-amber-300 to-amber-500 px-4 py-2.5 text-base font-black text-black shadow-[0_4px_0_#92400e] transition active:translate-y-0.5 active:shadow-[0_2px_0_#92400e] disabled:opacity-50")}
         >
           🎲 {g.sixes > 0 ? "Gieo tiếp (được 6!)" : "Gieo xúc xắc"}
           <kbd className="ml-1.5 hidden rounded border border-current/30 bg-black/10 px-1 align-middle font-mono text-[10px] font-normal opacity-70 lg:inline [@media(pointer:coarse)]:hidden">Space</kbd>
@@ -393,7 +396,7 @@ function PlayerRow({
   const col = HORSE_COLORS[p.color];
   return (
     <div
-      className={cn("relative flex items-center gap-2 rounded-xl p-2", isTurn ? "bg-white/10 ring-2" : "bg-black/35", self && "max-lg:order-first", p.forfeited && "opacity-50")}
+      className={cn(styles.hud, "relative flex items-center gap-2 rounded-xl p-2", isTurn ? "bg-white/10 ring-2" : "bg-black/35", self && "max-lg:order-first", p.forfeited && "opacity-50")}
       style={isTurn ? ({ "--tw-ring-color": col.fill } as React.CSSProperties) : undefined}
     >
       <span className="relative">
@@ -448,7 +451,7 @@ function Waiting({ view, me, act, nameOf }: { view: CNRoomView; me: CNSeatView |
   const s = view.settings;
   const set = (patch: Record<string, unknown>) => void act({ type: "settings", ...patch });
   return (
-    <div className="w-full max-w-md rounded-3xl border border-amber-200/15 bg-black/45 p-5 backdrop-blur">
+    <div className={cn(styles.panel, "w-full max-w-md p-5")}>
       {ended && g ? (
         <>
           <h2 className="mb-2 text-xl font-black text-amber-300">🏆 {nameOf(g.finished[0])} thắng!</h2>
@@ -527,7 +530,7 @@ function Waiting({ view, me, act, nameOf }: { view: CNRoomView; me: CNSeatView |
         <button
           onClick={() => void act({ type: "start" })}
           disabled={count < 2}
-          className="w-full rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40"
+          className={cn(styles.control, "w-full rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40")}
         >
           {count < 2 ? "Cần ít nhất 2 người" : ended ? "Ván mới" : "Bắt đầu"}
         </button>
@@ -572,28 +575,6 @@ export function CaNguaRules({ settings }: { settings?: CNRoomView["settings"] })
  * Dialog: a bottom sheet on phones (tap the backdrop or the full-width "Đóng" bar to close),
  * centred from `sm` up. The ✕ stays put while the content scrolls; Esc closes too.
  */
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal
-        className="relative flex max-h-[82dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#24160c] text-left text-amber-50 shadow-2xl sm:max-h-[88dvh] sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button onClick={onClose} className="absolute right-2 top-2 z-10 grid size-9 place-items-center rounded-full bg-white/10 text-lg leading-none text-white shadow hover:bg-white/20" aria-label="Đóng">
-          ✕
-        </button>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 [&>h2:first-child]:pr-10">{children}</div>
-        <button onClick={onClose} className="shrink-0 border-t border-white/10 bg-black/20 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sm font-semibold text-amber-100 sm:hidden">
-          Đóng
-        </button>
-      </div>
-    </div>
-  );
+function Modal({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: React.ReactNode }) {
+  return <LegacyDialog title={title} onClose={onClose} className="max-w-md short:max-w-2xl" bodyClassName="p-5 short:p-4">{children}</LegacyDialog>;
 }

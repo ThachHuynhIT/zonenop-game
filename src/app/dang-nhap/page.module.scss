@@ -1,0 +1,4 @@
+@use "@styles/variables" as vars;
+.page { display: grid; min-height: 100dvh; place-items: center; padding: 2rem 1rem; background: vars.$pixel-bg; color: vars.$pixel-text; border-top: 8px solid vars.$pixel-gold; }
+.main { width: 100%; max-width: 28rem; }
+@media (max-width: 360px) { .page { padding: 1rem .5rem; } }

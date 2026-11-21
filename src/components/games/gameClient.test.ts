@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { basesToTry, failedJoinOutcome, fetchApi, resolveJoin, type JoinOutcome } from "./gameClient";
+import { createLatestRequest } from "./latestRequest";
 
 describe("fetchApi", () => {
   const fetchMock = vi.fn();
@@ -43,6 +44,48 @@ describe("fetchApi", () => {
     await expect(fetchApi(path)).rejects.toThrow("HTTP 503");
     await expect(fetchApi(path)).resolves.toEqual({ rooms: [1] });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["fetch", "body"])("aborts a stalled %s after 12 s and lets a coalesced refresh retry", async (phase) => {
+    const path = `/api/deadline-${phase}/rooms`;
+    let signal: AbortSignal | undefined;
+    fetchMock.mockImplementationOnce((_url: string, init?: RequestInit) => {
+      signal = init?.signal ?? undefined;
+      const stalled = new Promise<never>((_resolve, reject) => {
+        signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+      });
+      return phase === "fetch" ? stalled : Promise.resolve({ ok: true, status: 200, json: () => stalled });
+    }).mockResolvedValueOnce(ok({ rooms: ["RETRY"] }));
+    const requests = createLatestRequest();
+    const state = { rooms: ["SAVED"], failed: false, loading: true };
+    const load = () => requests.run(
+      () => fetchApi<{ rooms: string[] }>(path),
+      (result) => {
+        if (result.status === "fulfilled") state.rooms = result.value.rooms;
+        state.failed = result.status === "rejected";
+        state.loading = false;
+      },
+    );
+    const pending = load();
+    expect(load()).toBe(pending);
+    await vi.advanceTimersByTimeAsync(11_999);
+    expect(state.loading).toBe(true);
+    expect(state.failed).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(state.loading).toBe(false);
+    expect(state.failed).toBe(true);
+    expect(signal?.aborted).toBe(true);
+    expect(state.rooms).toEqual(["SAVED"]);
+    await pending;
+
+    state.loading = true;
+    await load();
+    expect(state.rooms).toEqual(["RETRY"]);
+    expect(state.failed).toBe(false);
+    expect(state.loading).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
 

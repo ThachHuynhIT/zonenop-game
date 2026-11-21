@@ -135,32 +135,47 @@ export function useSession(): StoredSession | null {
 export type AuthResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
 
 const NETWORK_ERROR = "Không kết nối được máy chủ";
+const AUTH_TIMEOUT_MS = 12_000;
 
-/** Call an auth/admin endpoint with the session (when there is one). Tries the active backend, then the others on network errors. */
-export async function authRequest<T>(method: "GET" | "POST" | "PATCH", path: string, body?: unknown): Promise<AuthResult<T>> {
-  const first = await activeServerBase();
-  const bases = [first, ...SERVER_BASES.filter((b) => b !== first)];
+/**
+ * Call with the initiating session. On a network error, reads try the other backends; mutations do not by
+ * default, because a lost reply may already have been applied (a password change must not run twice).
+ * Pass `failover: true` for mutations that are safe to replay, such as sign-in and sign-up.
+ */
+export async function authRequest<T>(
+  method: "GET" | "POST" | "PATCH",
+  path: string,
+  body?: unknown,
+  { failover = method === "GET" }: { failover?: boolean } = {},
+): Promise<AuthResult<T>> {
   const sent = getSession();
+  const first = await activeServerBase();
+  const bases = failover ? [first, ...SERVER_BASES.filter((b) => b !== first)] : [first];
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (sent) headers.Authorization = `Bearer ${sent.session}`;
   for (const base of bases) {
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), AUTH_TIMEOUT_MS);
     let res: Response;
+    let json: Record<string, unknown> | null = null;
     try {
       res = await fetch(base + path, {
         method,
         headers,
         body: body === undefined ? undefined : JSON.stringify(body),
         cache: "no-store",
+        signal: abort.signal,
       });
+      try {
+        json = (await res.json()) as Record<string, unknown>;
+      } catch {
+        /* no JSON body */
+      }
     } catch {
       continue;
-    }
-    let json: Record<string, unknown> | null = null;
-    try {
-      json = (await res.json()) as Record<string, unknown>;
-    } catch {
-      /* no JSON body */
+    } finally {
+      clearTimeout(timer);
     }
     if (res.status === 401 && sent && getSession()?.session === sent.session) {
       setSignOutReason("revoked");
@@ -171,6 +186,23 @@ export async function authRequest<T>(method: "GET" | "POST" | "PATCH", path: str
     return { ok: false, status: res.status, error };
   }
   return { ok: false, status: 0, error: NETWORK_ERROR };
+}
+
+/** Ignore delayed account replies after another sign-in, sign-out or password rotation. */
+export async function logoutAccount(): Promise<AuthResult<unknown> & { applied: boolean }> {
+  const sent = getSession()?.session;
+  const res = await authRequest("POST", "/api/auth/logout");
+  const applied = !!sent && getSession()?.session === sent;
+  if (applied) clearSession();
+  return { ...res, applied };
+}
+
+export async function changePassword(patch: { oldPassword: string; password: string }): Promise<AuthResult<{ user: PublicUser; session?: string }> & { applied: boolean }> {
+  const sent = getSession()?.session;
+  const res = await authRequest<{ user: PublicUser; session?: string }>("PATCH", "/api/auth/me", patch);
+  const applied = !!sent && getSession()?.session === sent;
+  if (applied && res.ok && res.data.session) saveSession({ session: res.data.session, user: res.data.user });
+  return { ...res, applied };
 }
 
 /** Re-read the user from the server (role/look may have changed); signs out when the session is no longer valid. */

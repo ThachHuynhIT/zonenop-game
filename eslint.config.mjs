@@ -29,6 +29,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local agent checkouts and browser evidence are not application source.
+    ".claude/worktrees/**",
+    ".superpowers/**",
+    ".playwright-mcp/**",
   ]),
 ]);
 

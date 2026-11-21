@@ -1,5 +1,8 @@
 "use client";
 
+import styles from "./OAnQuanTable.module.scss";
+import { LegacyDialog, PixelIcon } from "@/components/game-ui";
+
 import { SeatAvatar } from "@/components/games/PlayerAvatar";
 import { RoomRoster } from "@/components/games/RoomRoster";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -79,7 +82,7 @@ export default function OAnQuanTable({ code, name, watch }: { code: string; name
       </div>
     );
   }
-  if (!view) return <p className="flex min-h-[70vh] animate-pulse items-center justify-center text-amber-100/80">Đang kết nối bàn {code}…</p>;
+  if (!view) return <p className="flex min-h-[70vh] motion-safe:animate-pulse items-center justify-center text-amber-100/80">Đang kết nối bàn {code}…</p>;
   return (
     <>
       <Table view={view} reconnecting={status === "reconnecting"} act={act} toast={toast} />
@@ -202,12 +205,13 @@ function Table({ view, reconnecting, act, toast }: { view: OQRoomView; reconnect
   };
 
   return (
-    <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-3 px-2 pb-24 pt-2 sm:px-4 sm:pt-3 lg:pb-3 2xl:max-w-7xl short:gap-2 short:pb-16 short:pt-3">
+    <div className={cn(styles.table, "relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-3 px-2 pb-24 pt-2 sm:px-4 sm:pt-3 lg:pb-3 2xl:max-w-7xl short:gap-2 short:pb-16 short:pt-3")}>
       <WinCelebration show={g?.status === "ended"} playing={!!playing} won={!!mine && g?.status === "ended" && mine.rank === 0 && !!g.winner} title={g?.status === "ended" ? (g.winner ? `🏆 ${nameOf(g.winner)} thắng` : "🤝 Hoà") : undefined} />
       <GameHeader
         primary={
           <>
-            <Link href="/o-an-quan" className={headerBtn}>
+            <PixelIcon name="oanquan" className={styles.identity} />
+            <Link href="/o-an-quan" className={cn(styles.control, headerBtn)}>
               ← Sảnh
             </Link>
             <span className="font-mono text-sm font-bold tracking-[0.2em] text-amber-300">{view.code}</span>
@@ -215,14 +219,14 @@ function Table({ view, reconnecting, act, toast }: { view: OQRoomView; reconnect
         }
         extra={
           <>
-            <button onClick={copyInvite} className={headerBtn} title="Chép link mời">
+            <button onClick={copyInvite} className={cn(styles.control, headerBtn)} title="Chép link mời">
               {copied ? "✓" : "🔗"}
               <HeaderLabel>{copied ? "Đã chép link" : "Chép link mời"}</HeaderLabel>
             </button>
-            <button onClick={() => setShowScores(true)} className={headerBtn} title="Bảng điểm">
+            <button onClick={() => setShowScores(true)} className={cn(styles.control, headerBtn)} title="Bảng điểm">
               🏆 <HeaderLabel>Bảng điểm</HeaderLabel>
             </button>
-            <button onClick={() => setShowRules(true)} className={headerBtn} title="Luật chơi">
+            <button onClick={() => setShowRules(true)} className={cn(styles.control, headerBtn)} title="Luật chơi">
               📖 <HeaderLabel>Luật chơi</HeaderLabel>
             </button>
           </>
@@ -245,7 +249,7 @@ function Table({ view, reconnecting, act, toast }: { view: OQRoomView; reconnect
                 👀 {view.spectators.length}
               </span>
             )}
-            {reconnecting && <span className="animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
+            {reconnecting && <span className="motion-safe:animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
           </>
         }
       />
@@ -295,19 +299,19 @@ function Table({ view, reconnecting, act, toast }: { view: OQRoomView; reconnect
                     <button
                       onClick={() => void sow(-1)}
                       disabled={busy}
-                      className="rounded-xl bg-amber-400 px-4 py-2 font-bold text-black shadow hover:bg-amber-300 disabled:opacity-40"
+                      className={cn(styles.control, "rounded-xl bg-amber-400 px-4 py-2 font-bold text-black shadow hover:bg-amber-300 disabled:opacity-40")}
                     >
                       ⬅️ Rải trái
                       <kbd className="ml-1.5 hidden rounded border border-current/30 bg-black/10 px-1 align-middle font-mono text-[10px] font-normal opacity-70 lg:inline [@media(pointer:coarse)]:hidden">←</kbd>
                     </button>
-                    <button onClick={() => setSelected(null)} className="rounded-xl border border-white/25 px-3 py-2 text-xs hover:bg-white/10">
+                    <button onClick={() => setSelected(null)} className={cn(styles.control, "rounded-xl border border-white/25 px-3 py-2 text-xs hover:bg-white/10")}>
                       Bỏ chọn
                       <kbd className="ml-1.5 hidden rounded border border-current/30 bg-black/10 px-1 align-middle font-mono text-[10px] font-normal opacity-70 lg:inline [@media(pointer:coarse)]:hidden">Esc</kbd>
                     </button>
                     <button
                       onClick={() => void sow(1)}
                       disabled={busy}
-                      className="rounded-xl bg-amber-400 px-4 py-2 font-bold text-black shadow hover:bg-amber-300 disabled:opacity-40"
+                      className={cn(styles.control, "rounded-xl bg-amber-400 px-4 py-2 font-bold text-black shadow hover:bg-amber-300 disabled:opacity-40")}
                     >
                       Rải phải ➡️
                       <kbd className="ml-1.5 hidden rounded border border-current/30 bg-black/10 px-1 align-middle font-mono text-[10px] font-normal opacity-70 lg:inline [@media(pointer:coarse)]:hidden">→</kbd>
@@ -343,7 +347,7 @@ function Table({ view, reconnecting, act, toast }: { view: OQRoomView; reconnect
             )}
             {others.map((p) => panel(p, "hidden short:flex"))}
             {panel(bottomPlayer, "hidden short:flex")}
-            <div className="rounded-2xl bg-black/35 p-3 short:p-2">
+            <div className={cn(styles.panel, "rounded-2xl bg-black/35 p-3 short:p-2")}>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-100/60">Diễn biến</p>
               <ul className="flex max-h-60 flex-col gap-1 overflow-y-auto text-xs lg:max-h-[60vh] short:max-h-[34dvh]">
                 {g.log
@@ -392,8 +396,7 @@ function Table({ view, reconnecting, act, toast }: { view: OQRoomView; reconnect
 
       {showScores && <ScoreboardModal view={view} onClose={() => setShowScores(false)} note={SCORE_NOTE} />}
       {showRules && (
-        <Modal onClose={() => setShowRules(false)}>
-          <h2 className="mb-3 text-lg font-bold text-amber-300">📖 Luật Ô Ăn Quan</h2>
+        <Modal title="Luật Ô Ăn Quan" onClose={() => setShowRules(false)}>
           <OAnQuanRules />
         </Modal>
       )}
@@ -457,6 +460,7 @@ function PlayerStrip({
     return (
       <div
         className={cn(
+          styles.hud,
           "relative flex min-w-0 flex-col gap-0.5 rounded-xl px-2 py-1.5",
           isTurn ? "bg-amber-400/15 ring-1 ring-amber-300/60" : "bg-black/35",
           p.out && "opacity-55",
@@ -498,6 +502,7 @@ function PlayerStrip({
   return (
     <div
       className={cn(
+        styles.hud,
         "relative flex items-center gap-2 rounded-2xl px-2.5 py-2 sm:gap-3 sm:px-3 short:py-1.5",
         myTurn ? "bg-rose-500/10" : isTurn ? "bg-amber-400/15 ring-1 ring-amber-300/60" : "bg-black/35",
         winner && "ring-2 ring-amber-300",
@@ -572,7 +577,7 @@ function Waiting({ view, me, act, nameOf }: { view: OQRoomView; me: OQSeatView |
   const s = view.settings;
   const select = "min-h-8 rounded-md bg-black/40 px-1.5 py-1 text-white disabled:opacity-70";
   return (
-    <div className="w-full max-w-md rounded-3xl border border-amber-200/15 bg-black/50 p-4 backdrop-blur sm:p-5">
+    <div className={cn(styles.panel, "w-full max-w-md rounded-3xl border border-amber-200/15 bg-black/50 p-4 backdrop-blur sm:p-5")}>
       {ended && g ? (
         <>
           <h2 className="mb-1 text-xl font-black text-amber-300">{g.winner ? `🏆 ${nameOf(g.winner)} thắng!` : "🤝 Hoà!"}</h2>
@@ -671,7 +676,7 @@ function Waiting({ view, me, act, nameOf }: { view: OQRoomView; me: OQSeatView |
         <button
           onClick={() => void act({ type: "start" })}
           disabled={count < 2}
-          className="w-full rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40"
+          className={cn(styles.control, "w-full rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40")}
         >
           {count < 2 ? "Cần ít nhất 2 người" : ended ? "Ván mới" : count > 2 ? `Bắt đầu (${count} người)` : "Bắt đầu"}
         </button>
@@ -715,35 +720,6 @@ export function OAnQuanRules() {
 }
 
 /** Bottom sheet on phones (big "Đóng" button), centred dialog from `sm` up. */
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal
-        className="relative flex max-h-[82dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#24150a] text-left text-amber-50 shadow-2xl sm:max-h-[88dvh] sm:rounded-2xl short:max-h-[94dvh] short:max-w-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute right-2 top-2 z-10 grid size-9 place-items-center rounded-full bg-white/10 text-lg leading-none text-white shadow hover:bg-white/20"
-          aria-label="Đóng"
-        >
-          ✕
-        </button>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 [&>h2:first-child]:pr-10">{children}</div>
-        <button
-          onClick={onClose}
-          className="shrink-0 border-t border-white/10 bg-black/20 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sm font-semibold text-amber-100 sm:hidden"
-        >
-          Đóng
-        </button>
-      </div>
-    </div>
-  );
+function Modal({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: React.ReactNode }) {
+  return <LegacyDialog title={title} onClose={onClose} className="max-w-md short:max-w-2xl" bodyClassName="p-5 short:p-4">{children}</LegacyDialog>;
 }

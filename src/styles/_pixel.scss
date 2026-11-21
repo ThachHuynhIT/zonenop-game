@@ -1,0 +1,42 @@
+@use "@styles/variables" as vars;
+
+// Shared pixel chrome. Opt in at component boundaries so boards and artwork
+// keep their own proportions, colours and interaction geometry.
+@mixin frame {
+  border: 2px solid vars.$pixel-outline;
+  border-radius: 0;
+  background: vars.$pixel-panel;
+  box-shadow: 4px 4px 0 vars.$pixel-ink;
+  backdrop-filter: none;
+}
+
+@mixin control {
+  border: 2px solid vars.$pixel-outline;
+  border-radius: 0;
+  font-family: vars.$font-family-mono;
+  font-weight: 700;
+  box-shadow: 0 3px 0 vars.$pixel-ink;
+  transition: background-color 80ms, transform 80ms, box-shadow 80ms;
+
+  &:focus-visible {
+    outline: 2px solid vars.$pixel-gold;
+    outline-offset: 3px;
+  }
+
+  &:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: translateY(3px);
+    box-shadow: none;
+  }
+
+  &:disabled,
+  &[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
+@mixin inset {
+  border: 2px solid vars.$pixel-outline;
+  border-radius: 0;
+  background: vars.$pixel-ink;
+  box-shadow: inset 2px 2px 0 rgb(0 0 0 / 25%);
+}

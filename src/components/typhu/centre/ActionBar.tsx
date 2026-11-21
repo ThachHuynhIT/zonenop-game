@@ -1,5 +1,6 @@
 "use client";
 
+import styles from "../TyPhuTable.module.scss";
 import { useLayoutEffect, useRef } from "react";
 import { AIR_RENT, GROUP_COLORS, JAIL_FINE, type Ownable, UTIL_MULT, isOwnable } from "@/lib/typhu/board";
 import { type TPGameView, type TPPlayerView, type TPRoomView } from "@/lib/typhu/protocol";
@@ -80,7 +81,7 @@ export function ActionBar({
   // The auction has its own panel (and clock) in the board centre: the turn's controls and clock wait for it.
   if (g.phase === "auction") {
     return bottom ? (
-      <div ref={barRef} className={BAR_CLASS}>
+      <div ref={barRef} className={cn(styles.actionBar, BAR_CLASS)}>
         <p className="text-center text-xs sm:text-sm">🔨 Đang đấu giá — trả giá ở giữa bàn cờ</p>
       </div>
     ) : null;
@@ -174,7 +175,7 @@ export function ActionBar({
 
   if (!bottom) return content;
   return (
-    <div ref={barRef} className={BAR_CLASS}>
+    <div ref={barRef} className={cn(styles.actionBar, BAR_CLASS)}>
       {content}
     </div>
   );

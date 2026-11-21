@@ -1,5 +1,8 @@
 "use client";
 
+import styles from "./BangTable.module.scss";
+import { PixelIcon } from "@/components/game-ui";
+
 import { RoomRoster } from "@/components/games/RoomRoster";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -126,7 +129,7 @@ export default function BangTable({ code, name, watch }: { code: string; name: s
       </div>
     );
   }
-  if (!view) return <p className="flex min-h-[70vh] animate-pulse items-center justify-center text-amber-100/80">Đang kết nối bàn {code}…</p>;
+  if (!view) return <p className="flex min-h-[70vh] motion-safe:animate-pulse items-center justify-center text-amber-100/80">Đang kết nối bàn {code}…</p>;
   return (
     <>
       <Table view={view} reconnecting={status === "reconnecting"} act={act} />
@@ -162,12 +165,13 @@ function Table({ view, reconnecting, act }: { view: BangRoomView; reconnecting: 
   const live = useLiveReactions(view.reactions);
   const cornerReactions = g?.status === "playing" ? live.filter((r) => !r.playerId) : live;
   return (
-    <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-2 px-2 pb-20 pt-2 sm:gap-3 sm:px-4 sm:pt-3 lg:pb-6 2xl:max-w-7xl">
+    <div className={cn(styles.table, "relative mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-2 px-2 pb-20 pt-2 sm:gap-3 sm:px-4 sm:pt-3 lg:pb-6 2xl:max-w-7xl")}>
       <WinCelebration show={g?.status === "ended"} playing={!!g && g.status !== "ended"} won={!!view.meId && !!g?.winners.includes(view.meId)} title={g?.status === "ended" && g.winners.length ? `🏆 ${g.winners.map(nameOf).join(", ")} thắng` : undefined} />
       <GameHeader
         primary={
           <>
-            <Link href="/bang" className={headerBtn}>
+            <PixelIcon name="bang" className={styles.identity} />
+            <Link href="/bang" className={cn(styles.control, headerBtn)}>
               ← Sảnh
             </Link>
             <span className="font-mono text-sm font-bold tracking-[0.2em] text-amber-300">{view.code}</span>
@@ -175,14 +179,14 @@ function Table({ view, reconnecting, act }: { view: BangRoomView; reconnecting: 
         }
         extra={
           <>
-            <button onClick={copyInvite} className={headerBtn} title="Chép link mời">
+            <button onClick={copyInvite} className={cn(styles.control, headerBtn)} title="Chép link mời">
               {copied ? "✓" : "🔗"}
               <HeaderLabel>{copied ? "Đã chép link" : "Chép link mời"}</HeaderLabel>
             </button>
-            <button onClick={() => setShowScores(true)} className={headerBtn} title="Bảng điểm">
+            <button onClick={() => setShowScores(true)} className={cn(styles.control, headerBtn)} title="Bảng điểm">
               🏆 <HeaderLabel>Bảng điểm</HeaderLabel>
             </button>
-            <button onClick={() => setShowGuide(true)} className={headerBtn} title="Hướng dẫn">
+            <button onClick={() => setShowGuide(true)} className={cn(styles.control, headerBtn)} title="Hướng dẫn">
               📖 <HeaderLabel>Hướng dẫn</HeaderLabel>
             </button>
           </>
@@ -202,7 +206,7 @@ function Table({ view, reconnecting, act }: { view: BangRoomView; reconnecting: 
                 👀 {view.spectators.length}
               </span>
             )}
-            {reconnecting && <span className="animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
+            {reconnecting && <span className="motion-safe:animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
           </>
         }
       />
@@ -241,7 +245,7 @@ function Waiting({ view, act, nameOf }: { view: BangRoomView; act: Act; nameOf: 
     // After a game, wide screens put the result beside the setup so "Ván mới" stays on screen.
     <div className={cn("w-full max-w-xl space-y-4", ended && "lg:grid lg:max-w-5xl lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-4 lg:space-y-0")}>
       {ended && (
-        <div className="rounded-3xl border border-amber-300/30 bg-black/45 p-4 backdrop-blur">
+        <div className={cn(styles.panel, "rounded-3xl border border-amber-300/30 bg-black/45 p-4 backdrop-blur")}>
           <h2 className="mb-2 text-xl font-black text-amber-300">🏆 {g.winners.length ? g.winners.map(nameOf).join(", ") + " thắng!" : "Không ai thắng"}</h2>
           <ul className="space-y-1.5 text-sm">
             {g.finished.map((id) => {
@@ -261,7 +265,7 @@ function Waiting({ view, act, nameOf }: { view: BangRoomView; act: Act; nameOf: 
           </ul>
         </div>
       )}
-      <div className="rounded-3xl border border-amber-200/15 bg-black/45 p-4 backdrop-blur sm:p-5">
+      <div className={cn(styles.panel, "rounded-3xl border border-amber-200/15 bg-black/45 p-4 backdrop-blur sm:p-5")}>
         <h2 className="mb-1 text-xl font-black text-amber-300">🤠 Đấu Súng</h2>
         <p className="mb-2 text-sm text-amber-100/80">
           {count}/{MAX_PLAYERS} người · cần ít nhất {MIN_PLAYERS} · gửi link mời để bạn bè vào bàn
@@ -343,7 +347,7 @@ function Waiting({ view, act, nameOf }: { view: BangRoomView; act: Act; nameOf: 
           <button
             onClick={() => void act({ type: "start" })}
             disabled={count < MIN_PLAYERS}
-            className="w-full rounded-lg bg-amber-400 px-4 py-2.5 font-bold text-black hover:bg-amber-300 disabled:opacity-40"
+            className={cn(styles.control, "w-full rounded-lg bg-amber-400 px-4 py-2.5 font-bold text-black hover:bg-amber-300 disabled:opacity-40")}
           >
             {count < MIN_PLAYERS ? `Cần ít nhất ${MIN_PLAYERS} người` : g?.status === "ended" ? "Ván mới" : "Bắt đầu"}
           </button>
@@ -360,7 +364,7 @@ function PickPhase({ view, g, act, nameOf }: { view: BangRoomView; g: BangGameVi
   const now = useNow(true);
   const left = g.deadline ? Math.max(0, Math.ceil((g.deadline - now) / 1000)) : null;
   return (
-    <div className="mx-auto w-full max-w-xl space-y-3 rounded-3xl border border-amber-200/15 bg-black/45 p-4 backdrop-blur">
+    <div className={cn(styles.panel, "mx-auto w-full max-w-xl space-y-3 rounded-3xl border border-amber-200/15 bg-black/45 p-4 backdrop-blur")}>
       <h2 className="text-lg font-black text-amber-300">Chọn nhân vật {left !== null && <span className="font-mono text-sm text-amber-100/70">⏱ {left}s</span>}</h2>
       {me && (
         <p className="text-sm">
@@ -844,7 +848,7 @@ function Board({ view, g, act, nameOf, onGuide }: { view: BangRoomView; g: BangG
         </ul>
 
         {/* Table centre: deck, discard, shop, what's happening */}
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-900/40 bg-[radial-gradient(ellipse_at_center,#5b3415_0%,#2e1a0b_75%)] p-2 sm:p-3">
+        <div className={cn(styles.felt, "flex flex-wrap items-center gap-3 rounded-2xl border border-amber-900/40 bg-[radial-gradient(ellipse_at_center,#5b3415_0%,#2e1a0b_75%)] p-2 sm:p-3")}>
           <CardBack count={g.deckCount} />
           {g.discardTop !== null ? <CardFace id={g.discardTop} size="sm" onClick={() => setInfo({ kind: "card", id: g.discardTop! })} /> : <div className="aspect-[5/7] w-12 rounded-lg border-2 border-dashed border-white/15" />}
           <div className="min-w-0 flex-1 text-sm">
@@ -858,7 +862,7 @@ function Board({ view, g, act, nameOf, onGuide }: { view: BangRoomView; g: BangG
                 {g.queued > 0 && <span className="text-white/50"> (+{g.queued})</span>}
               </p>
             )}
-            <button onClick={() => setShowLog((v) => !v)} className="-my-1 block max-w-full truncate py-1 text-left text-xs text-white/60 underline-offset-2 hover:underline" aria-expanded={showLog}>
+            <button onClick={() => setShowLog((v) => !v)} className={cn(styles.control, "-my-1 block max-w-full truncate py-1 text-left text-xs text-white/60 underline-offset-2 hover:underline")} aria-expanded={showLog}>
               📜 {g.log[g.log.length - 1]?.text ?? "Chưa có gì"}
             </button>
           </div>
@@ -890,7 +894,7 @@ function Board({ view, g, act, nameOf, onGuide }: { view: BangRoomView; g: BangG
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="relative">
                 <SeatBubble reactions={reactionsFor(me.id)} />
-                <button onClick={() => me.char && setInfo({ kind: "char", key: me.char })} className="flex items-center gap-1 font-bold">
+                <button onClick={() => me.char && setInfo({ kind: "char", key: me.char })} className={cn(styles.control, "flex items-center gap-1 font-bold")}>
                   {me.char ? <CharAvatar char={me.char} className="w-7" emojiClass="text-2xl" /> : <span className="text-2xl">❔</span>}
                   {me.char ? CHARACTERS[me.char].name : "?"}
                 </button>
@@ -986,7 +990,7 @@ function Board({ view, g, act, nameOf, onGuide }: { view: BangRoomView; g: BangG
       </aside>
 
       {info && (
-        <Sheet onClose={() => setInfo(null)}>
+        <Sheet title={info.kind === "card" ? typeOf(info.id).name : info.kind === "char" ? CHARACTERS[info.key].name : "Sự kiện Đấu Súng"} onClose={() => setInfo(null)}>
           {info.kind === "card" && (
             <div className="flex gap-3">
               <CardFace id={info.id} size="lg" />
@@ -1050,7 +1054,7 @@ function promptText(p: PromptView, nameOf: (id: string) => string): string {
 
 function LogList({ g, className }: { g: BangGameView; className?: string }) {
   return (
-    <div className={cn("flex min-h-0 flex-col rounded-2xl bg-black/35 p-2", className)}>
+    <div className={cn(styles.panel, "flex min-h-0 flex-col rounded-2xl bg-black/35 p-2", className)}>
       <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-100/60">Diễn biến</p>
       <ul className="flex min-h-0 flex-col gap-0.5 overflow-y-auto text-xs">
         {g.log
@@ -1119,6 +1123,7 @@ function PlayerTile({
   return (
     <li
       className={cn(
+        styles.hud,
         "relative rounded-xl border p-1.5 text-xs transition-colors sm:p-2",
         isTurn ? "border-amber-300/70 bg-amber-400/15" : "border-white/10 bg-black/35",
         waiting && "ring-2 ring-sky-400/70",
@@ -1137,7 +1142,7 @@ function PlayerTile({
             e.stopPropagation();
             onChar();
           }}
-          className="-m-1 p-1 text-xl leading-none"
+          className={cn(styles.control, "-m-1 p-1 text-xl leading-none")}
           aria-label="Xem nhân vật"
         >
           {gone ? "☠️" : p.char ? <CharAvatar char={p.char} className="w-6" /> : "❔"}
@@ -1158,7 +1163,7 @@ function PlayerTile({
         {p.ghost && <span className="rounded bg-indigo-500/40 px-1">👻</span>}
         {p.gold > 0 && <span className="text-yellow-200">🪙{p.gold}</span>}
         {p.cubes > 0 && (
-          <button type="button" onClick={(e) => (e.stopPropagation(), onChip(-1))} className="text-amber-200" title="Đạn trên thẻ nhân vật">
+          <button type="button" onClick={(e) => (e.stopPropagation(), onChip(-1))} className={cn(styles.control, "text-amber-200")} title="Đạn trên thẻ nhân vật">
             🔸{p.cubes}
           </button>
         )}
@@ -1173,7 +1178,7 @@ function PlayerTile({
                 onKick();
               } else setSure(true);
             }}
-            className={cn("rounded px-1 font-semibold", sure ? "bg-rose-600 text-white" : "bg-white/10 text-rose-200 hover:bg-white/20")}
+            className={cn(styles.control, "rounded px-1 font-semibold", sure ? "bg-rose-600 text-white" : "bg-white/10 text-rose-200 hover:bg-white/20")}
           >
             {sure ? "Chắc chắn?" : "Kích"}
           </button>
@@ -1311,7 +1316,7 @@ function ActionPanel(props: PanelProps) {
             </button>
           ))}
         <button
-          className={cn(primary, "ml-auto")}
+          className={cn(styles.control, primary, "ml-auto")}
           disabled={busy}
           onClick={endTurn}
         >
@@ -1357,7 +1362,7 @@ function ModeForm({ g, mode, needs, missing, sel, target, target2, pick, opt, as
           {text && <p className="text-amber-50/80">{text}</p>}
           {needs.note && <p className="text-xs text-white/60">{needs.note}</p>}
         </div>
-        <button className="-mr-1 -mt-1 grid size-9 shrink-0 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white" onClick={reset} aria-label="Huỷ">
+        <button className={cn(styles.control, "-mr-1 -mt-1 grid size-9 shrink-0 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white")} onClick={reset} aria-label="Huỷ">
           ✕
         </button>
       </div>
@@ -1370,7 +1375,7 @@ function ModeForm({ g, mode, needs, missing, sel, target, target2, pick, opt, as
       {needs.modes && (
         <div className="flex flex-wrap gap-2">
           {needs.modes.map((m) => (
-            <button key={m.id} className={cn(btn, opt === m.id ? "bg-amber-400 text-black" : "border border-white/20 bg-white/5")} onClick={() => setOpt(m.id)}>
+            <button key={m.id} className={cn(styles.control, btn, opt === m.id ? "bg-amber-400 text-black" : "border border-white/20 bg-white/5")} onClick={() => setOpt(m.id)}>
               {m.label}
             </button>
           ))}
@@ -1386,7 +1391,7 @@ function ModeForm({ g, mode, needs, missing, sel, target, target2, pick, opt, as
       {needs.pick && targetPlayer && (
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
           {needs.pick === "any" && (
-            <button className={cn(btn, pick?.zone === "hand" ? "bg-amber-400 text-black" : "border border-white/20 bg-white/5")} disabled={!targetPlayer.handCount} onClick={() => setPick({ zone: "hand" })}>
+            <button className={cn(styles.control, btn, pick?.zone === "hand" ? "bg-amber-400 text-black" : "border border-white/20 bg-white/5")} disabled={!targetPlayer.handCount} onClick={() => setPick({ zone: "hand" })}>
               🂠 Ngẫu nhiên trên tay ({targetPlayer.handCount})
             </button>
           )}
@@ -1655,7 +1660,7 @@ function DrawPanel({
       )}
       <div className="flex flex-wrap gap-2">
         {prompt.options.map((m) => (
-          <button key={m} className={cn(btn, opt === m ? "bg-amber-400 text-black" : m === "normal" ? "bg-amber-400/90 text-black" : "border border-white/20 bg-white/5")} disabled={busy} onClick={() => (m === "normal" || m === "pedro" || m === "liquor" ? void run({ type: "draw", mode: m, ...extra }) : setOpt(m))}>
+          <button key={m} className={cn(styles.control, btn, opt === m ? "bg-amber-400 text-black" : m === "normal" ? "bg-amber-400/90 text-black" : "border border-white/20 bg-white/5")} disabled={busy} onClick={() => (m === "normal" || m === "pedro" || m === "liquor" ? void run({ type: "draw", mode: m, ...extra }) : setOpt(m))}>
             {DRAW_LABEL[m]}
             {m === "normal" && <Kbd>D</Kbd>}
           </button>
@@ -1677,7 +1682,7 @@ function DrawPanel({
             {living
               .filter((p) => (p.dist ?? 99) <= g.range)
               .map((p) => (
-                <button key={p.id} className={cn(btn, evelyn.includes(p.id) ? "bg-rose-500 text-white" : "border border-white/20 bg-white/5")} onClick={() => setEvelyn((e) => (e.includes(p.id) ? e.filter((x) => x !== p.id) : [...e, p.id].slice(-2)))}>
+                <button key={p.id} className={cn(styles.control, btn, evelyn.includes(p.id) ? "bg-rose-500 text-white" : "border border-white/20 bg-white/5")} onClick={() => setEvelyn((e) => (e.includes(p.id) ? e.filter((x) => x !== p.id) : [...e, p.id].slice(-2)))}>
                   🎯 {nameOf(p.id)}
                 </button>
               ))}
@@ -1689,10 +1694,10 @@ function DrawPanel({
       )}
       {opt === "peyote" && (
         <div className="flex gap-2">
-          <button className={cn(btn, "bg-rose-600 text-white")} disabled={busy} onClick={() => void run({ type: "draw", mode: "peyote", color: "red", ...extra })}>
+          <button className={cn(styles.control, btn, "bg-rose-600 text-white")} disabled={busy} onClick={() => void run({ type: "draw", mode: "peyote", color: "red", ...extra })}>
             🔴 Đỏ
           </button>
-          <button className={cn(btn, "bg-zinc-800 text-white")} disabled={busy} onClick={() => void run({ type: "draw", mode: "peyote", color: "black", ...extra })}>
+          <button className={cn(styles.control, btn, "bg-zinc-800 text-white")} disabled={busy} onClick={() => void run({ type: "draw", mode: "peyote", color: "black", ...extra })}>
             ⚫ Đen
           </button>
         </div>

@@ -1,0 +1,191 @@
+@use "@styles/variables" as v;
+@use "@styles/pixel" as pixel;
+
+.root {
+  position: fixed;
+  right: max(.75rem, env(safe-area-inset-right));
+  bottom: max(.75rem, env(safe-area-inset-bottom));
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .5rem;
+  color: v.$pixel-text;
+  font-size: .875rem;
+}
+
+.panel {
+  @include pixel.frame;
+  display: flex;
+  flex-direction: column;
+  width: min(22rem, calc(100vw - 1.5rem));
+  height: min(26rem, 65dvh);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .25rem .5rem .25rem .75rem;
+  border-bottom: 2px solid v.$pixel-outline;
+  font-family: v.$font-family-mono;
+  color: v.$pixel-gold;
+}
+
+.close {
+  @include pixel.control;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: v.$pixel-panel-raised;
+  color: v.$pixel-text;
+}
+
+.log {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: .75rem;
+}
+
+.empty {
+  margin: auto;
+  text-align: center;
+  color: v.$pixel-muted;
+  font-size: .75rem;
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  align-self: flex-start;
+  max-width: 88%;
+}
+
+.sender { padding: 0 .25rem; color: v.$pixel-muted; font-size: .75rem; }
+
+.bubble {
+  border: 1px solid v.$pixel-outline;
+  padding: .5rem .75rem;
+  background: v.$pixel-panel-raised;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mine {
+  align-items: flex-end;
+  align-self: flex-end;
+  .bubble { background: v.$pixel-gold; color: v.$pixel-ink; }
+}
+
+.form { display: flex; gap: .5rem; border-top: 2px solid v.$pixel-outline; padding: .5rem; }
+
+.input {
+  @include pixel.inset;
+  min-width: 0;
+  min-height: 44px;
+  flex: 1;
+  padding: .5rem;
+  color: v.$pixel-text;
+  font-size: 1rem;
+  &::placeholder { color: v.$pixel-muted; }
+  &:focus-visible { outline: 2px solid v.$pixel-gold; outline-offset: -2px; }
+}
+
+.send {
+  @include pixel.control;
+  min-height: 44px;
+  padding: .5rem .75rem;
+  background: v.$pixel-gold;
+  color: v.$pixel-ink;
+  &:disabled { opacity: .5; }
+}
+
+.error { margin: 0; padding: .5rem .75rem; color: v.$pixel-coral; font-size: .75rem; }
+
+.preview {
+  @include pixel.control;
+  max-width: min(18rem, calc(100vw - 1.5rem));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: .75rem;
+  background: v.$pixel-text;
+  color: v.$pixel-ink;
+  text-align: left;
+  font-family: v.$font-family-sans;
+}
+
+.controls { display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; }
+.row { flex-direction: row; }
+.emojiRoot { position: relative; }
+
+.emojiPanel {
+  @include pixel.frame;
+  position: absolute;
+  right: 100%;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 44px);
+  gap: .25rem;
+  width: max-content;
+  margin-right: .5rem;
+  padding: .25rem;
+}
+
+.emojiAbove { right: 0; bottom: 100%; margin: 0 0 .5rem; }
+
+.emoji {
+  border: 0;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  font-size: 1.5rem;
+  &:hover, &:focus-visible {
+    outline: 2px solid v.$pixel-gold;
+    outline-offset: -2px;
+    background: v.$pixel-panel-raised;
+  }
+}
+
+.toggle, .emojiToggle {
+  @include pixel.control;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  font-size: 1.5rem;
+}
+
+.toggle { background: v.$pixel-gold; color: v.$pixel-ink; }
+.emojiToggle { background: v.$pixel-panel; color: v.$pixel-text; }
+
+.badge {
+  position: absolute;
+  right: -.25rem;
+  top: -.5rem;
+  display: grid;
+  place-items: center;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  padding: 0 .25rem;
+  border: 2px solid v.$pixel-ink;
+  background: v.$pixel-coral;
+  color: v.$pixel-ink;
+  font-size: .75rem;
+  font-family: v.$font-family-mono;
+  font-weight: 700;
+}
+
+@media (max-height: 500px) { .panel { height: calc(100dvh - 5.5rem); } }
+@media (prefers-reduced-motion: reduce) {
+  .root *, .root *::before, .root *::after { transition: none; animation: none; }
+}

@@ -1,5 +1,8 @@
 "use client";
 
+import styles from "./TienLenTable.module.scss";
+import { PixelIcon } from "@/components/game-ui";
+
 import { SeatAvatar } from "@/components/games/PlayerAvatar";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -88,7 +91,7 @@ export default function TienLenTable({ code, name, watch }: { code: string; name
   if (!view) {
     return (
       <CenterMessage>
-        <p className="animate-pulse text-emerald-100/80">Đang kết nối phòng {code}…</p>
+        <p className="motion-safe:animate-pulse text-emerald-100/80">Đang kết nối phòng {code}…</p>
       </CenterMessage>
     );
   }
@@ -278,7 +281,7 @@ function Table({ view, reconnecting, onPlay, onPass, onStart, onSettings, onKick
 
   return (
     <div
-      className="tl-root relative mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-4 sm:pt-3 short:py-1.5"
+      className={cn(styles.table, "tl-root relative mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-4 sm:pt-3 short:py-1.5")}
       style={
         {
           // Sized by the short side too, so a sideways phone keeps the whole table on screen.
@@ -293,7 +296,8 @@ function Table({ view, reconnecting, onPlay, onPass, onStart, onSettings, onKick
       <GameHeader
         primary={
           <>
-            <Link href="/tien-len" className={headerBtn}>
+            <PixelIcon name="tienlen" className={styles.identity} />
+            <Link href="/tien-len" className={cn(styles.control, headerBtn)}>
               ← Sảnh
             </Link>
             <span className="font-mono text-sm font-bold tracking-[0.2em] text-amber-300">{view.code}</span>
@@ -301,16 +305,16 @@ function Table({ view, reconnecting, onPlay, onPass, onStart, onSettings, onKick
         }
         extra={
           <>
-            <button onClick={copyInvite} className={headerBtn} title="Chép link mời">
+            <button onClick={copyInvite} className={cn(styles.control, headerBtn)} title="Chép link mời">
               {copied ? "✓" : "🔗"}
               <HeaderLabel>{copied ? "Đã chép link" : "Chép link mời"}</HeaderLabel>
             </button>
-            <button onClick={() => setShowScores(true)} className={headerBtn} title="Bảng điểm">
+            <button onClick={() => setShowScores(true)} className={cn(styles.control, headerBtn)} title="Bảng điểm">
               🏆 <HeaderLabel>Bảng điểm</HeaderLabel>
             </button>
             {/* Hidden while the server doesn't send the game's moves (nothing to show). */}
             {(!game || game.moves) && (
-              <button onClick={() => setShowMoves(true)} className={headerBtn} title="Lịch sử ván">
+              <button onClick={() => setShowMoves(true)} className={cn(styles.control, headerBtn)} title="Lịch sử ván">
                 📜 <HeaderLabel>Lịch sử ván</HeaderLabel>
               </button>
             )}
@@ -323,13 +327,13 @@ function Table({ view, reconnecting, onPlay, onPass, onStart, onSettings, onKick
                 👀 {view.spectators.length}
               </span>
             )}
-            {reconnecting && <span className="animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
+            {reconnecting && <span className="motion-safe:animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
           </>
         }
       />
 
       {spectator && (
-        <div className="mb-3 flex flex-wrap items-center justify-center gap-3 rounded-xl bg-black/30 px-3 py-2 text-sm text-emerald-100/80">
+        <div className={cn(styles.panel, "mb-3 flex flex-wrap items-center justify-center gap-3 rounded-xl bg-black/30 px-3 py-2 text-sm text-emerald-100/80")}>
           <span>👀 Bạn đang xem với tư cách khán giả</span>
           {freeSeat && !playing && (
             <Link href={`/tien-len/${view.code}`} className="rounded-md bg-amber-400 px-3 py-1 font-semibold text-black">
@@ -341,7 +345,7 @@ function Table({ view, reconnecting, onPlay, onPass, onStart, onSettings, onKick
 
       {/* Felt table */}
       <Shake fx={chopFx} className="relative flex flex-1">
-        <div className="relative grid flex-1 grid-cols-[auto_1fr_auto] grid-rows-[auto_1fr] gap-2 rounded-[2rem] border-[6px] border-[#5b3a1e] bg-[radial-gradient(ellipse_at_center,#1f7a4d_0%,#145c39_55%,#0d3f27_100%)] p-3 shadow-[inset_0_0_60px_rgba(0,0,0,0.5),0_20px_40px_rgba(0,0,0,0.5)] sm:p-5 short:gap-1 short:rounded-3xl short:border-4 short:p-2">
+        <div className={cn(styles.felt, "relative grid flex-1 grid-cols-[auto_1fr_auto] grid-rows-[auto_1fr] gap-2 rounded-[2rem] border-[6px] border-[#5b3a1e] bg-[radial-gradient(ellipse_at_center,#1f7a4d_0%,#145c39_55%,#0d3f27_100%)] p-3 shadow-[inset_0_0_60px_rgba(0,0,0,0.5),0_20px_40px_rgba(0,0,0,0.5)] sm:p-5 short:gap-1 short:rounded-3xl short:border-4 short:p-2")}>
           <ChopOverlay fx={chopFx} />
           <BurnOverlay names={burnFx} />
           <SpectatorReactions reactions={spectatorReactions} />
@@ -493,7 +497,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={cn(
+      className={cn(styles.control,
         "min-w-[72px] rounded-lg px-3 py-2 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 sm:min-w-[84px] sm:px-4",
         big && "min-w-[120px] rounded-xl px-5 py-2.5 text-base font-black tracking-wide sm:min-w-[180px] sm:px-8 sm:py-3 sm:text-xl short:min-w-[100px] short:px-4 short:py-2 short:text-base",
         primary
@@ -604,7 +608,7 @@ function Opponent({ seat, isTurn, deadline, rankLabel, gameEnded, burned, reacti
     );
   }
   return (
-    <div className={cn("flex items-center gap-2", vertical ? "flex-col short:flex-row" : "flex-row")}>
+    <div className={cn(styles.hud, "flex items-center gap-2", vertical ? "flex-col short:flex-row" : "flex-row")}>
       <div className="flex flex-col items-center gap-1">
         <Avatar seat={seat} isTurn={isTurn} deadline={deadline} reactions={reactions} />
         <span className="max-w-[88px] truncate text-xs font-medium text-emerald-50 sm:text-sm short:text-xs">{seat.name}</span>
@@ -626,7 +630,7 @@ function Opponent({ seat, isTurn, deadline, rankLabel, gameEnded, burned, reacti
 function SeatBadge({ seat, isTurn, deadline, rankLabel, gameEnded, burned, reactions }: SeatDisplayProps) {
   if (!seat) return null;
   return (
-    <span className="flex items-center gap-2">
+    <span className={cn(styles.hud, "flex items-center gap-2")}>
       <Avatar seat={seat} isTurn={isTurn} deadline={deadline} reactions={reactions} />
       <span className="flex flex-col items-start">
         <span className="font-medium">
@@ -662,7 +666,7 @@ function WaitingPanel({
 
   return (
     // Portrait phones: the centre cell between the side seats is too narrow, so the panel floats over the whole felt.
-    <div className="z-10 w-full max-w-xs rounded-2xl bg-black/35 p-4 backdrop-blur-sm max-sm:absolute max-sm:inset-x-3 max-sm:top-1/2 max-sm:w-auto max-sm:max-w-none max-sm:max-h-[calc(100%-1.5rem)] max-sm:-translate-y-1/2 max-sm:overflow-y-auto max-sm:bg-black/75 short:grid short:max-h-[50dvh] short:max-w-xl short:grid-cols-2 short:items-start short:gap-x-3 short:overflow-y-auto short:p-3">
+    <div className={cn(styles.panel, "z-10 w-full max-w-xs rounded-2xl bg-black/35 p-4 backdrop-blur-sm max-sm:absolute max-sm:inset-x-3 max-sm:top-1/2 max-sm:w-auto max-sm:max-w-none max-sm:max-h-[calc(100%-1.5rem)] max-sm:-translate-y-1/2 max-sm:overflow-y-auto max-sm:bg-black/75 short:grid short:max-h-[50dvh] short:max-w-xl short:grid-cols-2 short:items-start short:gap-x-3 short:overflow-y-auto short:p-3")}>
       {/* Sideways phones: two columns (results | start + rules) so the start button stays in view. */}
       <div className="short:col-start-1 short:row-span-2 short:row-start-1">
       {ended && game ? (
@@ -722,7 +726,7 @@ function WaitingPanel({
         <button
           onClick={onStart}
           disabled={count < 2}
-          className="w-full rounded-lg bg-amber-400 px-4 py-2 font-semibold text-black transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-40"
+          className={cn(styles.control, "w-full rounded-lg bg-amber-400 px-4 py-2 font-semibold text-black transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-40")}
         >
           {count < 2 ? "Cần ít nhất 2 người" : ended ? "Ván mới" : "Bắt đầu"}
           {count >= 2 && (

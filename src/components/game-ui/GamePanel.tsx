@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
+import styles from "./PixelPrimitives.module.scss";
 
-/** A rounded, slightly raised card for lobby lists, scores and settings. */
+/** An ink-outlined pixel panel for lobby lists, scores and settings. */
 export function GamePanel({
   title,
   icon,
@@ -18,19 +19,14 @@ export function GamePanel({
 }) {
   return (
     <section
-      className={cn(
-        "game-raised rounded-game-card border p-4 [--game-depth:3px] sm:p-5",
-        tone === "accent"
-          ? "border-game-accent/40 bg-game-accent-soft"
-          : "border-white/10 bg-white/[0.06] backdrop-blur [--game-raise-color:oklch(0_0_0/0.4)]",
-        className,
-      )}
+      data-tone={tone}
+      className={cn(styles.panel, className)}
     >
       {(title || actions) && (
-        <header className="mb-3 flex items-center gap-2">
-          {icon && <span aria-hidden className="text-xl">{icon}</span>}
-          {title && <h2 className="font-heading text-lg font-extrabold tracking-tight">{title}</h2>}
-          {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
+        <header className={styles.panelHeader}>
+          {icon && <span aria-hidden className={styles.panelIcon}>{icon}</span>}
+          {title && <h2 className={styles.panelTitle}>{title}</h2>}
+          {actions && <div className={styles.panelActions}>{actions}</div>}
         </header>
       )}
       {children}

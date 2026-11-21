@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import styles from "./ConfirmButton.module.scss";
 
 /**
  * A button that asks "sure?" on the first tap and acts on the second (resets after 3.5 s).
@@ -39,7 +40,7 @@ export function ConfirmButton({
       onConfirm();
     } else setArmed(true);
   };
-  const cls = cn(className, armed && "animate-pulse ring-2 ring-rose-400");
+  const cls = cn(className, armed && styles.armed);
   const label = armed ? confirmLabel : children;
   if (as === "span") {
     return (
@@ -49,7 +50,11 @@ export function ConfirmButton({
         aria-disabled={disabled || undefined}
         title={title}
         onClick={onClick}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onClick(e)}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          if (!e.repeat) onClick(e);
+        }}
         className={cls}
       >
         {label}

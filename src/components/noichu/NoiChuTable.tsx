@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { PixelIcon } from "@/components/game-ui";
 import { Celebration } from "@/components/game-ui/Celebration";
 import { Countdown } from "@/components/game-ui/Countdown";
 import { GameButton } from "@/components/game-ui/GameButton";
@@ -122,7 +123,8 @@ function Table({ view, reconnecting, act }: { view: NCRoomView; reconnecting: bo
       <GameHeader
         primary={
           <>
-            <Link href="/noi-chu" className={headerBtn}>
+            <PixelIcon name="noichu" className={styles.identity} />
+            <Link href="/noi-chu" className={cn(styles.control, headerBtn)}>
               ← Sảnh
             </Link>
             <span className="font-mono text-sm font-bold tracking-[0.2em] text-teal-300">{view.code}</span>
@@ -130,14 +132,14 @@ function Table({ view, reconnecting, act }: { view: NCRoomView; reconnecting: bo
         }
         extra={
           <>
-            <button onClick={copyInvite} className={headerBtn} title="Chép link mời">
+            <button onClick={copyInvite} className={cn(styles.control, headerBtn)} title="Chép link mời">
               {copied ? "✓" : "🔗"}
               <HeaderLabel>{copied ? "Đã chép link" : "Chép link mời"}</HeaderLabel>
             </button>
-            <button onClick={() => setShowScores(true)} className={headerBtn} title="Bảng điểm">
+            <button onClick={() => setShowScores(true)} className={cn(styles.control, headerBtn)} title="Bảng điểm">
               🏆 <HeaderLabel>Bảng điểm</HeaderLabel>
             </button>
-            <button onClick={() => setShowRules(true)} className={headerBtn} title="Luật chơi">
+            <button onClick={() => setShowRules(true)} className={cn(styles.control, headerBtn)} title="Luật chơi">
               📖 <HeaderLabel>Luật chơi</HeaderLabel>
             </button>
           </>
@@ -154,7 +156,7 @@ function Table({ view, reconnecting, act }: { view: NCRoomView; reconnecting: bo
                 👀 {view.spectators.length}
               </span>
             )}
-            {reconnecting && <span className="animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
+            {reconnecting && <span className="motion-safe:animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
           </>
         }
       />

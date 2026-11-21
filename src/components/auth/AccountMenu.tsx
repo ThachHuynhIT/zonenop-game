@@ -9,11 +9,9 @@ import type { PlayerProfile } from "@/components/games/gameClient";
 import { AuthField } from "./fields";
 import { type PasswordRole, passwordHint, passwordProblem } from "./password";
 import { usernameProblem } from "./username";
-import { authRequest, clearSession, saveSession, updateProfile, useSession, type PublicUser } from "./session";
+import { changePassword, logoutAccount, updateProfile, useSession, type PublicUser } from "./session";
 import { canConfirmLogout, type LogoutConfirmState } from "./logoutConfirm";
 import styles from "./AccountMenu.module.scss";
-
-type MeData = { user: PublicUser; session?: string };
 
 /** Account dialog behind the avatar in the games top bar: look, password, admin link and sign out. */
 export function AccountMenu({ onClose }: { onClose: () => void }) {
@@ -51,9 +49,11 @@ export function AccountMenu({ onClose }: { onClose: () => void }) {
 
   async function signOut() {
     setSigningOut(true);
-    const res = await authRequest("POST", "/api/auth/logout");
+    const res = await logoutAccount();
+    setSigningOut(false);
+    logoutStarted.current = false;
+    if (!res.applied) return;
     if (!res.ok) gameToast.info("Đã đăng xuất trên máy này; phiên trên máy chủ sẽ tự hết hạn");
-    clearSession();
     onClose();
     router.replace("/dang-nhap");
   }
@@ -77,7 +77,7 @@ export function AccountMenu({ onClose }: { onClose: () => void }) {
         ) : (
           <>
             {user.role === "admin" && (
-              <Link href="/admin" onClick={onClose} className="mr-auto inline-flex h-11 items-center rounded-full px-3 text-sm font-bold text-game-accent hover:bg-white/10">
+              <Link href="/admin" onClick={onClose} className={styles.admin}>
                 Quản trị
               </Link>
             )}
@@ -131,7 +131,7 @@ function ProfileSection({ user }: { user: PublicUser }) {
   }
 
   return (
-    <form onSubmit={save} className="space-y-3" aria-label="Hồ sơ">
+    <form onSubmit={save} className={styles.form} aria-label="Hồ sơ">
       <AuthField
         label="Tên đăng nhập"
         value={username}
@@ -140,7 +140,7 @@ function ProfileSection({ user }: { user: PublicUser }) {
         maxLength={20}
         hint="3–20 ký tự: chữ, số, dấu _, dấu chấm và dấu cách đơn. Cũng là tên hiện ở bàn chơi."
       />
-      <p className="text-xs text-white/60">Tên mới áp dụng từ bàn tiếp theo — nếu đang trong một ván, hãy đổi sau khi ván kết thúc.</p>
+      <p className={styles.hint}>Tên mới áp dụng từ bàn tiếp theo — nếu đang trong một ván, hãy đổi sau khi ván kết thúc.</p>
       <ProfilePicker name={name} value={look} onChange={setLook} />
       <Feedback message={message} />
       <GameButton type="submit" variant="primary" loading={busy} disabled={!changed}>
@@ -167,11 +167,10 @@ function PasswordSection({ role }: { role: PasswordRole }) {
     if (password !== again) return setMessage({ ok: false, text: "Hai mật khẩu mới chưa giống nhau" });
     setBusy(true);
     setMessage(null);
-    const res = await authRequest<MeData>("PATCH", "/api/auth/me", { oldPassword, password });
+    const res = await changePassword({ oldPassword, password });
     setBusy(false);
+    if (!res.applied) return;
     if (!res.ok) return setMessage({ ok: false, text: res.error });
-    // Changing the password signs out every other device; this one carries on with the fresh session.
-    if (res.data.session) saveSession({ session: res.data.session, user: res.data.user });
     setOld("");
     setPassword("");
     setAgain("");
@@ -179,7 +178,7 @@ function PasswordSection({ role }: { role: PasswordRole }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3" aria-label="Đổi mật khẩu">
+    <form onSubmit={submit} className={styles.form} aria-label="Đổi mật khẩu">
       <AuthField label="Mật khẩu hiện tại" value={oldPassword} onChange={setOld} type="password" autoComplete="current-password" />
       <AuthField label="Mật khẩu mới" value={password} onChange={setPassword} type="password" autoComplete="new-password" hint={passwordHint(role)} />
       <AuthField label="Nhập lại mật khẩu mới" value={again} onChange={setAgain} type="password" autoComplete="new-password" />
@@ -194,7 +193,7 @@ function PasswordSection({ role }: { role: PasswordRole }) {
 function Feedback({ message }: { message: { ok: boolean; text: string } | null }) {
   if (!message) return null;
   return (
-    <p role={message.ok ? "status" : "alert"} className={message.ok ? "mt-2 text-sm text-emerald-300" : "mt-2 text-sm text-rose-300"}>
+    <p role={message.ok ? "status" : "alert"} className={message.ok ? styles.success : styles.error}>
       {message.text}
     </p>
   );

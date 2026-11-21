@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { GameThemeScope } from "@/components/game-ui";
 import { GamesShell } from "@/components/games/GamesShell";
+import styles from "@/app/page.module.scss";
 
 export const metadata: Metadata = {
   title: "Đá Quý (Splendor) — chơi online",
@@ -7,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function SplendorLayout({ children }: { children: React.ReactNode }) {
-  return <div className="game-shell relative z-10 min-h-[100dvh] bg-[radial-gradient(ellipse_at_top,#2a1540_0%,#0c0714_70%)] text-violet-50"><GamesShell>{children}</GamesShell></div>;
+  return <GameThemeScope game="splendor" className={`game-shell ${styles.page}`}><GamesShell>{children}</GamesShell></GameThemeScope>;
 }

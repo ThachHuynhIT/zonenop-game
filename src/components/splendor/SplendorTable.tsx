@@ -1,5 +1,8 @@
 "use client";
 
+import styles from "./SplendorTable.module.scss";
+import { LegacyDialog, PixelIcon } from "@/components/game-ui";
+
 import { SeatAvatar } from "@/components/games/PlayerAvatar";
 import { RoomRoster } from "@/components/games/RoomRoster";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -119,7 +122,7 @@ export default function SplendorTable({ code, name, watch }: { code: string; nam
       </div>
     );
   }
-  if (!view) return <p className="flex min-h-[70vh] animate-pulse items-center justify-center text-violet-100/80">Đang kết nối bàn {code}…</p>;
+  if (!view) return <p className="flex min-h-[70vh] motion-safe:animate-pulse items-center justify-center text-violet-100/80">Đang kết nối bàn {code}…</p>;
   return (
     <>
       <Table view={view} reconnecting={status === "reconnecting"} act={act} toast={toast} />
@@ -227,12 +230,13 @@ function Table({ view, reconnecting, act, toast }: { view: SPRoomView; reconnect
   const secondsLeft = g?.deadline ? Math.max(0, Math.ceil((g.deadline - now) / 1000)) : null;
 
   return (
-    <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col gap-3 px-2 pb-24 pt-2 sm:px-4 sm:pt-3 lg:pb-2 xl:max-w-[100rem] short:gap-2 short:pt-1.5">
+    <div className={cn(styles.table, "relative mx-auto flex min-h-[100dvh] w-full max-w-7xl flex-col gap-3 px-2 pb-24 pt-2 sm:px-4 sm:pt-3 lg:pb-2 xl:max-w-[100rem] short:gap-2 short:pt-1.5")}>
       <WinCelebration show={g?.status === "ended"} playing={!!playing} won={!!view.meId && g?.finished[0] === view.meId} title={g?.status === "ended" ? `🏆 ${nameOf(g.finished[0])} thắng` : undefined} />
       <GameHeader
         primary={
           <>
-            <Link href="/splendor" className={headerBtn}>
+            <PixelIcon name="splendor" className={styles.identity} />
+            <Link href="/splendor" className={cn(styles.control, headerBtn)}>
               ← Sảnh
             </Link>
             <span className="font-mono text-sm font-bold tracking-[0.2em] text-amber-300">{view.code}</span>
@@ -240,14 +244,14 @@ function Table({ view, reconnecting, act, toast }: { view: SPRoomView; reconnect
         }
         extra={
           <>
-            <button onClick={copyInvite} className={headerBtn} title="Chép link mời">
+            <button onClick={copyInvite} className={cn(styles.control, headerBtn)} title="Chép link mời">
               {copied ? "✓" : "🔗"}
               <HeaderLabel>{copied ? "Đã chép link" : "Chép link mời"}</HeaderLabel>
             </button>
-            <button onClick={() => setShowScores(true)} className={headerBtn} title="Bảng điểm">
+            <button onClick={() => setShowScores(true)} className={cn(styles.control, headerBtn)} title="Bảng điểm">
               🏆 <HeaderLabel>Bảng điểm</HeaderLabel>
             </button>
-            <button onClick={() => setShowRules(true)} className={headerBtn} title="Luật chơi">
+            <button onClick={() => setShowRules(true)} className={cn(styles.control, headerBtn)} title="Luật chơi">
               📖 <HeaderLabel>Luật chơi</HeaderLabel>
             </button>
           </>
@@ -265,7 +269,7 @@ function Table({ view, reconnecting, act, toast }: { view: SPRoomView; reconnect
                 👀 {view.spectators.length}
               </span>
             )}
-            {reconnecting && <span className="animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
+            {reconnecting && <span className="motion-safe:animate-pulse whitespace-nowrap text-amber-300">Đang kết nối lại…</span>}
           </>
         }
       />
@@ -279,7 +283,7 @@ function Table({ view, reconnecting, act, toast }: { view: SPRoomView; reconnect
       ) : (
         <div className="grid flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_19rem] short:grid-cols-[minmax(0,1fr)_16rem] short:gap-2">
           {/* Market */}
-          <div className="relative flex min-w-0 flex-col gap-3 rounded-3xl lg:gap-2 border border-amber-200/10 bg-[radial-gradient(ellipse_at_top,#3b1d5c_0%,#1a0f2b_70%)] p-3 shadow-[inset_0_0_60px_rgba(0,0,0,0.5)] sm:p-4 short:gap-2 short:self-start short:p-2">
+          <div className={cn(styles.felt, "relative flex min-w-0 flex-col gap-3 rounded-3xl lg:gap-2 border border-amber-200/10 bg-[radial-gradient(ellipse_at_top,#3b1d5c_0%,#1a0f2b_70%)] p-3 shadow-[inset_0_0_60px_rgba(0,0,0,0.5)] sm:p-4 short:gap-2 short:self-start short:p-2")}>
             <SpectatorReactions reactions={live.filter((r) => !r.playerId)} />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex gap-2 lg:hidden short:hidden">
@@ -330,7 +334,7 @@ function Table({ view, reconnecting, act, toast }: { view: SPRoomView; reconnect
               </div>
 
               {/* Bank */}
-              <div className="flex basis-full flex-wrap items-center gap-2 rounded-2xl bg-black/30 p-2 min-[400px]:gap-3 short:grid short:basis-auto short:grid-cols-2 short:gap-1.5 short:self-start short:p-1.5">
+              <div className={cn(styles.panel, "flex basis-full flex-wrap items-center gap-2 rounded-2xl bg-black/30 p-2 min-[400px]:gap-3 short:grid short:basis-auto short:grid-cols-2 short:gap-1.5 short:self-start short:p-1.5")}>
                 {TOKENS.map((t) => (
                   <TokenChip
                     key={t}
@@ -349,13 +353,13 @@ function Table({ view, reconnecting, act, toast }: { view: SPRoomView; reconnect
                     <button
                       onClick={() => void doTake()}
                       disabled={!picked.length || busy}
-                      className="rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40 short:whitespace-nowrap short:px-2 short:py-1.5 short:text-xs"
+                      className={cn(styles.control, "rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40 short:whitespace-nowrap short:px-2 short:py-1.5 short:text-xs")}
                     >
                       💎 Lấy {picked.length ? picked.length : ""} đá
                       <Kbd>Enter</Kbd>
                     </button>
                     {!!picked.length && (
-                      <button onClick={() => setPick(emptyPick())} className="rounded-lg border border-white/25 px-3 py-2 text-sm short:px-2 short:py-1.5 short:text-xs">
+                      <button onClick={() => setPick(emptyPick())} className={cn(styles.control, "rounded-lg border border-white/25 px-3 py-2 text-sm short:px-2 short:py-1.5 short:text-xs")}>
                         Bỏ chọn
                         <Kbd>Esc</Kbd>
                       </button>
@@ -393,7 +397,7 @@ function Table({ view, reconnecting, act, toast }: { view: SPRoomView; reconnect
                 />
               );
             })}
-            <div className="rounded-2xl bg-black/35 p-3 sm:col-span-2 short:col-span-1">
+            <div className={cn(styles.panel, "rounded-2xl bg-black/35 p-3 sm:col-span-2 short:col-span-1")}>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-violet-100/60">Diễn biến</p>
               <ul className="flex max-h-56 flex-col gap-1 overflow-y-auto text-xs">
                 {g.log
@@ -436,9 +440,8 @@ function Table({ view, reconnecting, act, toast }: { view: SPRoomView; reconnect
         />
       )}
       {confirmTake && myTurn && g?.phase === "turn" && (
-        <Modal onClose={() => setConfirmTake(false)}>
+        <Modal title={`Vượt quá ${MAX_TOKENS} viên đá`} onClose={() => setConfirmTake(false)}>
           <div className="flex flex-col items-center gap-3 text-center">
-            <h2 className="text-lg font-bold text-amber-300">⚠️ Vượt quá {MAX_TOKENS} viên đá</h2>
             <div className="flex items-center gap-1.5">
               {picked.map((gem, i) => (
                 <GemIcon key={i} gem={gem} className="h-9 w-9" />
@@ -454,12 +457,12 @@ function Table({ view, reconnecting, act, toast }: { view: SPRoomView; reconnect
               <button
                 onClick={() => void doTake(true)}
                 disabled={busy}
-                className="rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40"
+                className={cn(styles.control, "rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40")}
               >
                 OK, lấy đá
                 <Kbd>Enter</Kbd>
               </button>
-              <button onClick={() => setConfirmTake(false)} className="rounded-lg border border-white/25 px-4 py-2 font-semibold hover:bg-white/10">
+              <button onClick={() => setConfirmTake(false)} className={cn(styles.control, "rounded-lg border border-white/25 px-4 py-2 font-semibold hover:bg-white/10")}>
                 Chọn lại
                 <Kbd>Esc</Kbd>
               </button>
@@ -469,8 +472,7 @@ function Table({ view, reconnecting, act, toast }: { view: SPRoomView; reconnect
       )}
       {showScores && <ScoreboardModal view={view} onClose={() => setShowScores(false)} note={SCORE_NOTE} />}
       {showRules && (
-        <Modal onClose={() => setShowRules(false)}>
-          <h2 className="mb-3 text-lg font-bold text-amber-300">📖 Luật Đá Quý</h2>
+        <Modal title="Luật Đá Quý" onClose={() => setShowRules(false)}>
           <SplendorRules />
         </Modal>
       )}
@@ -509,6 +511,7 @@ function PlayerPanel({
   return (
     <div
       className={cn(
+        styles.hud,
         "relative rounded-2xl p-2.5 sm:p-3 short:p-2",
         myTurn ? "bg-rose-500/10 ring-2 ring-rose-400" : isTurn ? "bg-amber-400/15 ring-1 ring-amber-300/60" : "bg-black/35",
         self && "max-lg:order-first",
@@ -644,7 +647,7 @@ function CardModal({
     ["b", "g"],
   );
   return (
-    <Modal onClose={onClose}>
+    <Modal title={focus.card !== undefined ? "Chi tiết thẻ phát triển" : "Chồng thẻ phát triển"} onClose={onClose}>
       {/* Sideways phones: card on the left, cost and buttons beside it, so nothing needs scrolling. */}
       <div className="flex flex-col items-center gap-3 short:flex-row short:items-center short:gap-4">
         {focus.card !== undefined ? <DevCardView id={focus.card} size="lg" /> : <CardBack tier={focus.tier!} count={g.deckCounts[focus.tier! - 1]} />}
@@ -661,7 +664,7 @@ function CardModal({
                 <button
                   onClick={() => done(run({ type: "buy", card: focus.card! }))}
                   disabled={busy || !canAfford(focus.card)}
-                  className="rounded-lg bg-emerald-500 px-4 py-2 font-bold text-black hover:bg-emerald-400 disabled:opacity-40"
+                  className={cn(styles.control, "rounded-lg bg-emerald-500 px-4 py-2 font-bold text-black hover:bg-emerald-400 disabled:opacity-40")}
                 >
                   🛒 Mua
                   <Kbd>B</Kbd>
@@ -671,7 +674,7 @@ function CardModal({
                 <button
                   onClick={() => done(run(focus.card !== undefined ? { type: "reserve", card: focus.card } : { type: "reserve", tier: focus.tier! }))}
                   disabled={busy || reserveFull}
-                  className="rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40"
+                  className={cn(styles.control, "rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40")}
                 >
                   📌 Giữ {focus.card === undefined ? "1 thẻ úp" : ""} {g.bank.gold > 0 ? "+ 1 Vàng" : ""}
                   <Kbd>G</Kbd>
@@ -692,7 +695,7 @@ function CardModal({
 function CostCompare({ plan, gold }: { plan: ReturnType<typeof paymentPlan>; gold: number }) {
   const cols = plan.rows.length + (gold > 0 ? 1 : 0);
   return (
-    <div className="w-full rounded-xl bg-black/35 p-3">
+    <div className={cn(styles.panel, "w-full rounded-xl bg-black/35 p-3")}>
       <div className="grid items-center gap-x-2 gap-y-2 text-center" style={{ gridTemplateColumns: `auto repeat(${cols}, minmax(0, 1fr))` }}>
         <span className="text-left text-[11px] font-semibold uppercase tracking-wide text-white/55">Cần</span>
         {plan.rows.map((r) => (
@@ -796,13 +799,13 @@ function DiscardPanel({ p, need, run, busy, secondsLeft }: { p: SPPlayerView; ne
         <button
           onClick={() => void run({ type: "discard", tokens: give })}
           disabled={busy || left !== 0}
-          className="rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40"
+          className={cn(styles.control, "rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40")}
         >
           {left > 0 ? `Chọn thêm ${left} viên` : `Trả lại ${need} viên`}
           {left === 0 && <Kbd>Enter</Kbd>}
         </button>
         {total > 0 && (
-          <button onClick={() => setGive(emptyPick())} className="rounded-lg border border-white/25 px-3 py-2 text-sm hover:bg-white/10">
+          <button onClick={() => setGive(emptyPick())} className={cn(styles.control, "rounded-lg border border-white/25 px-3 py-2 text-sm hover:bg-white/10")}>
             Chọn lại
             <Kbd>Esc</Kbd>
           </button>
@@ -821,7 +824,7 @@ function Waiting({ view, me, act, nameOf }: { view: SPRoomView; me: SPSeatView |
   const isHost = !!me?.isHost && view.role === "player";
   const s = view.settings;
   return (
-    <div className="w-full max-w-md rounded-3xl border border-amber-200/15 bg-black/45 p-5 backdrop-blur">
+    <div className={cn(styles.panel, "w-full max-w-md p-5")}>
       {ended && g ? (
         <>
           <h2 className="mb-2 text-xl font-black text-amber-300">🏆 {nameOf(g.finished[0])} thắng!</h2>
@@ -879,7 +882,7 @@ function Waiting({ view, me, act, nameOf }: { view: SPRoomView; me: SPSeatView |
         <button
           onClick={() => void act({ type: "start" })}
           disabled={count < 2}
-          className="w-full rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40"
+          className={cn(styles.control, "w-full rounded-lg bg-amber-400 px-4 py-2 font-bold text-black hover:bg-amber-300 disabled:opacity-40")}
         >
           {count < 2 ? "Cần ít nhất 2 người" : ended ? "Ván mới" : "Bắt đầu"}
         </button>
@@ -914,35 +917,6 @@ export function SplendorRules() {
  * Dialog (same behaviour as Cờ Tỷ Phú's): a bottom sheet on phones with a full-width "Đóng" bar,
  * centred from `sm` up; the ✕ stays put while the content scrolls; Esc and the backdrop close it.
  */
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal
-        className="relative flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#1b1030] text-violet-50 shadow-2xl sm:max-h-[88dvh] sm:rounded-2xl short:max-h-[94dvh] short:max-w-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute right-2 top-2 z-10 grid size-9 place-items-center rounded-full bg-white/10 text-lg leading-none text-white shadow hover:bg-white/20"
-          aria-label="Đóng"
-        >
-          ✕
-        </button>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 short:p-4 [&>h2:first-child]:pr-10">{children}</div>
-        <button
-          onClick={onClose}
-          className="shrink-0 border-t border-white/10 bg-black/20 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sm font-semibold text-violet-100 sm:hidden"
-        >
-          Đóng
-        </button>
-      </div>
-    </div>
-  );
+function Modal({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: React.ReactNode }) {
+  return <LegacyDialog title={title} onClose={onClose} className="max-w-md short:max-w-2xl" bodyClassName="p-5 short:p-4">{children}</LegacyDialog>;
 }

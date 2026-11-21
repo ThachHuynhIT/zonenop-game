@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- small static game sprites; next/image adds nothing here */
 
 import { CARDS, CARD_BY_ID, GEMS, GEM_NAMES, type Gem, NOBLE_BY_ID, type Token } from "@/lib/splendor/cards";
+import styles from "./SplendorTable.module.scss";
 import { cn } from "@/lib/utils";
 
 /**
@@ -89,11 +90,11 @@ export function TokenChip({
     <Tag
       onClick={onClick}
       title={title ?? GEM_NAMES[gem]}
-      className={cn("relative shrink-0 rounded-full transition-transform", onClick && "hover:-translate-y-0.5 active:scale-95", dimmed && "opacity-35 grayscale", !!selected && "ring-4 ring-amber-300")}
+      className={cn(styles.token, "relative shrink-0 rounded-full transition-transform", onClick && "hover:-translate-y-0.5 active:scale-95", dimmed && "opacity-35 grayscale", !!selected && "ring-4 ring-amber-300")}
     >
       <GemIcon gem={gem} className={px} />
       {count !== undefined && (
-        <span className="absolute -bottom-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-black/85 px-1 text-[11px] font-bold text-white ring-1 ring-amber-200/40">
+        <span className={cn(styles.tokenCount, "absolute -bottom-1 -right-1 flex h-5 min-w-5 items-center justify-center bg-black/85 px-1 text-[11px] font-bold text-white")}>
           {count}
         </span>
       )}
@@ -203,6 +204,7 @@ export function CardBack({ tier, count, onClick, size = "md" }: { tier: 1 | 2 | 
     <Tag
       onClick={onClick}
       className={cn(
+        styles.cardBack,
         "relative aspect-[5/7] shrink-0 rounded-lg p-[3px] shadow-lg",
         size === "md" ? MD_CARD_W : size === "fluid" ? "w-full" : "w-14",
         onClick && "hover:-translate-y-1",

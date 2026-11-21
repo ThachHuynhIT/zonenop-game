@@ -2,6 +2,7 @@
 
 import { MAX_RANK_POINTS, mirroredRankPoints } from "@/lib/tienlen";
 import { cn } from "@/lib/utils";
+import styles from "./RankPointsPicker.module.scss";
 
 const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "0");
 
@@ -24,10 +25,10 @@ export function RankPointsPicker({
 }) {
   const n = Math.max(players, 2);
   return (
-    <div className={cn("space-y-1", className)}>
-      <div className="flex items-center justify-between gap-2">
+    <div className={cn(styles.picker, className)}>
+      <div className={styles.row}>
         <span>Điểm Nhất / Nhì</span>
-        <span className="flex items-center gap-1">
+        <span className={styles.values}>
           <select
             value={first}
             disabled={!editable}
@@ -35,7 +36,7 @@ export function RankPointsPicker({
               const v = Number(e.target.value);
               onChange({ first: v, second: Math.min(second, v) });
             }}
-            className="rounded bg-black/40 px-1 py-0.5 text-white"
+            className={styles.select}
             aria-label="Điểm Nhất"
           >
             {Array.from({ length: MAX_RANK_POINTS }, (_, i) => i + 1).map((v) => (
@@ -44,12 +45,12 @@ export function RankPointsPicker({
               </option>
             ))}
           </select>
-          <span className="opacity-50">/</span>
+          <span className={styles.divider}>/</span>
           <select
             value={second}
             disabled={!editable}
             onChange={(e) => onChange({ second: Number(e.target.value) })}
-            className="rounded bg-black/40 px-1 py-0.5 text-white"
+            className={styles.select}
             aria-label="Điểm Nhì"
           >
             {Array.from({ length: first + 1 }, (_, i) => i).map((v) => (
@@ -60,7 +61,7 @@ export function RankPointsPicker({
           </select>
         </span>
       </div>
-      <p className="opacity-70">
+      <p className={styles.preview}>
         {n} người: {mirroredRankPoints(n, { first, second }).map(signed).join(" / ")}
       </p>
     </div>

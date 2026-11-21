@@ -1,0 +1,9 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+.back.back {
+  @include pixel.frame;
+  background: #563326;
+  &:focus-visible { outline: 3px solid vars.$pixel-gold; outline-offset: 3px; }
+  &[aria-pressed="true"] { border-color: vars.$pixel-gold; }
+  @media (prefers-reduced-motion: reduce) { transition: none; }
+}

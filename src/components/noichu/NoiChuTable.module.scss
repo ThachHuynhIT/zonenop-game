@@ -1,4 +1,5 @@
 @use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
 
 // Phones held sideways (same query as the `short:` variant in globals.css).
 $short: "(orientation: landscape) and (max-height: 500px)";
@@ -431,3 +432,20 @@ $short: "(orientation: landscape) and (max-height: 500px)";
   justify-content: center;
   color: rgb(204 251 241 / 0.8);
 }
+
+// Pixel treatment stays at the word-stage, player-HUD and form boundaries.
+.identity { width: 1.25rem; height: 1.25rem; color: vars.$pixel-mint; flex-shrink: 0; }
+.control.control { @include pixel.control; }
+.stage.stage { @include pixel.frame; border-top-color: vars.$pixel-mint; }
+.player.player { @include pixel.frame; box-shadow: 2px 2px 0 vars.$pixel-ink; }
+.player.turn { border-color: vars.$pixel-mint; border-style: double; }
+.player.winner { border-color: vars.$pixel-gold; }
+.card.card { border-radius: 0; }
+.last { font-family: vars.$font-family-mono; letter-spacing: -.04em; }
+.need.need { border-radius: 0; box-shadow: 0 3px 0 vars.$pixel-mint; }
+.chip.chip { border: 1px solid vars.$pixel-outline; border-radius: 0; background: vars.$pixel-panel-raised; }
+.input.input { @include pixel.inset; color: vars.$pixel-text; font-family: vars.$font-family-mono; }
+.choice.choice, .select.select { border: 2px solid vars.$pixel-outline; border-radius: 0; }
+.choice.chosen { border-color: vars.$pixel-mint; }
+.select.select { min-height: 44px; }
+.tag, .logItem { border-radius: 0; }

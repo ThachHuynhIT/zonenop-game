@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { GameThemeScope } from "@/components/game-ui";
 import { GamesShell } from "@/components/games/GamesShell";
+import styles from "@/app/page.module.scss";
 
 export const metadata: Metadata = {
   title: "Tiến Lên Miền Nam — chơi online",
@@ -8,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function TienLenLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="game-shell relative z-10 min-h-[100dvh] bg-[radial-gradient(ellipse_at_top,#0f2e22_0%,#07130e_70%)] text-white">
+    <GameThemeScope game="tienlen" className={`game-shell ${styles.page}`}>
       <GamesShell>{children}</GamesShell>
-    </div>
+    </GameThemeScope>
   );
 }

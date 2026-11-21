@@ -1,0 +1,19 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+
+.table { color: vars.$pixel-text; }
+.identity { width: 1.25rem; height: 1.25rem; flex-shrink: 0; color: vars.$pixel-gold; }
+.panel.panel { @include pixel.frame; }
+.control.control { @include pixel.control; background-image: none; }
+.felt.felt {
+  @include pixel.frame;
+  border-width: 4px;
+  background: #302548;
+}
+
+.hud.hud { @include pixel.frame; }
+
+.token.token { border-radius: 0; outline: 1px solid vars.$pixel-outline; box-shadow: 2px 2px 0 vars.$pixel-ink; }
+.token.token:focus-visible { outline: 3px solid vars.$pixel-gold; outline-offset: 3px; }
+.tokenCount.tokenCount { border: 1px solid vars.$pixel-outline; border-radius: 0; font-family: vars.$font-family-mono; }
+.cardBack.cardBack { border-radius: 0; box-shadow: 3px 3px 0 vars.$pixel-ink; }

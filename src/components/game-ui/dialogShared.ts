@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import styles from "./PixelPrimitives.module.scss";
 
 export interface GameDialogProps {
   open: boolean;
@@ -14,9 +15,9 @@ export interface GameDialogProps {
   children: ReactNode;
 }
 
-const SURFACE = "border border-white/10 bg-game-surface text-white game-raised [--game-raise-color:oklch(0_0_0/0.5)]";
+const SURFACE = styles.dialogSurface;
 // Cream variant for content written for pale backgrounds (Cờ Tỷ Phú's square details).
-const SURFACE_LIGHT = "border border-emerald-900/15 bg-[#f4efe1] text-emerald-950 game-raised [--game-raise-color:oklch(0_0_0/0.35)]";
+const SURFACE_LIGHT = styles.dialogSurface;
 
 /** Classes shared by the drawer and the centred dialog. */
 export function dialogClasses(light?: boolean, hideTitle?: boolean) {
@@ -24,6 +25,6 @@ export function dialogClasses(light?: boolean, hideTitle?: boolean) {
     surface: light ? SURFACE_LIGHT : SURFACE,
     rule: light ? "border-emerald-900/15" : "border-white/10",
     muted: light ? "text-emerald-950/70" : "text-white/70",
-    title: cn("font-heading text-xl font-extrabold tracking-tight", hideTitle && "sr-only"),
+    title: cn(styles.dialogTitle, hideTitle && "sr-only"),
   };
 }

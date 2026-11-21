@@ -1,0 +1,31 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+.panel { @include pixel.frame; padding: 1rem; background: vars.$pixel-panel; color: vars.$pixel-text; }
+.heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }
+.title { display: flex; align-items: center; gap: .5rem; font-size: .85rem; font-weight: 800; color: vars.$pixel-gold; }
+.signal { width: .5rem; height: .5rem; background: vars.$pixel-mint; } .signalBack,.signalDot { display: none; }
+.total { padding: .125rem .375rem; border: 1px solid vars.$pixel-outline; color: vars.$pixel-muted; font-size: .7rem; }
+.refresh { @include pixel.control; padding: .25rem .375rem; min-height: 2.75rem; font-size: .7rem; white-space: nowrap; background: vars.$pixel-ink; }
+.filters { display: flex; flex-wrap: wrap; gap: .375rem; margin-bottom: 1rem; }
+.filter { @include pixel.control; display: flex; align-items: center; gap: .25rem; flex-shrink: 0; min-height: 2.75rem; padding: .375rem .5rem; font-size: .7rem; color: vars.$pixel-muted; background: vars.$pixel-ink; }
+.active { border-color: vars.$pixel-gold; color: vars.$pixel-gold; background: vars.$pixel-panel-raised; }
+.filterIcon { width: 1rem; height: 1rem; }
+.muted,.loading { color: vars.$pixel-muted; font-size: .8rem; }
+.empty { @include pixel.inset; padding: 1rem; color: vars.$pixel-muted; font-size: .8rem; line-height: 1.6; }
+.rooms { display: grid; gap: .625rem; padding: 0; list-style: none; }
+.room { @include pixel.inset; min-width: 0; padding: .75rem; } .current { border-color: vars.$pixel-gold; }
+.row { display: flex; align-items: center; gap: .5rem; }
+.icon { flex-shrink: 0; color: vars.$pixel-gold; svg { width: 1.75rem; height: 1.75rem; } }
+.info { min-width: 0; flex: 1; }
+.roomHeading { display: flex; flex-wrap: wrap; align-items: baseline; gap: .375rem; font-size: .8rem; }
+.gameTitle { font-weight: 700; } .code { color: vars.$pixel-gold; font: 800 .75rem vars.$font-family-mono; letter-spacing: .1em; }
+.names { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: vars.$pixel-muted; font-size: .7rem; margin-top: .25rem; }
+.status { display: flex; flex-shrink: 0; flex-direction: column; align-items: flex-end; gap: .25rem; }
+.badge { padding: .125rem .25rem; border: 1px solid currentColor; font-size: .6rem; }
+.playing { color: vars.$pixel-coral; } .waiting { color: vars.$pixel-mint; } .count { font-size: .65rem; color: vars.$pixel-muted; }
+.actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .75rem; }
+.join,.watch { @include pixel.control; display: inline-flex; align-items: center; min-height: 2.75rem; padding: .5rem .75rem; font: 700 .7rem vars.$font-family-mono; }
+.join { background: vars.$pixel-gold; color: vars.$pixel-ink; } .watch { background: vars.$pixel-panel; }
+.warning { padding: .75rem 0 0; font-size: .7rem; line-height: 1.6; color: vars.$pixel-coral; }
+
+.refresh:disabled { opacity: .45; }

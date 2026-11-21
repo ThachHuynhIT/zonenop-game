@@ -1,0 +1,6 @@
+@use "@styles/variables" as vars;
+@use "@styles/pixel" as pixel;
+.label { display: block; margin-bottom: .5rem; font-size: .875rem; color: vars.$pixel-text; }
+.input { @include pixel.inset; min-height: 2.75rem; width: 100%; padding: .625rem .75rem; font-size: 1rem; color: vars.$pixel-text; &:focus-visible { outline: 2px solid vars.$pixel-mint; outline-offset: 2px; } &[aria-invalid] { border-color: vars.$pixel-coral; } }
+.hint,.error { margin-top: .375rem; font-size: .75rem; line-height: 1.6; color: vars.$pixel-muted; }
+.error { color: vars.$pixel-coral; }
